@@ -23,7 +23,7 @@ const links = [
   { href: "/portfolio", label: "Portfolio", icon: Wallet },
 ];
 export function Header() {
-  const pathname = usePathname();
+  const pathname = usePathname().replace(/\/$/, "") || "/";
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");

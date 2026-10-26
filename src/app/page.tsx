@@ -1,19 +1,12 @@
-import { Discover } from "@/components/discover/discover";
+import { Suspense } from "react";
+import { DiscoverFromUrl } from "@/components/discover/discover-from-url";
+import { LoadingSkeleton } from "@/components/ui/feedback";
 import { tokenProvider } from "@/services/token-provider";
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
-  const [tokens, query] = await Promise.all([
-    tokenProvider.list(),
-    searchParams,
-  ]);
+export default async function Home() {
+  const tokens = await tokenProvider.list();
   return (
-    <Discover
-      key={query.q ?? ""}
-      initialTokens={tokens}
-      initialSearch={query.q ?? ""}
-    />
+    <Suspense fallback={<LoadingSkeleton />}>
+      <DiscoverFromUrl initialTokens={tokens} />
+    </Suspense>
   );
 }

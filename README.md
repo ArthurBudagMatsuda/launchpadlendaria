@@ -82,6 +82,18 @@ Drafts use `retry:token-draft:v1` in localStorage. Browser storage is untrusted 
 
 ## GitHub
 
+### Shared test website
+
+- [RETRY application preview](https://arthurbudagmatsuda.github.io/launchpadlendaria/)
+- [Stage 2 Web3 test bench](https://arthurbudagmatsuda.github.io/launchpadlendaria/web3/)
+- [Preview build and deployment checks](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/workflows/pages.yml)
+
+The GitHub Pages workflow builds the application from `feat/etapa-1-foundation` and the independent wallet test bench from `feat/etapa-2-web3`. It is installed on both source branches and `main`; pushes to those branches rebuild the shared website after the application and Web3 package checks pass. Changes made only in a fork must first reach the corresponding branch in this repository to appear here. This publishes previews without merging the two unrelated source histories. `preview-version.txt` on the website records both source commits.
+
+Pages is static hosting. Search query strings are handled in the browser; token pages are generated from the finite demo catalog. Images, favicon and routes include the repository path. No server-side API, onchain write or payment is enabled. Custom HTTP headers configured for Next.js server mode cannot be applied by GitHub Pages.
+
+`pnpm build:pages` generates `out/` for the default `/launchpadlendaria` base path. Set `NEXT_PUBLIC_BASE_PATH` at build time only when deploying under a different path. Normal `pnpm build`/`pnpm start` still produce a Node-hosted application.
+
 Development branch: `feat/etapa-1-foundation`.
 
 Remote: [ArthurBudagMatsuda/launchpadlendaria](https://github.com/ArthurBudagMatsuda/launchpadlendaria).

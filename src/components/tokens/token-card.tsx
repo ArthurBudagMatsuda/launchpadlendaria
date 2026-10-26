@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, BadgeCheck, Clock3, Users } from "lucide-react";
 import type { Token } from "@/types/token";
 import { age, number, percent, usd } from "@/lib/format";
+import { assetPath } from "@/lib/asset-path";
 export function TokenAvatar({
   token,
   size = 52,
@@ -13,7 +14,7 @@ export function TokenAvatar({
   return (
     <Image
       className="token-avatar"
-      src={token.metadata.image}
+      src={assetPath(token.metadata.image)}
       width={size}
       height={size}
       alt={`${token.metadata.name} artwork`}

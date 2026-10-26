@@ -11,8 +11,9 @@ import {
 import { useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Header } from "./header";
+import { assetPath } from "@/lib/asset-path";
 export function Shell({ children }: { children: ReactNode }) {
-  const path = usePathname();
+  const path = usePathname().replace(/\/$/, "") || "/";
   const [help, setHelp] = useState(false);
   return (
     <>
@@ -55,7 +56,17 @@ export function Shell({ children }: { children: ReactNode }) {
           <i />
           Preview mode<span className="footer-divider">/</span>Built on Base
         </span>
-        <span>Every new beginning starts with a retry.</span>
+        {process.env.NEXT_PUBLIC_BASE_PATH ? (
+          <a
+            href={assetPath("/web3/")}
+            className="inline-flex items-center gap-1 text-blue-300"
+          >
+            Web3 test bench
+            <ChartNoAxesCombined size={13} />
+          </a>
+        ) : (
+          <span>Every new beginning starts with a retry.</span>
+        )}
         <button onClick={() => setHelp(true)}>
           About RETRY
           <ChartNoAxesCombined size={13} />
