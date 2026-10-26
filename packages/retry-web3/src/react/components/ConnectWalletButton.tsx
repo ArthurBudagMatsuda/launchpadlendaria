@@ -6,8 +6,10 @@ import { shortenAddress } from '../../lib/address.js'
 import { useRetryNetwork } from '../hooks/useRetryNetwork.js'
 import { useRetryWalletActions } from '../hooks/useRetryWalletActions.js'
 import { ConnectWalletModal } from './ConnectWalletModal.js'
-import { cx, Spinner, useDismiss } from './internal.js'
+import { cx, Portal, Spinner, useDismiss, useMediaQuery } from './internal.js'
 import { WalletMenu } from './WalletMenu.js'
+
+const COMPACT_QUERY = '(max-width: 480px)'
 
 export interface ConnectWalletButtonProps {
   /** Label while disconnected. Default `Connect Wallet`. */
@@ -37,10 +39,14 @@ export function ConnectWalletButton({
   const [modalOpen, setModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const anchorRef = useRef<HTMLSpanElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  // On phones the menu is a bottom sheet rendered into <body>, so a header
+  // with `backdrop-filter` or `transform` cannot trap the fixed panel.
+  const compact = useMediaQuery(COMPACT_QUERY)
 
   const closeModal = useCallback(() => setModalOpen(false), [])
   const closeMenu = useCallback(() => setMenuOpen(false), [])
-  const dismissRefs = useMemo(() => [anchorRef], [])
+  const dismissRefs = useMemo(() => [anchorRef, sheetRef], [])
   useDismiss(menuOpen, dismissRefs, closeMenu)
 
   const address = connection.address
@@ -89,7 +95,20 @@ export function ConnectWalletButton({
         {content}
       </button>
       {showAccount && menuOpen ? (
-        <WalletMenu actions={actions} onClose={closeMenu} className={panelClassName} />
+        compact ? (
+          <Portal>
+            <div className="rw3-root rw3-sheet-backdrop" aria-hidden="true" />
+            <div ref={sheetRef}>
+              <WalletMenu
+                actions={actions}
+                onClose={closeMenu}
+                className={cx('rw3-menu--sheet', panelClassName)}
+              />
+            </div>
+          </Portal>
+        ) : (
+          <WalletMenu actions={actions} onClose={closeMenu} className={panelClassName} />
+        )
       ) : null}
       <ConnectWalletModal
         open={modalOpen && !showAccount}

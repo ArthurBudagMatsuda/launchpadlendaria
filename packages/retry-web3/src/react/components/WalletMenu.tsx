@@ -100,9 +100,12 @@ export function WalletMenu({ actions, onClose, className }: WalletMenuProps) {
         ) : null}
       </div>
 
-      <div className="rw3-menu-section">
-        <EthBalance />
-      </div>
+      {network.isWrongNetwork ? null : (
+        // On an unsupported chain the network notice above already explains why there is no balance.
+        <div className="rw3-menu-section">
+          <EthBalance />
+        </div>
+      )}
 
       <div className="rw3-menu-section rw3-menu-actions">
         {explorerUrl ? (

@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, type RefObject, useEffect, useState } from 'react'
+import { type ReactNode, type RefObject, useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 
 export function cx(...classes: (string | false | null | undefined)[]): string {
@@ -13,6 +13,24 @@ export function Portal({ children }: { children: ReactNode }) {
   useEffect(() => setMounted(true), [])
   if (!mounted) return null
   return createPortal(children, document.body)
+}
+
+/** Tracks a CSS media query. Always `false` on the server and during hydration. */
+export function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      if (typeof window === 'undefined' || !window.matchMedia) return () => {}
+      const list = window.matchMedia(query)
+      list.addEventListener('change', onChange)
+      return () => list.removeEventListener('change', onChange)
+    },
+    [query],
+  )
+  return useSyncExternalStore(
+    subscribe,
+    () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : false),
+    () => false,
+  )
 }
 
 /** Closes a popover on Escape or on a pointer press outside of `refs`. */

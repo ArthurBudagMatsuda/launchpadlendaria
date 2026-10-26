@@ -539,16 +539,26 @@
 }
 
 /* Phones: menu becomes a bottom sheet, modal sticks to the bottom. */
-@media (max-width: 480px) {
-  .rw3-menu {
-    position: fixed;
-    top: auto;
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
-    width: auto;
-  }
+/* Bottom sheet used by ConnectWalletButton on narrow screens (portaled to <body>). */
+.rw3-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--rw3-z);
+  background: var(--rw3-overlay);
+}
 
+.rw3-menu.rw3-menu--sheet {
+  position: fixed;
+  top: auto;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  width: auto;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
   .rw3-overlay {
     align-items: flex-end;
     padding: 8px;

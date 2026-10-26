@@ -113,11 +113,14 @@ describe('ConnectWalletButton', () => {
 
     fireEvent.click(button)
     const menu = await screen.findByTestId('rw3-wallet-menu')
-    expect(within(menu).getByTestId('rw3-balance').textContent).toContain('Please switch to Base Sepolia.')
+    expect(within(menu).getByText('Your wallet is on Ethereum. Please switch to Base Sepolia.')).toBeTruthy()
+    // No balance row on an unsupported chain: the notice already explains it.
+    expect(within(menu).queryByTestId('rw3-balance')).toBeNull()
     fireEvent.click(within(menu).getByRole('button', { name: 'Switch to Base Sepolia' }))
     await waitFor(() =>
       expect(screen.getByTestId('rw3-network-indicator').textContent).toContain('Base Sepolia'),
     )
+    await waitFor(() => expect(within(menu).getByTestId('rw3-balance').textContent).toContain('ETH'))
     expect(provider.state.chainId).toBe(84532)
     expect(screen.getByText('Trade panel')).toBeTruthy()
   })
