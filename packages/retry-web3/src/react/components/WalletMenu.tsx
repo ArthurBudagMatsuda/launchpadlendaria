@@ -24,22 +24,18 @@ export function WalletMenu({ actions, onClose, className }: WalletMenuProps) {
   const connection = useConnection()
   const network = useRetryNetwork()
   const titleId = useId()
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [copied, setCopied] = useState<{ address: string; state: 'copied' | 'failed' } | undefined>()
 
   const address = connection.isConnected ? connection.address : undefined
   const connectorName = connection.isConnected ? connection.connector?.name : undefined
+  // Tied to the address it was made for, so it never survives an account switch.
+  const copyState = copied && copied.address === address ? copied.state : 'idle'
 
   useEffect(() => {
-    if (copyState === 'idle') return
-    const timer = setTimeout(() => setCopyState('idle'), 2_000)
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(undefined), 2_000)
     return () => clearTimeout(timer)
-  }, [copyState])
-
-  // A copied confirmation must not survive an account switch.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the address changes
-  useEffect(() => {
-    setCopyState('idle')
-  }, [address])
+  }, [copied])
 
   useEffect(() => {
     if (!connection.isConnected && !connection.isReconnecting) onClose()
@@ -66,7 +62,7 @@ export function WalletMenu({ actions, onClose, className }: WalletMenuProps) {
         <button
           type="button"
           className="rw3-button rw3-button--secondary rw3-button--small"
-          onClick={async () => setCopyState((await copyText(address)) ? 'copied' : 'failed')}
+          onClick={async () => setCopied({ address, state: (await copyText(address)) ? 'copied' : 'failed' })}
         >
           {copyState === 'copied' ? 'Copied!' : copyState === 'failed' ? 'Copy failed' : 'Copy Address'}
         </button>

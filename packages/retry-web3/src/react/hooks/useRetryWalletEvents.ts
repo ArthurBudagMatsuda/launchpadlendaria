@@ -24,7 +24,10 @@ interface Snapshot {
 export function useRetryWalletEvents(handler: (event: RetryWalletEvent) => void): void {
   const connection = useConnection()
   const handlerRef = useRef(handler)
-  handlerRef.current = handler
+  // Declared before the event effect so it always sees the latest handler.
+  useEffect(() => {
+    handlerRef.current = handler
+  })
   const previous = useRef<Snapshot | undefined>(undefined)
 
   const connected = connection.status === 'connected'

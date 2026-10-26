@@ -1,17 +1,27 @@
 'use client'
 
-import { type ReactNode, type RefObject, useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { type ReactNode, type RefObject, useCallback, useEffect, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 
 export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ')
 }
 
-/** Renders into document.body after mount, so server and first client render match. */
+const noopSubscribe = () => () => {}
+
+/** `false` on the server and during hydration, `true` once rendering on the client. */
+export function useIsClient(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  )
+}
+
+/** Renders into document.body on the client only, so server and hydration renders match. */
 export function Portal({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  if (!mounted) return null
+  const isClient = useIsClient()
+  if (!isClient) return null
   return createPortal(children, document.body)
 }
 
