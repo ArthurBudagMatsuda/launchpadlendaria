@@ -26,17 +26,19 @@ index c22a638..14c56e1 100644
 +  ]),
  ]);
 diff --git a/package.json b/package.json
-index 827f32f..3650525 100644
+index eea3961..ad17f91 100644
 --- a/package.json
 +++ b/package.json
-@@ -8,18 +8,21 @@
+@@ -8,19 +8,22 @@
      "node": ">=24.0.0"
    },
    "scripts": {
 -    "dev": "next dev --hostname 127.0.0.1",
 -    "build": "next build",
+-    "build:pages": "node scripts/build-pages.mjs",
 +    "dev": "pnpm web3:build && next dev --hostname 127.0.0.1",
 +    "build": "pnpm web3:build && next build",
++    "build:pages": "pnpm web3:build && node scripts/build-pages.mjs",
      "start": "next start --hostname 127.0.0.1",
      "lint": "eslint . --max-warnings 0",
 -    "typecheck": "next typegen && tsc --noEmit",
@@ -72,11 +74,11 @@ index ceb24c6..4054760 100644
 +  # Pulled in by the MetaMask SDK (@metamask/connect-evm); its postinstall is not needed.
 +  protobufjs: false
 diff --git a/src/app/layout.tsx b/src/app/layout.tsx
-index f344a44..2e2c044 100644
+index a4ac061..a3b4817 100644
 --- a/src/app/layout.tsx
 +++ b/src/app/layout.tsx
-@@ -1,6 +1,7 @@
- import type { Metadata } from "next";
+@@ -2,6 +2,7 @@ import type { Metadata } from "next";
+ import { assetPath } from "@/lib/asset-path";
  import { Providers } from "@/components/providers";
  import { Shell } from "@/components/layout/shell";
 +import "@retry/web3/styles.css";
@@ -84,7 +86,7 @@ index f344a44..2e2c044 100644
  export const metadata: Metadata = {
    title: { default: "RETRY — A new beginning on Base", template: "%s | RETRY" },
 diff --git a/src/components/layout/header.tsx b/src/components/layout/header.tsx
-index 44d6e4b..7520e47 100644
+index 1b24bf0..5b83be5 100644
 --- a/src/components/layout/header.tsx
 +++ b/src/components/layout/header.tsx
 @@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";

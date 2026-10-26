@@ -4,12 +4,12 @@ For whoever wires Stage 2 into the Stage 1 Next.js app (`feat/etapa-1-foundation
 
 ## Status
 
-The steps below were applied to a local copy of `feat/etapa-1-foundation` at `0d156f0` plus this branch's `packages/retry-web3`, and checked there:
+The steps below were applied to a local copy of `feat/etapa-1-foundation` at `2c8a156` (the GitHub Pages commit) plus this branch's `packages/retry-web3`, and checked there:
 
-- `pnpm install`, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (17 tests) and `pnpm build` (Next.js 16.4.3, Turbopack) all pass.
+- `pnpm install`, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (20 tests), `pnpm build` (Next.js 16.4.3, Turbopack; routes stay static) and `pnpm build:pages` (static export) all pass.
 - Playwright against `next start`, desktop and Pixel 7: the server renders `Connect Wallet` and hydrates with no warnings; connecting in the Stage 1 header works; Discover's own `useQuery` keeps working under the new provider; Portfolio shows the live balance, the Wrong Network state and the switch; the trade panel reads the balance; the account menu opens fully on screen as a bottom sheet on mobile; reload restores the session in both layout variants below.
 
-The whole change is in [etapa-1-integration.patch](./etapa-1-integration.patch). After both branches are merged it should apply with `git apply docs/web3/etapa-1-integration.patch` as long as those Stage 1 files have not changed since `0d156f0`; otherwise follow the steps by hand. Then run `pnpm install` to update `pnpm-lock.yaml` (the patch does not include the lockfile).
+The whole change is in [etapa-1-integration.patch](./etapa-1-integration.patch). After both branches are merged it should apply with `git apply docs/web3/etapa-1-integration.patch` as long as those Stage 1 files have not changed since `2c8a156`; otherwise follow the steps by hand. Then run `pnpm install` to update `pnpm-lock.yaml` (the patch does not include the lockfile).
 
 ## What happens if you merge without these steps
 
@@ -43,6 +43,7 @@ Without the `protobufjs` entry pnpm 11 stops the install with `ERR_PNPM_IGNORED_
 "scripts": {
   "dev": "pnpm web3:build && next dev --hostname 127.0.0.1",
   "build": "pnpm web3:build && next build",
+  "build:pages": "pnpm web3:build && node scripts/build-pages.mjs",
   "typecheck": "pnpm web3:build && next typegen && tsc --noEmit",
   "web3:build": "pnpm --filter @retry/web3 build"
 },
@@ -171,7 +172,7 @@ export default async function RootLayout({
 }
 ```
 
-The header is then server-rendered with the connected address, but reading headers makes **every route dynamic** (verified: the build lists all routes as `ƒ`). Both variants passed the hydration tests.
+The header is then server-rendered with the connected address, but reading headers makes **every route dynamic** (verified on `0d156f0`: the build lists all routes as `ƒ`), and it cannot be used with the static GitHub Pages export (`output: "export"` has no request headers). Both variants passed the hydration tests; the patch uses the static one.
 
 ## 6. Header
 
@@ -230,5 +231,7 @@ pnpm installs the module's own dev copies of `wagmi` and `viem` under `packages/
 ## 11. CI
 
 The root `RETRY quality checks` workflow keeps working: `pnpm typecheck` and `pnpm build` now build the module first. The module's own checks (typecheck, Biome, Vitest, build) and the playground's Playwright tests run in `.github/workflows/retry-web3.yml`, only when `packages/retry-web3/**`, `examples/web3-playground/**` or that workflow change.
+
+The shared `Publish RETRY test preview` workflow (`pages.yml`, on `main` and both stage branches) builds the playground from this branch and publishes it at <https://arthurbudagmatsuda.github.io/launchpadlendaria/web3/>. It still passes `VITE_DEFAULT_CHAIN`; the playground now reads `VITE_DEFAULT_NETWORK` (same names as the app). The value it sets is the default anyway, so nothing breaks, but rename it the next time that shared file is edited on all three branches.
 
 Note that Stage 1 requires Node 24 (`engines`) and its CI uses Node 24; the module supports Node 22.12 and later.
