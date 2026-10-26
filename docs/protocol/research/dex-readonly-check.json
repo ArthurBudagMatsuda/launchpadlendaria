@@ -1,0 +1,87 @@
+{
+  "inspectedAt": "2026-10-26T18:29:00.637Z",
+  "status": "RESEARCH_ONLY",
+  "limitation": "Code presence, V3 factory/WETH getters and V4 poolManager relationship are checked. SHA-256 is a snapshot fingerprint, not EVM EXTCODEHASH or proof of audited bytecode equivalence. A single public RPC per chain is not independent consensus verification.",
+  "networks": [
+    {
+      "chainId": 8453,
+      "rpc": "https://mainnet.base.org",
+      "blockNumber": "0x32a9f84",
+      "blockHash": "0x9d906785f7de6a3fa087b4a0d42fc695a5555f0e7fbf70533a10fbb66775fe03",
+      "contracts": [
+        {
+          "role": "v3Factory",
+          "address": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+          "byteLength": 24535,
+          "bytecodeSha256": "8545609892cc8d7d608dd4420ee110ab98448730570824fb029228e33846d28c",
+          "status": "CODE_PRESENT"
+        },
+        {
+          "role": "v3PositionManager",
+          "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "byteLength": 24384,
+          "bytecodeSha256": "54aa74382a5aade77e59efffb53208ca5c3d3a679daa2853881381e04b25c48d",
+          "status": "CODE_PRESENT",
+          "reportedFactory": "0x33128a8fc17869897dce68ed026d694621f6fdfd",
+          "reportedWeth": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "role": "v4PoolManager",
+          "address": "0x498581ff718922c3f8e6a244956af099b2652b2b",
+          "byteLength": 24009,
+          "bytecodeSha256": "b08ceda0478797f4a64fa9a089a97290411d71ce00131ccf599412210c191868",
+          "status": "CODE_PRESENT"
+        },
+        {
+          "role": "v4PositionManager",
+          "address": "0x7c5f5a4bbd8fd63184577525326123b519429bdc",
+          "byteLength": 23877,
+          "bytecodeSha256": "d7b02189fef5e67af05a49e12148357e95baa29cf04066985807864d25598010",
+          "status": "CODE_PRESENT",
+          "reportedPoolManager": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+        }
+      ],
+      "status": "READ_ONLY_CHECK_PASSED"
+    },
+    {
+      "chainId": 84532,
+      "rpc": "https://sepolia.base.org",
+      "blockNumber": "0x303e6dc",
+      "blockHash": "0x7e2008ab8b4ac22e09315f2df3cdcbfb1a6ac526e1477668946ecb5a88b86f23",
+      "contracts": [
+        {
+          "role": "v3Factory",
+          "address": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+          "byteLength": 24535,
+          "bytecodeSha256": "2e3c9aa72d26cfbcdc2358f85decb5bbd56331b90175f5da562c687f1a93a164",
+          "status": "CODE_PRESENT"
+        },
+        {
+          "role": "v3PositionManager",
+          "address": "0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2",
+          "byteLength": 24384,
+          "bytecodeSha256": "253dd1ca2b371704b3cfb6cef8eea148a72182a491bfdc1b4c69d779b3c51c60",
+          "status": "CODE_PRESENT",
+          "reportedFactory": "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24",
+          "reportedWeth": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "role": "v4PoolManager",
+          "address": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
+          "byteLength": 24009,
+          "bytecodeSha256": "d118017b1994bd7c21468eeb21f1fe639565cd7be3374b0d34019a04cd401182",
+          "status": "CODE_PRESENT"
+        },
+        {
+          "role": "v4PositionManager",
+          "address": "0x4b2c77d209d3405f41a037ec6c77f7f5b8e2ca80",
+          "byteLength": 23877,
+          "bytecodeSha256": "489f2eee338526d4bc9b99238da1c4dba99f44fb568bc7863f35555fb9eda0ff",
+          "status": "CODE_PRESENT",
+          "reportedPoolManager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408"
+        }
+      ],
+      "status": "READ_ONLY_CHECK_PASSED"
+    }
+  ]
+}
