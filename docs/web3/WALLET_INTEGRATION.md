@@ -19,6 +19,7 @@ The picker labels each entry `Detected`/`Installed` (extension found), `Availabl
 ## Connection lifecycle
 
 1. **Connect.** The user picks a wallet; the button shows `Connecting…` and the row a spinner. A rejection in the wallet shows `Connection rejected. Please try again.`; a missing extension `No compatible wallet found…`; an already open prompt `A request is already open in your wallet…`. The modal closes itself once wagmi reports `connected`. Connecting does not pass a chain ID, so it never triggers a network switch.
+   - **A wallet that never answers.** Some wallets close their prompt without answering the request. Phantom does this when the selected account is Solana-only: it shows "unsupported account" and drops the request, and wagmi would stay in `connecting` forever. For browser-extension wallets (EIP-6963 or `window.ethereum`), when the page gets focus back from the wallet's window and the request is still open 1.5 s later, the module stops waiting and shows `Your wallet didn't confirm the connection. Make sure it is unlocked with an Ethereum (EVM) account selected, then try again.` `Cancel` and closing the picker also stop waiting (`cancelConnect()`). If the user approves in the wallet afterwards, the connection is still recorded. Wallets that run in their own popup or QR modal (Coinbase, MetaMask SDK, WalletConnect) report a closed window as a rejection themselves.
 2. **Session.** wagmi keeps the connection in the `retry.wagmi.*` cookies (connector id, chain id and the public account list; nothing secret). On the next visit `reconnectOnMount` restores it silently. In Next.js the server can read the cookie to render the connected header immediately (see the integration guide).
 3. **Changes made in the wallet.** `accountsChanged` and `chainChanged` update every hook on the next render: the address, the balance query (its key includes address and chain, so the old account's balance is never shown) and the network scenario. `useRetryWalletEvents` reports `account-changed` and `network-changed` so pages can drop per-account state such as a half-filled form.
 4. **Disconnect.** From the menu, or from the wallet (revoking the site or locking it). Both clear the UI. For injected wallets wagmi also sends `wallet_revokePermissions` where the wallet supports it, so the wallet forgets the site.
@@ -57,14 +58,17 @@ An invalid ID is ignored with a configuration warning (visible in the playground
 
 ## What has been verified
 
-| Check                                                                                                                                   | How                                                                                                  | Status                           |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------- |
-| Connect, reject, disconnect, wrong network, switch, rejected switch, wallet-side account and chain changes, session end, reload restore | Vitest with a mock EIP-1193 provider; Playwright with an EIP-6963 mock wallet on desktop and Pixel 7 | Passing                          |
-| Balance read, formatting, loading and error states, RPC failure and recovery                                                            | Mocked JSON-RPC (including Multicall3)                                                               | Passing                          |
-| No `eth_sign`, `personal_sign`, `eth_signTypedData*`, `eth_sendTransaction` calls                                                       | Playwright records every wallet request; a source scan test bans the APIs                            | Passing                          |
-| SSR and hydration in Next.js 16 App Router, with and without cookie initial state                                                       | The Stage 1 app integrated in a local copy, `next build` + Playwright                                | Passing (local copy, not merged) |
-| Real Base Sepolia / Base RPC                                                                                                            | Not reachable from the build environment                                                             | **Pending**                      |
-| Real MetaMask, Coinbase Wallet, Rabby, WalletConnect                                                                                    | Needs a person with the wallets                                                                      | **Pending**                      |
+| Check                                                                                                                                   | How                                                                                                                         | Status                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Connect, reject, disconnect, wrong network, switch, rejected switch, wallet-side account and chain changes, session end, reload restore | Vitest with a mock EIP-1193 provider; Playwright with an EIP-6963 mock wallet on desktop and Pixel 7                        | Passing                                                              |
+| Balance read, formatting, loading and error states, RPC failure and recovery                                                            | Mocked JSON-RPC (including Multicall3)                                                                                      | Passing                                                              |
+| No `eth_sign`, `personal_sign`, `eth_signTypedData*`, `eth_sendTransaction` calls                                                       | Playwright records every wallet request; a source scan test bans the APIs                                                   | Passing                                                              |
+| SSR and hydration in Next.js 16 App Router, with and without cookie initial state                                                       | The Stage 1 app integrated in a local copy, `next build` + Playwright                                                       | Passing (local copy, not merged)                                     |
+| Real Base Sepolia / Base RPC                                                                                                            | Not reachable from the build environment                                                                                    | **Pending**                                                          |
+| Phantom extension on the `/web3/` playground preview, Solana-only account selected                                                      | Real wallet, by Iam on 2026-10-26                                                                                           | Found the stuck `connecting` state, fixed since; **re-test pending** |
+| Phantom extension with an EVM account on the Stage 1 preview (`/create/`)                                                               | Real wallet, by Iam on 2026-10-26: connected on Base Sepolia, ETH balance shown. Stage 1's own wallet code, not this module | Passed (Stage 1 app)                                                 |
+| A wallet that never answers: stop waiting when focus returns, on Cancel and on closing the picker; a late approval still connects       | Vitest and Playwright with a mock wallet that holds the request                                                             | Passing                                                              |
+| Real MetaMask, Coinbase Wallet, Rabby, WalletConnect, and Phantom on this module                                                        | Needs a person with the wallets                                                                                             | **Pending**                                                          |
 
 ## Manual checklist with real wallets
 
@@ -89,10 +93,12 @@ Run on the Next.js app (`pnpm dev`) or the playground (`examples/web3-playground
 - [ ] With the extension: connects, shows the right address and balance.
 - [ ] Without the extension: popup opens; creating or using a Smart Wallet connects; closing the popup reports a rejection.
 
-**Rabby or another EIP-6963 wallet**
+**Rabby, Phantom or another EIP-6963 wallet**
 
 - [ ] Listed by its own name and icon, not as "Browser Wallet", and only once.
 - [ ] Connect, switch and disconnect behave as above.
+- [ ] Close the wallet's window without answering → within a couple of seconds the picker shows `Your wallet didn't confirm the connection…` and the wallet card is `disconnected`, not stuck on `Connecting…`.
+- [ ] Phantom with a Solana-only account selected → same message; switch Phantom to an account with an Ethereum address and connect again.
 
 **WalletConnect** (with a project ID and the domain allowed)
 
