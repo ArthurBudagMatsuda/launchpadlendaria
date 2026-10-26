@@ -7,6 +7,8 @@ test.describe('RETRY Web3 playground', () => {
     const header = page.getByRole('banner')
     await expect(header.getByRole('button', { name: 'Connect Wallet' })).toBeVisible()
     await expect(page.getByTestId('rw3-network-indicator')).toHaveText('Base Sepolia')
+    // The logo leads back to the RETRY app; served from `/` here, so it points at `/`.
+    await expect(page.getByTestId('pg-home-link')).toHaveAttribute('href', '/')
 
     await header.getByRole('button', { name: 'Connect Wallet' }).click()
     const dialog = page.getByRole('dialog', { name: 'Connect Wallet' })

@@ -12,14 +12,18 @@ import { DiagnosticsCard } from './cards/DiagnosticsCard'
 import { NetworkCard } from './cards/NetworkCard'
 import { WalletCard } from './cards/WalletCard'
 
+// On GitHub Pages the playground lives under the RETRY app (`/launchpadlendaria/web3/`),
+// so the logo goes back to the folder above. Locally (base `/`) it stays on the playground.
+const APP_HOME = import.meta.env.BASE_URL.replace(/[^/]+\/$/, '')
+
 export function App() {
   return (
     <RetryWeb3Provider config={retryWeb3Config} debug={import.meta.env.DEV}>
       <header className="pg-header">
-        <div className="pg-brand">
+        <a className="pg-brand" href={APP_HOME} title="Back to RETRY" data-testid="pg-home-link">
           <span className="pg-logo">RETRY</span>
           <span className="pg-subtitle">Web3 Playground</span>
-        </div>
+        </a>
         <div className="pg-header-actions">
           <NetworkIndicator />
           <ConnectWalletButton />
