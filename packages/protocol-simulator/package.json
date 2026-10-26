@@ -1,0 +1,13 @@
+{
+  "name": "@retry/protocol-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline Phase 2 economic hypotheses; no RPC, wallets or financial execution.",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "simulate": "node src/run.mjs",
+    "verify": "node scripts/verify.mjs"
+  }
+}

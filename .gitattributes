@@ -1,0 +1,3 @@
+packages/protocol-simulator/** text eol=lf
+docs/protocol/** text eol=lf
+.github/workflows/protocol.yml text eol=lf

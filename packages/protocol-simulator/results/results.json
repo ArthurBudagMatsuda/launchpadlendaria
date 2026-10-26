@@ -1,0 +1,936 @@
+{
+  "schemaVersion": 1,
+  "status": "HYPOTHETICAL_NOT_APPROVED",
+  "description": "Offline integer model; ETH amounts are wei, token amounts are base units (18 decimals). No live DEX, gas, demand or profitability forecast.",
+  "seed": "20261026",
+  "candidates": [
+    {
+      "config": {
+        "id": "A-low-reserve",
+        "status": "HYPOTHETICAL_NOT_APPROVED",
+        "supply": "1000000000000000000000000000",
+        "curveTokens": "800000000000000000000000000",
+        "lpTokens": "200000000000000000000000000",
+        "virtualTokens": "1066666666666666666666666666",
+        "virtualEth": "250000000000000000",
+        "threshold": "750000000000000000",
+        "feeBps": "100",
+        "creatorShareBps": "2000",
+        "launchFee": "1000000000000000",
+        "creatorMinNet": "10000000000000000",
+        "capBps": "500"
+      },
+      "initial": {
+        "gross": "10101010101010102",
+        "fee": "101010101010102",
+        "net": "10000000000000000",
+        "tokens": "41025641025641025641025641"
+      },
+      "milestones": [
+        {
+          "percent": "25",
+          "state": "ACTIVE",
+          "realEth": "187500000000000000",
+          "buyGross": "189393939393939448",
+          "sellNet": "0",
+          "totalFees": "1893939393939448",
+          "credits": {
+            "treasury": "1515151515151573",
+            "creator": "378787878787875"
+          },
+          "inventory": "342857142857142857142857172",
+          "heldTokens": "457142857142857142857142828",
+          "x": "609523809523809523809523838",
+          "y": "437500000000000000",
+          "wallets": 72,
+          "price": {
+            "numerator": "437500000000000000",
+            "denominator": "609523809523809523809523838"
+          }
+        },
+        {
+          "percent": "50",
+          "state": "ACTIVE",
+          "realEth": "375000000000000000",
+          "buyGross": "378787878787878898",
+          "sellNet": "0",
+          "totalFees": "3787878787878898",
+          "credits": {
+            "treasury": "3030303030303148",
+            "creator": "757575757575750"
+          },
+          "inventory": "160000000000000000000000053",
+          "heldTokens": "639999999999999999999999947",
+          "x": "426666666666666666666666719",
+          "y": "625000000000000000",
+          "wallets": 147,
+          "price": {
+            "numerator": "625000000000000000",
+            "denominator": "426666666666666666666666719"
+          }
+        },
+        {
+          "percent": "90",
+          "state": "ACTIVE",
+          "realEth": "675000000000000000",
+          "buyGross": "681818181818182018",
+          "sellNet": "0",
+          "totalFees": "6818181818182018",
+          "credits": {
+            "treasury": "5454545454545668",
+            "creator": "1363636363636350"
+          },
+          "inventory": "21621621621621621621621711",
+          "heldTokens": "778378378378378378378378289",
+          "x": "288288288288288288288288377",
+          "y": "925000000000000000",
+          "wallets": 267,
+          "price": {
+            "numerator": "925000000000000000",
+            "denominator": "288288288288288288288288377"
+          }
+        },
+        {
+          "percent": "100",
+          "state": "READY",
+          "realEth": "750000000000000000",
+          "buyGross": "757575757575757798",
+          "sellNet": "0",
+          "totalFees": "7575757575757798",
+          "credits": {
+            "treasury": "6060606060606298",
+            "creator": "1515151515151500"
+          },
+          "inventory": "96",
+          "heldTokens": "799999999999999999999999904",
+          "x": "266666666666666666666666762",
+          "y": "1000000000000000000",
+          "wallets": 297,
+          "price": {
+            "numerator": "1000000000000000000",
+            "denominator": "266666666666666666666666762"
+          }
+        }
+      ],
+      "terminal": {
+        "state": "READY",
+        "realEth": "750000000000000000",
+        "buyGross": "757575757575757798",
+        "sellNet": "0",
+        "totalFees": "7575757575757798",
+        "credits": {
+          "treasury": "6060606060606298",
+          "creator": "1515151515151500"
+        },
+        "inventory": "96",
+        "heldTokens": "799999999999999999999999904",
+        "x": "266666666666666666666666762",
+        "y": "1000000000000000000",
+        "wallets": 297,
+        "price": {
+          "numerator": "1000000000000000000",
+          "denominator": "266666666666666666666666762"
+        }
+      },
+      "liquidity": {
+        "eth": "750000000000000000",
+        "availableTokens": "200000000000000000000000096",
+        "idealTokens": "200000000000000000000000072",
+        "feasible": true,
+        "surplusTokens": "24",
+        "shortfallTokens": "0",
+        "priceErrorNumerator": "500000000000000000",
+        "priceErrorDenominator": "200000000000000000000000072000000000000000000"
+      },
+      "locked": {
+        "eth": "750000000000000000",
+        "availableTokens": "200000000000000000000000096",
+        "idealTokens": "200000000000000000000000072",
+        "feasible": true,
+        "surplusTokens": "24",
+        "shortfallTokens": "0",
+        "priceErrorNumerator": "500000000000000000",
+        "priceErrorDenominator": "200000000000000000000000072000000000000000000"
+      },
+      "creatorExit": {
+        "initial": {
+          "gross": "10101010101010102",
+          "fee": "101010101010102",
+          "net": "10000000000000000",
+          "tokens": "41025641025641025641025641"
+        },
+        "sale": {
+          "tokens": "41025641025641025641025641",
+          "gross": "10000000000000000",
+          "fee": "100000000000000",
+          "net": "9900000000000000"
+        },
+        "totalOutlay": "11101010101010102",
+        "recoverableCreatorFees": "40202020202020",
+        "initialPrice": {
+          "numerator": "250000000000000000",
+          "denominator": "1066666666666666666666666666"
+        },
+        "afterBuyPrice": {
+          "numerator": "260000000000000000",
+          "denominator": "1025641025641025641025641025"
+        },
+        "afterSellPrice": {
+          "numerator": "250000000000000000",
+          "denominator": "1066666666666666666666666666"
+        },
+        "buyMarginalPriceImpact": {
+          "numerator": "20923076923076923076923076910000000000000000",
+          "denominator": "256410256410256410256410256250000000000000000"
+        },
+        "irreversibleCostBeforeGas": "1160808080808082",
+        "realEthAfterExit": "0",
+        "roundTripFeeLoss": "201010101010102"
+      },
+      "smallTrades": {
+        "count": 1000,
+        "pieceNet": "1000000000000",
+        "splitGross": "1010101010102000",
+        "splitTokens": "3929659102072895176342959",
+        "singleGross": "1010101010101011",
+        "singleTokens": "3929659102072895176343452",
+        "tokenDifference": "-493",
+        "extraGrossFromFeeRounding": "989",
+        "splitRoundTripNetLoss": "20101010102001"
+      },
+      "randomSequence": {
+        "seed": "20261026",
+        "requestedSteps": 2000,
+        "buys": 1252,
+        "sells": 748,
+        "rejected": 0,
+        "final": {
+          "state": "ACTIVE",
+          "realEth": "25318306832078644",
+          "buyGross": "166667424242424873",
+          "sellNet": "138285618736241772",
+          "totalFees": "3063498674104457",
+          "credits": {
+            "treasury": "2450798939284371",
+            "creator": "612699734820086"
+          },
+          "inventory": "701909196431720049862716593",
+          "heldTokens": "98090803568279950137283407",
+          "x": "968575863098386716529383259",
+          "y": "275318306832078644",
+          "wallets": 31,
+          "price": {
+            "numerator": "275318306832078644",
+            "denominator": "968575863098386716529383259"
+          }
+        }
+      },
+      "rejectedOperations": [
+        {
+          "name": "large-single-wallet",
+          "result": "WALLET_CAP"
+        },
+        {
+          "name": "creator-cap-split-buy",
+          "result": "WALLET_CAP"
+        },
+        {
+          "name": "threshold-overshoot",
+          "result": "THRESHOLD_EXCESS"
+        },
+        {
+          "name": "one-token-atom-sell-quote",
+          "result": "DUST_REJECTED_ON_EXECUTION"
+        }
+      ],
+      "thresholds": [
+        {
+          "multiplier": "1",
+          "threshold": "250000000000000000",
+          "reachable": true,
+          "sold": "533333333333333333333333296",
+          "unsold": "266666666666666666666666704",
+          "eth": "250000000000000000",
+          "availableTokens": "466666666666666666666666704",
+          "idealTokens": "266666666666666666666666685",
+          "feasible": true,
+          "surplusTokens": "200000000000000000000000019",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "0",
+          "priceErrorDenominator": "133333333333333333333333342500000000000000000"
+        },
+        {
+          "multiplier": "2",
+          "threshold": "500000000000000000",
+          "reachable": true,
+          "sold": "711111111111111111111111042",
+          "unsold": "88888888888888888888888958",
+          "eth": "500000000000000000",
+          "availableTokens": "288888888888888888888888958",
+          "idealTokens": "237037037037037037037037083",
+          "feasible": true,
+          "surplusTokens": "51851851851851851851851875",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "250000000000000000",
+          "priceErrorDenominator": "177777777777777777777777812250000000000000000"
+        },
+        {
+          "multiplier": "3",
+          "threshold": "750000000000000000",
+          "reachable": true,
+          "sold": "799999999999999999999999904",
+          "unsold": "96",
+          "eth": "750000000000000000",
+          "availableTokens": "200000000000000000000000096",
+          "idealTokens": "200000000000000000000000072",
+          "feasible": true,
+          "surplusTokens": "24",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "500000000000000000",
+          "priceErrorDenominator": "200000000000000000000000072000000000000000000"
+        },
+        {
+          "multiplier": "4",
+          "threshold": "1000000000000000000",
+          "reachable": false,
+          "reason": "Curve inventory exhausted before this reserve target",
+          "theoreticalSold": "853333333333333333333333332"
+        }
+      ]
+    },
+    {
+      "config": {
+        "id": "B-balanced",
+        "status": "HYPOTHETICAL_NOT_APPROVED",
+        "supply": "1000000000000000000000000000",
+        "curveTokens": "800000000000000000000000000",
+        "lpTokens": "200000000000000000000000000",
+        "virtualTokens": "1066666666666666666666666666",
+        "virtualEth": "1000000000000000000",
+        "threshold": "3000000000000000000",
+        "feeBps": "100",
+        "creatorShareBps": "2000",
+        "launchFee": "1000000000000000",
+        "creatorMinNet": "10000000000000000",
+        "capBps": "500"
+      },
+      "initial": {
+        "gross": "10101010101010102",
+        "fee": "101010101010102",
+        "net": "10000000000000000",
+        "tokens": "10561056105610561056105610"
+      },
+      "milestones": [
+        {
+          "percent": "25",
+          "state": "ACTIVE",
+          "realEth": "750000000000000000",
+          "buyGross": "757575757575757650",
+          "sellNet": "0",
+          "totalFees": "7575757575757650",
+          "credits": {
+            "treasury": "6060606060606150",
+            "creator": "1515151515151500"
+          },
+          "inventory": "342857142857142857142857173",
+          "heldTokens": "457142857142857142857142827",
+          "x": "609523809523809523809523839",
+          "y": "1750000000000000000",
+          "wallets": 75,
+          "price": {
+            "numerator": "1750000000000000000",
+            "denominator": "609523809523809523809523839"
+          }
+        },
+        {
+          "percent": "50",
+          "state": "ACTIVE",
+          "realEth": "1500000000000000000",
+          "buyGross": "1515151515151515300",
+          "sellNet": "0",
+          "totalFees": "15151515151515300",
+          "credits": {
+            "treasury": "12121212121212300",
+            "creator": "3030303030303000"
+          },
+          "inventory": "160000000000000000000000054",
+          "heldTokens": "639999999999999999999999946",
+          "x": "426666666666666666666666720",
+          "y": "2500000000000000000",
+          "wallets": 150,
+          "price": {
+            "numerator": "2500000000000000000",
+            "denominator": "426666666666666666666666720"
+          }
+        },
+        {
+          "percent": "90",
+          "state": "ACTIVE",
+          "realEth": "2700000000000000000",
+          "buyGross": "2727272727272727540",
+          "sellNet": "0",
+          "totalFees": "27272727272727540",
+          "credits": {
+            "treasury": "21818181818182140",
+            "creator": "5454545454545400"
+          },
+          "inventory": "21621621621621621621621712",
+          "heldTokens": "778378378378378378378378288",
+          "x": "288288288288288288288288378",
+          "y": "3700000000000000000",
+          "wallets": 270,
+          "price": {
+            "numerator": "3700000000000000000",
+            "denominator": "288288288288288288288288378"
+          }
+        },
+        {
+          "percent": "100",
+          "state": "READY",
+          "realEth": "3000000000000000000",
+          "buyGross": "3030303030303030600",
+          "sellNet": "0",
+          "totalFees": "30303030303030600",
+          "credits": {
+            "treasury": "24242424242424600",
+            "creator": "6060606060606000"
+          },
+          "inventory": "97",
+          "heldTokens": "799999999999999999999999903",
+          "x": "266666666666666666666666763",
+          "y": "4000000000000000000",
+          "wallets": 300,
+          "price": {
+            "numerator": "4000000000000000000",
+            "denominator": "266666666666666666666666763"
+          }
+        }
+      ],
+      "terminal": {
+        "state": "READY",
+        "realEth": "3000000000000000000",
+        "buyGross": "3030303030303030600",
+        "sellNet": "0",
+        "totalFees": "30303030303030600",
+        "credits": {
+          "treasury": "24242424242424600",
+          "creator": "6060606060606000"
+        },
+        "inventory": "97",
+        "heldTokens": "799999999999999999999999903",
+        "x": "266666666666666666666666763",
+        "y": "4000000000000000000",
+        "wallets": 300,
+        "price": {
+          "numerator": "4000000000000000000",
+          "denominator": "266666666666666666666666763"
+        }
+      },
+      "liquidity": {
+        "eth": "3000000000000000000",
+        "availableTokens": "200000000000000000000000097",
+        "idealTokens": "200000000000000000000000073",
+        "feasible": true,
+        "surplusTokens": "24",
+        "shortfallTokens": "0",
+        "priceErrorNumerator": "3000000000000000000",
+        "priceErrorDenominator": "800000000000000000000000292000000000000000000"
+      },
+      "locked": {
+        "eth": "3000000000000000000",
+        "availableTokens": "200000000000000000000000097",
+        "idealTokens": "200000000000000000000000073",
+        "feasible": true,
+        "surplusTokens": "24",
+        "shortfallTokens": "0",
+        "priceErrorNumerator": "3000000000000000000",
+        "priceErrorDenominator": "800000000000000000000000292000000000000000000"
+      },
+      "creatorExit": {
+        "initial": {
+          "gross": "10101010101010102",
+          "fee": "101010101010102",
+          "net": "10000000000000000",
+          "tokens": "10561056105610561056105610"
+        },
+        "sale": {
+          "tokens": "10561056105610561056105610",
+          "gross": "9999999999999999",
+          "fee": "100000000000000",
+          "net": "9899999999999999"
+        },
+        "totalOutlay": "11101010101010102",
+        "recoverableCreatorFees": "40202020202020",
+        "initialPrice": {
+          "numerator": "1000000000000000000",
+          "denominator": "1066666666666666666666666666"
+        },
+        "afterBuyPrice": {
+          "numerator": "1010000000000000000",
+          "denominator": "1056105610561056105610561056"
+        },
+        "afterSellPrice": {
+          "numerator": "1000000000000000001",
+          "denominator": "1066666666666666666666666666"
+        },
+        "buyMarginalPriceImpact": {
+          "numerator": "21227722772277227722772276660000000000000000",
+          "denominator": "1056105610561056105610561056000000000000000000"
+        },
+        "irreversibleCostBeforeGas": "1160808080808083",
+        "realEthAfterExit": "1",
+        "roundTripFeeLoss": "201010101010103"
+      },
+      "smallTrades": {
+        "count": 1000,
+        "pieceNet": "1000000000000",
+        "splitGross": "1010101010102000",
+        "splitTokens": "1044614847241400697932803",
+        "singleGross": "1010101010101011",
+        "singleTokens": "1044614847241400697933294",
+        "tokenDifference": "-491",
+        "extraGrossFromFeeRounding": "989",
+        "splitRoundTripNetLoss": "20101010102001"
+      },
+      "randomSequence": {
+        "seed": "20261026",
+        "requestedSteps": 2000,
+        "buys": 1252,
+        "sells": 748,
+        "rejected": 0,
+        "final": {
+          "state": "ACTIVE",
+          "realEth": "71196228230708970",
+          "buyGross": "636366666666667313",
+          "sellNet": "553218704051597754",
+          "totalFees": "11951734384360589",
+          "credits": {
+            "treasury": "9561387507489292",
+            "creator": "2390346876871297"
+          },
+          "inventory": "729104825572879967346980444",
+          "heldTokens": "70895174427120032653019556",
+          "x": "995771492239546634013647110",
+          "y": "1071196228230708970",
+          "wallets": 31,
+          "price": {
+            "numerator": "1071196228230708970",
+            "denominator": "995771492239546634013647110"
+          }
+        }
+      },
+      "rejectedOperations": [
+        {
+          "name": "large-single-wallet",
+          "result": "WALLET_CAP"
+        },
+        {
+          "name": "creator-cap-split-buy",
+          "result": "WALLET_CAP"
+        },
+        {
+          "name": "threshold-overshoot",
+          "result": "THRESHOLD_EXCESS"
+        },
+        {
+          "name": "one-token-atom-sell-quote",
+          "result": "DUST_REJECTED_ON_EXECUTION"
+        }
+      ],
+      "thresholds": [
+        {
+          "multiplier": "1",
+          "threshold": "1000000000000000000",
+          "reachable": true,
+          "sold": "533333333333333333333333295",
+          "unsold": "266666666666666666666666705",
+          "eth": "1000000000000000000",
+          "availableTokens": "466666666666666666666666705",
+          "idealTokens": "266666666666666666666666686",
+          "feasible": true,
+          "surplusTokens": "200000000000000000000000019",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "1000000000000000000",
+          "priceErrorDenominator": "533333333333333333333333372000000000000000000"
+        },
+        {
+          "multiplier": "2",
+          "threshold": "2000000000000000000",
+          "reachable": true,
+          "sold": "711111111111111111111111041",
+          "unsold": "88888888888888888888888959",
+          "eth": "2000000000000000000",
+          "availableTokens": "288888888888888888888888959",
+          "idealTokens": "237037037037037037037037084",
+          "feasible": true,
+          "surplusTokens": "51851851851851851851851875",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "2000000000000000000",
+          "priceErrorDenominator": "711111111111111111111111252000000000000000000"
+        },
+        {
+          "multiplier": "3",
+          "threshold": "3000000000000000000",
+          "reachable": true,
+          "sold": "799999999999999999999999903",
+          "unsold": "97",
+          "eth": "3000000000000000000",
+          "availableTokens": "200000000000000000000000097",
+          "idealTokens": "200000000000000000000000073",
+          "feasible": true,
+          "surplusTokens": "24",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "3000000000000000000",
+          "priceErrorDenominator": "800000000000000000000000292000000000000000000"
+        },
+        {
+          "multiplier": "4",
+          "threshold": "4000000000000000000",
+          "reachable": false,
+          "reason": "Curve inventory exhausted before this reserve target",
+          "theoreticalSold": "853333333333333333333333332"
+        }
+      ]
+    },
+    {
+      "config": {
+        "id": "C-deeper-reserve",
+        "status": "HYPOTHETICAL_NOT_APPROVED",
+        "supply": "1000000000000000000000000000",
+        "curveTokens": "800000000000000000000000000",
+        "lpTokens": "200000000000000000000000000",
+        "virtualTokens": "1066666666666666666666666666",
+        "virtualEth": "3000000000000000000",
+        "threshold": "9000000000000000000",
+        "feeBps": "100",
+        "creatorShareBps": "2000",
+        "launchFee": "1000000000000000",
+        "creatorMinNet": "10000000000000000",
+        "capBps": "500"
+      },
+      "initial": {
+        "gross": "10101010101010102",
+        "fee": "101010101010102",
+        "net": "10000000000000000",
+        "tokens": "3543743078626799557032115"
+      },
+      "milestones": [
+        {
+          "percent": "25",
+          "state": "ACTIVE",
+          "realEth": "2250000000000000000",
+          "buyGross": "2272727272727272801",
+          "sellNet": "0",
+          "totalFees": "22727272727272801",
+          "credits": {
+            "treasury": "18181818181818301",
+            "creator": "4545454545454500"
+          },
+          "inventory": "342857142857142857142857173",
+          "heldTokens": "457142857142857142857142827",
+          "x": "609523809523809523809523839",
+          "y": "5250000000000000000",
+          "wallets": 76,
+          "price": {
+            "numerator": "5250000000000000000",
+            "denominator": "609523809523809523809523839"
+          }
+        },
+        {
+          "percent": "50",
+          "state": "ACTIVE",
+          "realEth": "4500000000000000000",
+          "buyGross": "4545454545454545601",
+          "sellNet": "0",
+          "totalFees": "45454545454545601",
+          "credits": {
+            "treasury": "36363636363636601",
+            "creator": "9090909090909000"
+          },
+          "inventory": "160000000000000000000000054",
+          "heldTokens": "639999999999999999999999946",
+          "x": "426666666666666666666666720",
+          "y": "7500000000000000000",
+          "wallets": 151,
+          "price": {
+            "numerator": "7500000000000000000",
+            "denominator": "426666666666666666666666720"
+          }
+        },
+        {
+          "percent": "90",
+          "state": "ACTIVE",
+          "realEth": "8100000000000000000",
+          "buyGross": "8181818181818182081",
+          "sellNet": "0",
+          "totalFees": "81818181818182081",
+          "credits": {
+            "treasury": "65454545454545881",
+            "creator": "16363636363636200"
+          },
+          "inventory": "21621621621621621621621712",
+          "heldTokens": "778378378378378378378378288",
+          "x": "288288288288288288288288378",
+          "y": "11100000000000000000",
+          "wallets": 271,
+          "price": {
+            "numerator": "11100000000000000000",
+            "denominator": "288288288288288288288288378"
+          }
+        },
+        {
+          "percent": "100",
+          "state": "READY",
+          "realEth": "9000000000000000000",
+          "buyGross": "9090909090909091201",
+          "sellNet": "0",
+          "totalFees": "90909090909091201",
+          "credits": {
+            "treasury": "72727272727273201",
+            "creator": "18181818181818000"
+          },
+          "inventory": "97",
+          "heldTokens": "799999999999999999999999903",
+          "x": "266666666666666666666666763",
+          "y": "12000000000000000000",
+          "wallets": 301,
+          "price": {
+            "numerator": "12000000000000000000",
+            "denominator": "266666666666666666666666763"
+          }
+        }
+      ],
+      "terminal": {
+        "state": "READY",
+        "realEth": "9000000000000000000",
+        "buyGross": "9090909090909091201",
+        "sellNet": "0",
+        "totalFees": "90909090909091201",
+        "credits": {
+          "treasury": "72727272727273201",
+          "creator": "18181818181818000"
+        },
+        "inventory": "97",
+        "heldTokens": "799999999999999999999999903",
+        "x": "266666666666666666666666763",
+        "y": "12000000000000000000",
+        "wallets": 301,
+        "price": {
+          "numerator": "12000000000000000000",
+          "denominator": "266666666666666666666666763"
+        }
+      },
+      "liquidity": {
+        "eth": "9000000000000000000",
+        "availableTokens": "200000000000000000000000097",
+        "idealTokens": "200000000000000000000000073",
+        "feasible": true,
+        "surplusTokens": "24",
+        "shortfallTokens": "0",
+        "priceErrorNumerator": "9000000000000000000",
+        "priceErrorDenominator": "2400000000000000000000000876000000000000000000"
+      },
+      "locked": {
+        "eth": "9000000000000000000",
+        "availableTokens": "200000000000000000000000097",
+        "idealTokens": "200000000000000000000000073",
+        "feasible": true,
+        "surplusTokens": "24",
+        "shortfallTokens": "0",
+        "priceErrorNumerator": "9000000000000000000",
+        "priceErrorDenominator": "2400000000000000000000000876000000000000000000"
+      },
+      "creatorExit": {
+        "initial": {
+          "gross": "10101010101010102",
+          "fee": "101010101010102",
+          "net": "10000000000000000",
+          "tokens": "3543743078626799557032115"
+        },
+        "sale": {
+          "tokens": "3543743078626799557032115",
+          "gross": "9999999999999999",
+          "fee": "100000000000000",
+          "net": "9899999999999999"
+        },
+        "totalOutlay": "11101010101010102",
+        "recoverableCreatorFees": "40202020202020",
+        "initialPrice": {
+          "numerator": "3000000000000000000",
+          "denominator": "1066666666666666666666666666"
+        },
+        "afterBuyPrice": {
+          "numerator": "3010000000000000000",
+          "denominator": "1063122923588039867109634551"
+        },
+        "afterSellPrice": {
+          "numerator": "3000000000000000001",
+          "denominator": "1066666666666666666666666666"
+        },
+        "buyMarginalPriceImpact": {
+          "numerator": "21297895902547065337763011660000000000000000",
+          "denominator": "3189368770764119601328903653000000000000000000"
+        },
+        "irreversibleCostBeforeGas": "1160808080808083",
+        "realEthAfterExit": "1",
+        "roundTripFeeLoss": "201010101010103"
+      },
+      "smallTrades": {
+        "count": 1000,
+        "pieceNet": "1000000000000",
+        "splitGross": "1010101010102000",
+        "splitTokens": "353079682360690756263078",
+        "singleGross": "1010101010101011",
+        "singleTokens": "353079682360690756263578",
+        "tokenDifference": "-500",
+        "extraGrossFromFeeRounding": "989",
+        "splitRoundTripNetLoss": "20101010102001"
+      },
+      "randomSequence": {
+        "seed": "20261026",
+        "requestedSteps": 2000,
+        "buys": 1252,
+        "sells": 748,
+        "rejected": 0,
+        "final": {
+          "state": "ACTIVE",
+          "realEth": "193535657757680421",
+          "buyGross": "1888897979797980416",
+          "sellNet": "1659708608819896020",
+          "totalFees": "35653713220403975",
+          "credits": {
+            "treasury": "28522970576323981",
+            "creator": "7130742644079994"
+          },
+          "inventory": "735357529376554863012703158",
+          "heldTokens": "64642470623445136987296842",
+          "x": "1002024196043221529679369824",
+          "y": "3193535657757680421",
+          "wallets": 31,
+          "price": {
+            "numerator": "3193535657757680421",
+            "denominator": "1002024196043221529679369824"
+          }
+        }
+      },
+      "rejectedOperations": [
+        {
+          "name": "large-single-wallet",
+          "result": "WALLET_CAP"
+        },
+        {
+          "name": "creator-cap-split-buy",
+          "result": "WALLET_CAP"
+        },
+        {
+          "name": "threshold-overshoot",
+          "result": "THRESHOLD_EXCESS"
+        },
+        {
+          "name": "one-token-atom-sell-quote",
+          "result": "DUST_REJECTED_ON_EXECUTION"
+        }
+      ],
+      "thresholds": [
+        {
+          "multiplier": "1",
+          "threshold": "3000000000000000000",
+          "reachable": true,
+          "sold": "533333333333333333333333296",
+          "unsold": "266666666666666666666666704",
+          "eth": "3000000000000000000",
+          "availableTokens": "466666666666666666666666704",
+          "idealTokens": "266666666666666666666666685",
+          "feasible": true,
+          "surplusTokens": "200000000000000000000000019",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "0",
+          "priceErrorDenominator": "1600000000000000000000000110000000000000000000"
+        },
+        {
+          "multiplier": "2",
+          "threshold": "6000000000000000000",
+          "reachable": true,
+          "sold": "711111111111111111111111046",
+          "unsold": "88888888888888888888888954",
+          "eth": "6000000000000000000",
+          "availableTokens": "288888888888888888888888954",
+          "idealTokens": "237037037037037037037037080",
+          "feasible": true,
+          "surplusTokens": "51851851851851851851851874",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "0",
+          "priceErrorDenominator": "2133333333333333333333333720000000000000000000"
+        },
+        {
+          "multiplier": "3",
+          "threshold": "9000000000000000000",
+          "reachable": true,
+          "sold": "799999999999999999999999904",
+          "unsold": "96",
+          "eth": "9000000000000000000",
+          "availableTokens": "200000000000000000000000096",
+          "idealTokens": "200000000000000000000000072",
+          "feasible": true,
+          "surplusTokens": "24",
+          "shortfallTokens": "0",
+          "priceErrorNumerator": "6000000000000000000",
+          "priceErrorDenominator": "2400000000000000000000000864000000000000000000"
+        },
+        {
+          "multiplier": "4",
+          "threshold": "12000000000000000000",
+          "reachable": false,
+          "reason": "Curve inventory exhausted before this reserve target",
+          "theoreticalSold": "853333333333333333333333332"
+        }
+      ]
+    }
+  ],
+  "feeComparison": [
+    {
+      "id": "low",
+      "feeBps": "50",
+      "creatorShareBps": "2000",
+      "creatorGross": "10050251256281408",
+      "creatorBuyFee": "50251256281408",
+      "creatorSellGross": "9999999999999999",
+      "creatorSellNet": "9949999999999999",
+      "creatorRebate": "20050251256281",
+      "irreversibleCostBeforeGas": "1080201005025128",
+      "buyFeeOnOneEth": "5000000000000000",
+      "treasuryShareBps": "8000"
+    },
+    {
+      "id": "baseline",
+      "feeBps": "100",
+      "creatorShareBps": "2000",
+      "creatorGross": "10101010101010102",
+      "creatorBuyFee": "101010101010102",
+      "creatorSellGross": "9999999999999999",
+      "creatorSellNet": "9899999999999999",
+      "creatorRebate": "40202020202020",
+      "irreversibleCostBeforeGas": "1160808080808083",
+      "buyFeeOnOneEth": "10000000000000000",
+      "treasuryShareBps": "8000"
+    },
+    {
+      "id": "high",
+      "feeBps": "200",
+      "creatorShareBps": "3000",
+      "creatorGross": "10204081632653062",
+      "creatorBuyFee": "204081632653062",
+      "creatorSellGross": "9999999999999999",
+      "creatorSellNet": "9799999999999999",
+      "creatorRebate": "121224489795918",
+      "irreversibleCostBeforeGas": "1282857142857145",
+      "buyFeeOnOneEth": "20000000000000000",
+      "treasuryShareBps": "7000"
+    }
+  ],
+  "invalidCreatorCapExample": {
+    "virtualEth": "100000000000000000",
+    "threshold": "300000000000000000",
+    "result": "WALLET_CAP"
+  }
+}
