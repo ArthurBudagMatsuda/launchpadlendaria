@@ -66,7 +66,9 @@ export function ConnectWalletButton({
       )
       variant = 'account'
     }
-  } else if (connection.isConnecting || actions.connectStatus === 'pending') {
+  } else if (actions.connectStatus === 'pending') {
+    // Only a connection the user started here. wagmi also reports `connecting`
+    // while silently probing for a previous session on page load.
     content = (
       <>
         <Spinner /> Connecting…
