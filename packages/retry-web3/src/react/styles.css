@@ -73,14 +73,17 @@
   outline-offset: 2px;
 }
 
-.rw3-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .rw3-button--primary {
   background: var(--rw3-accent);
   color: var(--rw3-accent-contrast);
+}
+
+/* Disabled looks the same for every variant, so a disabled primary action never reads as available. */
+.rw3-button:disabled {
+  background: var(--rw3-surface-raised);
+  border-color: var(--rw3-border);
+  color: var(--rw3-muted);
+  cursor: not-allowed;
 }
 
 .rw3-button--primary:hover:not(:disabled) {

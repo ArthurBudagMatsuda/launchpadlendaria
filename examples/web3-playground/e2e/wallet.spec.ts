@@ -35,6 +35,14 @@ test.describe('RETRY Web3 playground', () => {
     await expect(page.getByTestId('balance-value')).toHaveText('Balance: 0.0234 ETH')
     expect(rpc.calls.some((call) => call.chainId === 84532)).toBe(true)
 
+    // Trading is off in Stage 2: the disabled Buy must not look like an available primary action.
+    const buy = page.getByRole('button', { name: 'Buy', exact: true })
+    const sell = page.getByRole('button', { name: 'Sell', exact: true })
+    await expect(buy).toBeDisabled()
+    await expect(sell).toBeDisabled()
+    const background = (button: typeof buy) => button.evaluate((element) => getComputedStyle(element).backgroundColor)
+    expect(await background(buy)).toBe(await background(sell))
+
     await account.click()
     const menu = page.getByTestId('rw3-wallet-menu')
     await expect(menu.getByTestId('rw3-full-address')).toHaveText(ALICE)
