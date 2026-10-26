@@ -60,6 +60,42 @@ describe('ConnectWalletButton', () => {
     expect(screen.queryByRole('dialog', { name: 'Connect Wallet' })).toBeNull()
   })
 
+  it('closing the picker stops waiting for a wallet that never answers', async () => {
+    renderApp({ wallet: { ignoreConnect: true } })
+    fireEvent.click(header().getByRole('button', { name: 'Connect Wallet' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Connect Wallet' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Mock Wallet/ }))
+    await within(dialog).findByText('Confirm the connection in your wallet.')
+    expect(header().getByRole('button', { name: /Connecting/ })).toBeTruthy()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'Connect Wallet' })).toBeNull()
+    await header().findByRole('button', { name: 'Connect Wallet' })
+
+    // Opening it again starts from a clean state, not "Waiting for wallet…".
+    fireEvent.click(header().getByRole('button', { name: 'Connect Wallet' }))
+    const reopened = await screen.findByRole('dialog', { name: 'Connect Wallet' })
+    const mock = within(reopened).getByRole('button', { name: /Mock Wallet/ }) as HTMLButtonElement
+    expect(mock.disabled).toBe(false)
+    expect(mock.textContent).toContain('Detected')
+  })
+
+  it('Cancel in the picker stops waiting for the wallet', async () => {
+    renderApp({ wallet: { ignoreConnect: true } })
+    fireEvent.click(header().getByRole('button', { name: 'Connect Wallet' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Connect Wallet' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Mock Wallet/ }))
+    await within(dialog).findByText('Confirm the connection in your wallet.')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() =>
+      expect(within(dialog).queryByText('Confirm the connection in your wallet.')).toBeNull(),
+    )
+    const mock = within(dialog).getByRole('button', { name: /Mock Wallet/ }) as HTMLButtonElement
+    expect(mock.disabled).toBe(false)
+    expect(header().getByRole('button', { name: 'Connect Wallet' })).toBeTruthy()
+  })
+
   it('shows the abbreviated address once the connector confirms, and a full account menu', async () => {
     const { provider } = renderApp()
     await connectThroughModal()

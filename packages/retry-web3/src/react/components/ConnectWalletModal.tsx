@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef } from 'react'
+import { useCallback, useEffect, useId, useRef } from 'react'
 import { useConnection } from 'wagmi'
 import { hasLegacyInjectedProvider, isMobileBrowser } from '../eip6963.js'
 import type { RetryWalletActions } from '../hooks/useRetryWalletActions.js'
@@ -45,10 +45,16 @@ export function ConnectWalletModal({
   // Release the focus trap while a wallet SDK shows its own popup or QR modal.
   useFocusTrap(open && !waitingOnExternalUi, dialogRef)
 
-  const { reset } = actions
+  const { reset, cancelConnect } = actions
   useEffect(() => {
     if (open) reset()
   }, [open, reset])
+
+  // Closing the picker also stops waiting for a wallet that never answers.
+  const dismiss = useCallback(() => {
+    cancelConnect()
+    onClose()
+  }, [cancelConnect, onClose])
 
   // Close only after wagmi reports that the connector confirmed the connection.
   useEffect(() => {
@@ -58,13 +64,17 @@ export function ConnectWalletModal({
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') dismiss()
     }
     document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, dismiss])
+
+  useEffect(() => {
+    if (!open) return
     const first = dialogRef.current?.querySelector<HTMLButtonElement>('button.rw3-option:not([disabled])')
     first?.focus()
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
@@ -81,7 +91,7 @@ export function ConnectWalletModal({
           className="rw3-overlay-dismiss"
           aria-label="Close wallet selection"
           tabIndex={-1}
-          onClick={onClose}
+          onClick={dismiss}
         />
         <div
           ref={dialogRef}
@@ -94,7 +104,7 @@ export function ConnectWalletModal({
             <h2 id={titleId} className="rw3-modal-title">
               {title}
             </h2>
-            <button type="button" className="rw3-icon-button" aria-label="Close" onClick={onClose}>
+            <button type="button" className="rw3-icon-button" aria-label="Close" onClick={dismiss}>
               ×
             </button>
           </div>
@@ -154,7 +164,7 @@ export function ConnectWalletModal({
           {waitingOnExternalUi ? (
             <div className="rw3-message rw3-message--info">
               <span>Confirm the connection in your wallet.</span>
-              <button type="button" className="rw3-link-button" onClick={actions.reset}>
+              <button type="button" className="rw3-link-button" onClick={cancelConnect}>
                 Cancel
               </button>
             </div>

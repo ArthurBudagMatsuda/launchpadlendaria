@@ -5,6 +5,7 @@ export type RetryWeb3ErrorCode =
   | 'CONNECTION_REJECTED'
   | 'REQUEST_REJECTED'
   | 'REQUEST_PENDING'
+  | 'WALLET_NO_RESPONSE'
   | 'ALREADY_CONNECTED'
   | 'SWITCH_REJECTED'
   | 'SWITCH_NOT_SUPPORTED'
@@ -31,6 +32,8 @@ export const RETRY_WEB3_ERROR_MESSAGES: Readonly<Record<RetryWeb3ErrorCode, stri
   CONNECTION_REJECTED: 'Connection rejected. Please try again.',
   REQUEST_REJECTED: 'Request rejected in your wallet.',
   REQUEST_PENDING: 'A request is already open in your wallet. Open your wallet to continue.',
+  WALLET_NO_RESPONSE:
+    "Your wallet didn't confirm the connection. Make sure it is unlocked with an Ethereum (EVM) account selected, then try again.",
   ALREADY_CONNECTED: 'This wallet is already connected.',
   SWITCH_REJECTED: 'Network switch rejected. Please switch to Base.',
   SWITCH_NOT_SUPPORTED: 'Your wallet cannot switch networks from here. Please switch to Base in your wallet.',

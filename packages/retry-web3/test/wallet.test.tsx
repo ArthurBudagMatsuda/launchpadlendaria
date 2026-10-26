@@ -2,7 +2,10 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { HttpRequestError } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { useRetryWallet } from '../src/react/hooks/useRetryWallet.js'
-import { useRetryWalletActions } from '../src/react/hooks/useRetryWalletActions.js'
+import {
+  RETRY_WALLET_CLOSED_GRACE_MS,
+  useRetryWalletActions,
+} from '../src/react/hooks/useRetryWalletActions.js'
 import { type RetryWalletEvent, useRetryWalletEvents } from '../src/react/hooks/useRetryWalletEvents.js'
 import { MOCK_WALLET_ACCOUNTS } from '../src/testing/index.js'
 import { createTestSetup, ETH } from './utils.js'
@@ -94,6 +97,63 @@ describe('wallet state', () => {
     expect(hook.result.current.wallet.status).toBe('disconnected')
     expect(hook.result.current.actions.connectError?.code).toBe('CONNECTION_REJECTED')
     expect(hook.result.current.actions.connectError?.message).toBe('Connection rejected. Please try again.')
+  })
+
+  it('stops waiting when the wallet window closes without answering', async () => {
+    const { hook, config } = setup({ wallet: { ignoreConnect: true } })
+    const connector = config.wagmiConfig.connectors[0]
+    if (!connector) throw new Error('missing mock connector')
+    act(() => hook.result.current.actions.connect(connector))
+    await waitFor(() => expect(hook.result.current.actions.pendingConnectorUid).toBe(connector.uid))
+    expect(hook.result.current.wallet.status).toBe('connecting')
+
+    // The extension opens its own window (the page loses focus), then the user closes it.
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+      window.dispatchEvent(new Event('focus'))
+    })
+    await waitFor(() => expect(hook.result.current.actions.connectError?.code).toBe('WALLET_NO_RESPONSE'), {
+      timeout: RETRY_WALLET_CLOSED_GRACE_MS + 1_000,
+    })
+    const { actions, wallet } = hook.result.current
+    expect(actions.connectStatus).toBe('error')
+    expect(actions.pendingConnectorUid).toBeUndefined()
+    expect(actions.connectError?.message).toBe(
+      "Your wallet didn't confirm the connection. Make sure it is unlocked with an Ethereum (EVM) account selected, then try again.",
+    )
+    expect(wallet.status).toBe('disconnected')
+  })
+
+  it('keeps waiting while the page never lost focus', async () => {
+    const { hook, config } = setup({ wallet: { ignoreConnect: true } })
+    const connector = config.wagmiConfig.connectors[0]
+    if (!connector) throw new Error('missing mock connector')
+    act(() => hook.result.current.actions.connect(connector))
+    await waitFor(() => expect(hook.result.current.actions.pendingConnectorUid).toBe(connector.uid))
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, RETRY_WALLET_CLOSED_GRACE_MS + 200)))
+    expect(hook.result.current.actions.pendingConnectorUid).toBe(connector.uid)
+    expect(hook.result.current.actions.connectError).toBeUndefined()
+  })
+
+  it('cancels a pending connection, and a late approval in the wallet still connects', async () => {
+    const { hook, config, provider } = setup({ wallet: { ignoreConnect: true } })
+    const connector = config.wagmiConfig.connectors[0]
+    if (!connector) throw new Error('missing mock connector')
+    act(() => hook.result.current.actions.connect(connector))
+    await waitFor(() => expect(hook.result.current.actions.pendingConnectorUid).toBe(connector.uid))
+
+    act(() => hook.result.current.actions.cancelConnect())
+    expect(hook.result.current.actions.pendingConnectorUid).toBeUndefined()
+    expect(hook.result.current.actions.connectStatus).toBe('idle')
+    expect(hook.result.current.actions.connectError).toBeUndefined()
+    expect(hook.result.current.wallet.status).toBe('disconnected')
+
+    act(() => provider.approvePendingConnect())
+    await waitFor(() => expect(hook.result.current.wallet.status).toBe('connected'))
+    expect(hook.result.current.wallet.address).toBe(ALICE)
   })
 
   it('reports WalletConnect as not configured instead of failing silently', () => {

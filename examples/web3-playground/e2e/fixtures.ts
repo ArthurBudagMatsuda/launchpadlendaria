@@ -17,6 +17,8 @@ export interface WalletSetup {
   chainId?: number
   rejectConnect?: boolean
   rejectSwitch?: boolean
+  /** Never answer the connection request, like Phantom on a Solana-only account. */
+  ignoreConnect?: boolean
 }
 
 /**
@@ -37,6 +39,7 @@ function installMockWallet(setup: Required<WalletSetup>) {
     authorized: saved?.authorized ?? false,
     rejectConnect: setup.rejectConnect,
     rejectSwitch: setup.rejectSwitch,
+    ignoreConnect: setup.ignoreConnect,
     calls: [] as string[],
   }
   const persist = () =>
@@ -64,6 +67,7 @@ function installMockWallet(setup: Required<WalletSetup>) {
         case 'eth_requestAccounts':
         case 'wallet_requestPermissions':
           if (state.rejectConnect) throw rpcError(4001, 'User rejected the request.')
+          if (state.ignoreConnect) return new Promise(() => {})
           state.authorized = true
           persist()
           return method === 'eth_requestAccounts'
@@ -215,6 +219,7 @@ export const test = base.extend<{
         chainId: setup.chainId ?? 84532,
         rejectConnect: setup.rejectConnect ?? false,
         rejectSwitch: setup.rejectSwitch ?? false,
+        ignoreConnect: setup.ignoreConnect ?? false,
       })
     })
   },

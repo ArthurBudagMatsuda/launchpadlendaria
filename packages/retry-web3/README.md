@@ -89,7 +89,7 @@ Copy [.env.example](./.env.example). All four variables are optional.
 | `useRetryConnectionStatus`  | `status`, `isConnected`, `isConnecting`, `isReconnecting`, `isDisconnected`                   |
 | `useRetryNetwork`           | `scenario` (`disconnected`, `target`, `supported`, `wrong-network`), notice, `switchLabel`, `switchToTarget()`, switch status and error |
 | `useRetryBalance`           | `status` (`disconnected`, `wrong-network`, `loading`, `success`, `error`), `value` (wei bigint), `formatted`, `exact`, `display`, `refetch()` |
-| `useRetryWalletActions`     | `connect()`, `disconnect()`, `switchToTarget()`, `switchTo()`, pending connector and mapped errors |
+| `useRetryWalletActions`     | `connect()`, `cancelConnect()`, `disconnect()`, `switchToTarget()`, `switchTo()`, pending connector and mapped errors |
 | `useRetryWalletOptions`     | Wallet list for custom pickers                                                                |
 | `useRetryWalletEvents`      | Callback on connect, disconnect, account change and network change                           |
 | `useRetryDiagnostics`       | Config, connectors, announced wallets and an on-demand RPC health check                      |

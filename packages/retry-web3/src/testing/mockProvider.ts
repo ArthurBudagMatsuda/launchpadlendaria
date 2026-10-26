@@ -14,6 +14,12 @@ export interface MockWalletOptions {
   chainId?: number
   /** Reject `eth_requestAccounts` / `wallet_requestPermissions` with code 4001. */
   rejectConnect?: boolean
+  /**
+   * Never answer `eth_requestAccounts` / `wallet_requestPermissions`, like a
+   * wallet whose prompt was closed without a reply (Phantom on a Solana-only
+   * account). `approvePendingConnect()` answers them later.
+   */
+  ignoreConnect?: boolean
   /** Reject `wallet_switchEthereumChain` with code 4001. */
   rejectSwitch?: boolean
   /** Chains the wallet already knows. Switching elsewhere first fails with 4902. Default: all. */
@@ -39,6 +45,8 @@ export interface MockEip1193Provider {
   changeChain(chainId: number): void
   /** Simulates the wallet ending the session. */
   endSession(): void
+  /** Approves the connection requests held by `ignoreConnect`. */
+  approvePendingConnect(): void
 }
 
 /** Test-only addresses with no known owner. Never fund them. */
@@ -62,6 +70,7 @@ export function createMockEip1193Provider(options: MockWalletOptions = {}): Mock
   const known = new Set(options.knownChainIds ?? [])
   const knowsChain = (id: number) => opts.knownChainIds === undefined || known.has(id) || id === state.chainId
   const calls: { method: string; params: unknown }[] = []
+  const heldConnects: (() => void)[] = []
 
   const emit = (event: string, ...args: unknown[]) => {
     for (const listener of listeners.get(event) ?? []) listener(...args)
@@ -81,18 +90,22 @@ export function createMockEip1193Provider(options: MockWalletOptions = {}): Mock
         case 'eth_accounts':
           return state.authorized ? [...state.accounts] : []
         case 'eth_requestAccounts':
+        case 'wallet_requestPermissions': {
           if (opts.rejectConnect) throw rpcError(4001, 'User rejected the request.')
-          state.authorized = true
-          return [...state.accounts]
-        case 'wallet_requestPermissions':
-          if (opts.rejectConnect) throw rpcError(4001, 'User rejected the request.')
-          state.authorized = true
-          return [
-            {
-              parentCapability: 'eth_accounts',
-              caveats: [{ type: 'restrictReturnedAccounts', value: [...state.accounts] }],
-            },
-          ]
+          const approve = () => {
+            state.authorized = true
+            return method === 'eth_requestAccounts'
+              ? [...state.accounts]
+              : [
+                  {
+                    parentCapability: 'eth_accounts',
+                    caveats: [{ type: 'restrictReturnedAccounts', value: [...state.accounts] }],
+                  },
+                ]
+          }
+          if (opts.ignoreConnect) return new Promise((resolve) => heldConnects.push(() => resolve(approve())))
+          return approve()
+        }
         case 'wallet_revokePermissions':
           state.authorized = false
           return null
@@ -148,6 +161,9 @@ export function createMockEip1193Provider(options: MockWalletOptions = {}): Mock
     endSession() {
       state.authorized = false
       emit('accountsChanged', [])
+    },
+    approvePendingConnect() {
+      for (const answer of heldConnects.splice(0)) answer()
     },
   }
   return provider

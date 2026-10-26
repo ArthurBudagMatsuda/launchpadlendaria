@@ -60,6 +60,32 @@ test.describe('RETRY Web3 playground', () => {
     await expect(dialog.getByRole('alert')).toHaveText('Connection rejected. Please try again.')
   })
 
+  test('stops waiting when the wallet window closes without answering', async ({ page, wallet }) => {
+    await wallet({ ignoreConnect: true })
+    await page.goto('/')
+    await page.getByRole('banner').getByRole('button', { name: 'Connect Wallet' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Connect Wallet' })
+    await dialog.getByRole('button', { name: /Retry Test Wallet/ }).click()
+    await expect(dialog.getByText('Waiting for wallet…')).toBeVisible()
+    await expect(page.getByTestId('wallet-status')).toHaveText('connecting')
+
+    // The extension window takes focus, then the user closes it without answering.
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('blur'))
+      window.dispatchEvent(new Event('focus'))
+    })
+    await expect(dialog.getByRole('alert')).toHaveText(
+      "Your wallet didn't confirm the connection. Make sure it is unlocked with an Ethereum (EVM) account selected, then try again.",
+    )
+    await expect(dialog.getByText('Waiting for wallet…')).toBeHidden()
+    await expect(page.getByTestId('wallet-status')).toHaveText('disconnected')
+    await expect(dialog.getByRole('button', { name: /Retry Test Wallet/ })).toBeEnabled()
+
+    // Closing the picker leaves nothing stuck on "Connecting…".
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('button', { name: /Connecting/ })).toHaveCount(0)
+  })
+
   test('flags Ethereum Mainnet as Wrong Network and switches to Base Sepolia on click', async ({ page, wallet }) => {
     await wallet({ chainId: 1 })
     await page.goto('/')
