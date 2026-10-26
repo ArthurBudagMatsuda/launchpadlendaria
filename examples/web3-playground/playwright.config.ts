@@ -24,9 +24,9 @@ export default defineConfig({
     timeout: 180_000,
     // Deterministic build: Base Sepolia target, no custom RPC, no WalletConnect.
     env: {
-      VITE_DEFAULT_CHAIN: 'base-sepolia',
+      VITE_DEFAULT_NETWORK: 'base-sepolia',
       VITE_BASE_SEPOLIA_RPC_URL: '',
-      VITE_BASE_MAINNET_RPC_URL: '',
+      VITE_BASE_RPC_URL: '',
       VITE_WALLETCONNECT_PROJECT_ID: '',
     },
   },

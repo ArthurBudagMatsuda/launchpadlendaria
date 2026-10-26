@@ -17,14 +17,14 @@ describe('environment parsing', () => {
     expect(env.warnings).toEqual([])
   })
 
-  it('selects Base Mainnet when NEXT_PUBLIC_DEFAULT_CHAIN=base', () => {
+  it('selects Base Mainnet when NEXT_PUBLIC_DEFAULT_NETWORK=base', () => {
     expect(parseRetryWeb3Env({ defaultChain: 'base' }).defaultChainId).toBe(8453)
   })
 
   it('falls back to Base Sepolia and warns on an unknown chain', () => {
     const env = parseRetryWeb3Env({ defaultChain: 'arbitrum' })
     expect(env.defaultChainId).toBe(84532)
-    expect(env.warnings[0]).toMatch(/NEXT_PUBLIC_DEFAULT_CHAIN/)
+    expect(env.warnings[0]).toMatch(/NEXT_PUBLIC_DEFAULT_NETWORK/)
   })
 
   it('accepts https RPC URLs and local http nodes', () => {
@@ -74,10 +74,10 @@ describe('environment parsing', () => {
   it('reads prefixed variables from a record (Vite playground)', () => {
     const input = readRetryWeb3EnvFromRecord(
       {
-        VITE_DEFAULT_CHAIN: 'base',
+        VITE_DEFAULT_NETWORK: 'base',
         VITE_BASE_SEPOLIA_RPC_URL: 'https://sepolia.example.com',
         VITE_WALLETCONNECT_PROJECT_ID: PROJECT_ID,
-        VITE_BASE_MAINNET_RPC_URL: 42,
+        VITE_BASE_RPC_URL: 42,
       },
       'VITE_',
     )

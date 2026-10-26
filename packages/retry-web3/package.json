@@ -49,7 +49,7 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "peerDependencies": {
-    "@coinbase/wallet-sdk": "^4.4.0",
+    "@coinbase/wallet-sdk": "^4.3.6",
     "@metamask/connect-evm": "^2.1.0",
     "@tanstack/react-query": "^5.90.0",
     "@walletconnect/ethereum-provider": "^2.26.0",

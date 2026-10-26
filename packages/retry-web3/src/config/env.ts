@@ -15,8 +15,8 @@ import {
  *
  * ```ts
  * parseRetryWeb3Env({
- *   defaultChain: process.env.NEXT_PUBLIC_DEFAULT_CHAIN,
- *   baseMainnetRpcUrl: process.env.NEXT_PUBLIC_BASE_MAINNET_RPC_URL,
+ *   defaultChain: process.env.NEXT_PUBLIC_DEFAULT_NETWORK,
+ *   baseMainnetRpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL,
  *   baseSepoliaRpcUrl: process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL,
  *   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
  * })
@@ -42,8 +42,8 @@ export interface RetryWeb3Env {
 
 /** Public variable names used by the RETRY Next.js app. */
 export const RETRY_WEB3_ENV_VARS = {
-  defaultChain: 'NEXT_PUBLIC_DEFAULT_CHAIN',
-  baseMainnetRpcUrl: 'NEXT_PUBLIC_BASE_MAINNET_RPC_URL',
+  defaultChain: 'NEXT_PUBLIC_DEFAULT_NETWORK',
+  baseMainnetRpcUrl: 'NEXT_PUBLIC_BASE_RPC_URL',
   baseSepoliaRpcUrl: 'NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL',
   walletConnectProjectId: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID',
 } as const satisfies Record<keyof RetryWeb3EnvInput, string>
@@ -62,8 +62,8 @@ export function readRetryWeb3EnvFromRecord(
     return typeof value === 'string' ? value : undefined
   }
   return {
-    defaultChain: read('DEFAULT_CHAIN'),
-    baseMainnetRpcUrl: read('BASE_MAINNET_RPC_URL'),
+    defaultChain: read('DEFAULT_NETWORK'),
+    baseMainnetRpcUrl: read('BASE_RPC_URL'),
     baseSepoliaRpcUrl: read('BASE_SEPOLIA_RPC_URL'),
     walletConnectProjectId: read('WALLETCONNECT_PROJECT_ID'),
   }
