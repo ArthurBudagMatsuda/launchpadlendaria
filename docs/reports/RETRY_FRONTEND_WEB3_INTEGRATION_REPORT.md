@@ -285,13 +285,13 @@ Execuções no commit `ee9af28`:
 - RETRY quality checks: <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40562177201> (passou: jobs `validate` e `browser`)
 - RETRY Web3 module: <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40562177312> (passou)
 
-Execuções no commit `9380642` (correção de formatação e documentação), em andamento quando este relatório foi atualizado; o resultado está em cada link:
+Execuções no PR #2, no commit `ebacff5` (cabeça do PR quando este relatório foi fechado; mesma árvore de `01a43ac`, só acrescenta o histórico do PR #1):
 
-- RETRY quality checks (push): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40564614218>
-- RETRY quality checks (PR #2): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40564673568>
-- RETRY Web3 module (PR #2): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40564673504>
+- RETRY quality checks (push): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40565257638> (passou)
+- RETRY quality checks (PR #2): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40565265726> (passou: `validate` e testes de navegador)
+- RETRY Web3 module (PR #2): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40565265772> (passou)
 
-Execuções de commits posteriores aparecem na aba Checks do PR.
+Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` cancela a execução anterior da mesma branch quando chega um push novo. Execuções de commits posteriores aparecem na aba Checks do PR.
 
 ## 16. GitHub Publication
 
@@ -312,7 +312,9 @@ Execuções de commits posteriores aparecem na aba Checks do PR.
 | `ee9af28` | ci: valida o app integrado, o export do Pages e os testes de navegador                  |
 | `8bc6c62` | fix(format): valores compactos em dólar iguais no build e no navegador                  |
 | `9380642` | docs: README, guia de publicação no Pages e este relatório                              |
-| (este)    | docs: link do PR e execuções do CI neste relatório                                      |
+| `01a43ac` | docs: link do PR e execuções do CI neste relatório                                      |
+| `ebacff5` | merge: `feat/etapa-2-web3` @ `746458c` (correção do seletor no PR #1; árvore igual)     |
+| (este)    | docs: estado final do CI e do PR #1 neste relatório                                     |
 
 ## 17. Problemas Encontrados
 
@@ -321,7 +323,7 @@ Execuções de commits posteriores aparecem na aba Checks do PR.
 | A Etapa 1 não tem ancestral comum com a `main` nem com a Etapa 2                                                                                                                                                                     | Importação da árvore com autor e commit de origem registrados (seção 3), sem `--allow-unrelated-histories`                                                                                                                                                                                           |
 | Duas cópias do wagmi no `node_modules` (peers diferentes de `use-sync-external-store`), o que daria dois contextos React                                                                                                             | `overrides` para 1.7.0; verificado que app, módulo e playground usam a mesma cópia                                                                                                                                                                                                                   |
 | Etapa 1 com pnpm e Etapa 2 com npm (`package-lock.json` por pacote)                                                                                                                                                                  | Workspace pnpm único; lockfiles npm removidos; `retry-web3.yml` e scripts migrados                                                                                                                                                                                                                   |
-| **Bug no módulo:** depois de conectar pelo seletor e desconectar pelo menu, o seletor reaparecia aberto                                                                                                                              | O seletor era só escondido quando a conta aparecia, e o estado `aberto` ficava `true`. Agora é zerado quando a conta aparece. Teste de regressão no módulo; o PR #1 tem o mesmo bug e pode receber o commit `b329cc5`                                                                                |
+| **Bug no módulo:** depois de conectar pelo seletor e desconectar pelo menu, o seletor reaparecia aberto                                                                                                                              | O seletor era só escondido quando a conta aparecia, e o estado `aberto` ficava `true`. Agora é zerado quando a conta aparece. Teste de regressão no módulo; a mesma correção foi aplicada no PR #1 (`746458c`) e trazida de volta por merge (`ebacff5`)                                              |
 | O conector simulado pede `wallet_requestPermissions`, não `eth_requestAccounts`                                                                                                                                                      | O teste conta qualquer um dos dois como a única solicitação de conexão                                                                                                                                                                                                                               |
 | ESLint tratava o `use` das fixtures do Playwright como hook React                                                                                                                                                                    | Regra desligada só para `e2e/**`                                                                                                                                                                                                                                                                     |
 | `pages.yml` ainda passa `VITE_DEFAULT_CHAIN` ao playground, nome que o playground não lê (ele lê `VITE_DEFAULT_NETWORK`)                                                                                                             | Sem efeito prático (o padrão já é Base Sepolia). Documentado e corrigido no workflow proposto; o `pages.yml` não foi mexido                                                                                                                                                                          |
@@ -353,7 +355,7 @@ Execuções de commits posteriores aparecem na aba Checks do PR.
 **Alta**
 
 - Aviso de domínio da MetaMask: domínio próprio para o RETRY e pedido de revisão se continuar marcado.
-- Revisar e decidir o merge do PR #1 junto com este PR (este PR contém o PR #1). Se o PR #1 seguir sozinho, levar a correção `b329cc5` para ele.
+- Revisar e decidir o merge do PR #1 junto com este PR (este PR contém o PR #1). A correção do seletor já foi levada ao PR #1 (`746458c`, cherry-pick de `b329cc5`).
 - RPC dedicado para produção (os públicos da Base limitam requisições) e domínios permitidos no projeto Reown do WalletConnect.
 
 **Média**
