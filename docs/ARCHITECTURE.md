@@ -15,7 +15,8 @@ flowchart LR
   Page --> UI[Interactive React views]
   UI --> Query[TanStack Query]
   Query --> Provider
-  Wallet[Wallet user action] --> Wagmi[Wagmi connectors]
+  Wallet[Wallet user action] --> Web3["@retry/web3 (RetryWeb3Provider, hooks, wallet UI)"]
+  Web3 --> Wagmi[Wagmi connectors]
   Wagmi --> RPC[Base RPC: native balance reads]
   Browser[Create form] --> Draft[Versioned browser-local draft]
   Indexer[Future Base indexer] -. replacement adapter .-> Provider
@@ -29,9 +30,9 @@ Entities: Token, TokenMetadata, TokenMarketData, TokenLaunch, BondingCurveState,
 
 ## Wallet boundaries
 
-Wagmi 3, viem and TanStack Query support EIP-6963/injected discovery, Coinbase Wallet and optional WalletConnect. Wagmi configuration and QueryClient are created per provider instance, avoiding server request-shared cache/state. SSR mode and a hydration subscription keep connection-dependent UI stable on initial render. Base Sepolia is the default; chain definitions come from viem via `wagmi/chains`. Read transports are bounded with timeouts/retries; errors never substitute fixture balances.
+All wallet state comes from the workspace package `@retry/web3` (`packages/retry-web3`): `src/config/web3.ts` builds its config from the `NEXT_PUBLIC_*` variables, and `Providers` wraps the app in its `RetryWeb3Provider` (wagmi 3 + the one TanStack `QueryClient` that Discover and the token terminal also use). The header uses the module's `ConnectWalletButton` and `NetworkIndicator`; Portfolio, the trade panel and Create's Launch Summary read `useRetryWallet`/`useRetryBalance`. The config and QueryClient are created once per provider instance, avoiding server request-shared state, and wagmi's `ssr` mode keeps the first client render equal to the server render. Base Sepolia is the default target; chain definitions come from viem. Read transports are bounded with timeouts/retries; errors never substitute fixture balances.
 
-The wallet menu supports connection, copying, disconnection and supported network switching. Accounts and chains follow connector events. No `sendTransaction`, `writeContract`, signing, allowance or swap execution is imported. `financialActionsEnabled` remains false; UI actions never reach a financial adapter.
+Connectors: EIP-6963/injected wallets (MetaMask, Phantom, Rabby…), MetaMask SDK, Coinbase Wallet and WalletConnect when a project ID is set. The menu shows the address, network, balance and explorer link, and offers copy, switch to the target network and disconnect. Accounts and chains follow connector events. No `sendTransaction`, `writeContract`, signing, allowance or swap execution is imported. `financialActionsEnabled` (re-exported from `RETRY_FINANCIAL_OPERATIONS_ENABLED`) remains false; UI actions never reach a financial adapter.
 
 The trade illustration uses a static fixture ratio, independent from demo USD prices. Slippage is UI configuration only. Fees, supply and graduation terms are unresolved. No formula in this code represents the future curve.
 
@@ -49,6 +50,6 @@ ESLint 10 is used with Next.js 16.4, whose bundled official ESLint guide explici
 
 GitHub Actions validates frozen-lockfile installation, formatting, lint, type generation/checking, unit tests and production build. The optional Pages preview uses a separate `build:pages` export mode with a build-time repository prefix, browser-side query strings and a pre-generated finite token catalog. The normal Node-hosted build remains supported. GitHub Pages controls response headers in static mode; application-level Next.js headers apply only in server mode.
 
-The Pages workflow checks out the Stage 1 application and Stage 2 Web3 playground separately, validates each, then combines their static outputs under the shared project site (`/` and `/web3/`). It does not merge the source histories or silently integrate the experimental Web3 package into the application. The same workflow is installed on both source branches and the default branch to support pushes and manual reruns. The deployment job alone receives `pages:write` and `id-token:write`; build jobs only read repository/Pages metadata. Source revisions are recorded in a public text file containing only commit hashes.
+Until the switch described in `docs/integration/GITHUB_PAGES.md` is approved, the Pages workflow checks out the Stage 1 application and Stage 2 Web3 playground separately, validates each, then combines their static outputs under the shared project site (`/` and `/web3/`). It does not merge the source histories or silently integrate the experimental Web3 package into the application. The same workflow is installed on both source branches and the default branch to support pushes and manual reruns. The deployment job alone receives `pages:write` and `id-token:write`; build jobs only read repository/Pages metadata. Source revisions are recorded in a public text file containing only commit hashes.
 
 No database or server mutations are needed for browser-local drafts and demo browsing. Wallet providers necessarily introduce optional third-party transport/UI dependencies; their licenses and runtime behavior need review before production. Only required build scripts are allowed by the pnpm workspace policy.

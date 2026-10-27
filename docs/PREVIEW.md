@@ -1,5 +1,7 @@
 # Shared GitHub Pages preview
 
+> The integrated app (Stage 1 + `@retry/web3`, branch `feat/retry-frontend-web3-integration`) is **not** published here yet. This page describes the current split preview; [docs/integration/GITHUB_PAGES.md](integration/GITHUB_PAGES.md) has the workflow to publish the integrated app once approved.
+
 The preview contains two separate applications from this repository:
 
 | URL                                                            | Source                                                        |

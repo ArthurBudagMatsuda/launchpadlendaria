@@ -2,6 +2,8 @@
 
 For whoever wires Stage 2 into the Stage 1 Next.js app (`feat/etapa-1-foundation`). Stage 2 does not touch any Stage 1 file; this guide lists the exact changes instead.
 
+> **Applied.** These steps were applied on `feat/retry-frontend-web3-integration` (the patch unchanged, then extended): see [the integration report](../reports/RETRY_FRONTEND_WEB3_INTEGRATION_REPORT.md). Two points below no longer hold there: section 10 (the app and the module now resolve to one wagmi copy, thanks to a `use-sync-external-store` override in `pnpm-workspace.yaml`) and section 11 (the module and the playground install from the pnpm workspace; their npm lockfiles were removed). Keep this guide as the record of what the patch does.
+
 ## Status
 
 The steps below were applied to a local copy of `feat/etapa-1-foundation` at `2c8a156` (the GitHub Pages commit) plus this branch's `packages/retry-web3`, and checked there:
