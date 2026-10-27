@@ -6,6 +6,7 @@ import type { Token } from "@/types/token";
 import { number } from "@/lib/format";
 import { useApp } from "@/components/providers";
 import { Button } from "@/components/ui/button";
+import { WalletStatus } from "@/components/wallet/wallet-status";
 export function TradePanel({ token }: { token: Token }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
@@ -23,6 +24,7 @@ export function TradePanel({ token }: { token: Token }) {
   return (
     <section className="panel trade-panel" aria-label="Trade preview">
       <h2>Trade {token.metadata.symbol}</h2>
+      <WalletStatus disconnectedText="Connect a wallet to see your ETH balance here. Trading is not enabled yet." />
       <div className="segmented" aria-label="Trade direction">
         {(["buy", "sell"] as const).map((s) => (
           <button

@@ -6,7 +6,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { RetryWeb3Provider, type RetryWeb3ProviderProps } from "@retry/web3";
+import {
+  RetryWeb3Provider,
+  type RetryWeb3Config,
+  type RetryWeb3ProviderProps,
+} from "@retry/web3";
 import { CheckCircle2, CircleAlert, X } from "lucide-react";
 import { makeRetryWeb3Config } from "@/config/web3";
 type Notice = { id: number; message: string; error: boolean };
@@ -21,11 +25,14 @@ export function useApp() {
 export function Providers({
   children,
   initialState,
+  config: providedConfig,
 }: {
   children: ReactNode;
   initialState?: RetryWeb3ProviderProps["initialState"];
+  /** Defaults to the app config; tests pass one wired to a mock wallet and RPC. */
+  config?: RetryWeb3Config;
 }) {
-  const [config] = useState(makeRetryWeb3Config);
+  const [config] = useState(() => providedConfig ?? makeRetryWeb3Config());
   const [notices, setNotices] = useState<Notice[]>([]);
   const notify = useCallback((message: string, error = false) => {
     const id = Date.now() + Math.random();

@@ -23,6 +23,7 @@ import {
 import { useTokenDraft } from "@/hooks/use-token-draft";
 import { useApp } from "@/components/providers";
 import { Button } from "@/components/ui/button";
+import { WalletStatus } from "@/components/wallet/wallet-status";
 type Errors = Partial<Record<keyof TokenDraft, string>>;
 export function CreateFlow() {
   const { draft, saveDraft } = useTokenDraft();
@@ -361,6 +362,7 @@ export function CreateFlow() {
                     </div>
                   ))}
                 </dl>
+                <WalletStatus disconnectedText="Launching will require a connected wallet on Base. Launches are not enabled yet, so connecting is optional and your draft stays saved." />
                 <p className="form-help mt-5">
                   Economic parameters require specification, testing and review
                   before any deployment. This draft is not submitted to a

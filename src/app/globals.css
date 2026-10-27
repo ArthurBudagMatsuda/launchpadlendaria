@@ -19,6 +19,18 @@
   --red: #f07787;
   --radius: 10px;
   --shadow: 0 16px 48px #0005;
+  /* @retry/web3 components (wallet button, picker, menu) use these. */
+  --rw3-font: inherit;
+  --rw3-surface: var(--panel);
+  --rw3-surface-raised: var(--panel-hover);
+  --rw3-border: var(--border);
+  --rw3-text: var(--color-foreground);
+  --rw3-muted: var(--muted);
+  --rw3-accent: var(--blue);
+  --rw3-success: var(--green);
+  --rw3-danger: var(--red);
+  --rw3-radius: var(--radius);
+  --rw3-shadow: var(--shadow);
 }
 * {
   box-sizing: border-box;
@@ -1410,6 +1422,37 @@ select option {
   gap: 8px;
   font-size: 11px;
   line-height: 1.6;
+}
+.wallet-status {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  background: #ffffff04;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #a9b2c7;
+}
+.wallet-status p {
+  margin: 0;
+}
+.wallet-status .detail-list {
+  margin: 0;
+  width: 100%;
+  gap: 8px;
+}
+.wallet-status-error {
+  border-color: #f0778766;
+  background: #f0778710;
+}
+.wallet-status-error strong {
+  color: var(--red);
+}
+.create-form .wallet-status {
+  margin-top: 20px;
 }
 .field-label {
   display: flex;

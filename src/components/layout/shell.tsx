@@ -60,8 +60,9 @@ export function Shell({ children }: { children: ReactNode }) {
           <a
             href={assetPath("/web3/")}
             className="inline-flex items-center gap-1 text-blue-300"
+            title="Developer tool for testing wallets. Not needed to connect on RETRY."
           >
-            Web3 test bench
+            Web3 test bench (dev tool)
             <ChartNoAxesCombined size={13} />
           </a>
         ) : (
@@ -90,7 +91,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </p>
           <p>
             Wallet addresses and native ETH balances are read from your
-            connected wallet and the selected Base network.
+            connected wallet and its active Base network. Connecting never
+            asks for a signature or a transaction.
           </p>
         </div>
       </Modal>

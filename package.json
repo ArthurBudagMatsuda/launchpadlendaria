@@ -14,7 +14,7 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "pnpm web3:build && next typegen && tsc --noEmit",
-    "test": "vitest run",
+    "test": "pnpm web3:build && vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "web3:build": "pnpm --filter @retry/web3 build"

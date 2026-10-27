@@ -81,6 +81,20 @@ export function Portfolio() {
                 <Copy size={12} />
               </button>
               <p className="address-full mt-3">{address}</p>
+              {wallet.connector ? (
+                <p className="mt-3">Connected with {wallet.connector.name}</p>
+              ) : null}
+              {wallet.explorerAddressUrl ? (
+                <a
+                  className="reference-button mt-3"
+                  href={wallet.explorerAddressUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on {network.walletNetwork?.explorerName ?? "explorer"}
+                  <ArrowUpRight size={12} />
+                </a>
+              ) : null}
             </section>
             <section className="panel">
               <h2>Connected network</h2>
