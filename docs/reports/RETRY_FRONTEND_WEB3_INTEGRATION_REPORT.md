@@ -285,14 +285,20 @@ Execuções no commit `ee9af28`:
 - RETRY quality checks: <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40562177201> (passou: jobs `validate` e `browser`)
 - RETRY Web3 module: <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40562177312> (passou)
 
-As execuções dos commits seguintes (correção de formatação e documentação) aparecem na aba Checks do PR.
+Execuções no commit `9380642` (correção de formatação e documentação), em andamento quando este relatório foi atualizado; o resultado está em cada link:
+
+- RETRY quality checks (push): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40564614218>
+- RETRY quality checks (PR #2): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40564673568>
+- RETRY Web3 module (PR #2): <https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40564673504>
+
+Execuções de commits posteriores aparecem na aba Checks do PR.
 
 ## 16. GitHub Publication
 
 - **Repositório:** <https://github.com/ArthurBudagMatsuda/launchpadlendaria>
 - **Branch:** [`feat/retry-frontend-web3-integration`](https://github.com/ArthurBudagMatsuda/launchpadlendaria/tree/feat/retry-frontend-web3-integration), criada a partir da `main` `c1b0f89`
 - **Push:** normal (`git push -u origin`), sem force push, direto no repositório oficial (não no fork)
-- **PR:** Draft para `main`, sem merge automático (link na descrição do PR e na resposta final)
+- **PR:** [#2](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/2), Draft para `main`, sem merge automático. Contém todos os commits do PR #1
 
 | Commit    | Descrição                                                                               |
 | --------- | --------------------------------------------------------------------------------------- |
@@ -305,7 +311,8 @@ As execuções dos commits seguintes (correção de formatação e documentaçã
 | `8f1fda9` | test(integration): integração React e Playwright do app                                 |
 | `ee9af28` | ci: valida o app integrado, o export do Pages e os testes de navegador                  |
 | `8bc6c62` | fix(format): valores compactos em dólar iguais no build e no navegador                  |
-| (este)    | docs: README, guia de publicação no Pages e este relatório                              |
+| `9380642` | docs: README, guia de publicação no Pages e este relatório                              |
+| (este)    | docs: link do PR e execuções do CI neste relatório                                      |
 
 ## 17. Problemas Encontrados
 
@@ -359,7 +366,7 @@ As execuções dos commits seguintes (correção de formatação e documentaçã
 **Baixa**
 
 - Atualizar o ESLint ou os plugins quando houver suporte oficial a ESLint 10 (avisos de peer).
-- Outros navegadores (Firefox, Safari) podem formatar números de outro jeito; vale abrir as páginas de token neles e olhar o console antes da publicação.
+- A formatação de números foi conferida no Node 22, no Node 24 e no Chromium. Antes da publicação, vale abrir as páginas de token no Firefox e no Safari e olhar o console.
 - Carregamento dos SDKs de carteira no primeiro render (custo de bundle descrito em `docs/web3/WALLET_INTEGRATION.md`).
 
 ## 20. Próximas Etapas
