@@ -10,3 +10,5 @@ coverage/
 .idea/
 .vscode/
 .qa/
+test-results/
+playwright-report/

@@ -91,8 +91,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </p>
           <p>
             Wallet addresses and native ETH balances are read from your
-            connected wallet and its active Base network. Connecting never
-            asks for a signature or a transaction.
+            connected wallet and its active Base network. Connecting never asks
+            for a signature or a transaction.
           </p>
         </div>
       </Modal>
