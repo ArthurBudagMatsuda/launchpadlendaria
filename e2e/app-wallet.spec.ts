@@ -321,6 +321,25 @@ test.describe("RETRY app with a connected wallet", () => {
     await expect(menu.getByRole("alert")).toHaveCount(0);
   });
 
+  test("keeps the wallet spinner turning slowly when the system reduces motion", async ({
+    page,
+  }) => {
+    // The global reduced-motion reset used to turn it into a 0.01ms loop that flickered.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(`${APP}/`);
+    const animation = await page.evaluate(() => {
+      const spinner = document.createElement("span");
+      spinner.className = "rw3-spinner";
+      document.body.append(spinner);
+      const style = getComputedStyle(spinner);
+      return {
+        duration: style.animationDuration,
+        count: style.animationIterationCount,
+      };
+    });
+    expect(animation).toEqual({ duration: "2.4s", count: "infinite" });
+  });
+
   test("shows Balance unavailable when the RPC fails, never a number", async ({
     page,
     wallet,

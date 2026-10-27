@@ -2772,7 +2772,14 @@ select option {
   *:before,
   *:after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* A 0.01ms infinite rotation flickers. Spinners keep turning, slowly, so a
+     pending wallet request still reads as busy. */
+  .rw3-spinner {
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
   }
 }
