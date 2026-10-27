@@ -20,6 +20,8 @@ export interface WalletSetup {
   chainId?: number;
   rejectConnect?: boolean;
   rejectSwitch?: boolean;
+  /** Confirm a network switch, then go back to the previous chain, like Phantom does. */
+  revertSwitch?: boolean;
   /** Never answer the connection request, like Phantom on a Solana-only account. */
   ignoreConnect?: boolean;
 }
@@ -42,6 +44,7 @@ function installMockWallet(setup: Required<WalletSetup>) {
     authorized: saved?.authorized ?? false,
     rejectConnect: setup.rejectConnect,
     rejectSwitch: setup.rejectSwitch,
+    revertSwitch: setup.revertSwitch,
     ignoreConnect: setup.ignoreConnect,
     calls: [] as string[],
   };
@@ -97,9 +100,16 @@ function installMockWallet(setup: Required<WalletSetup>) {
           if (state.rejectSwitch)
             throw rpcError(4001, "User rejected the request.");
           const target = Number((params?.[0] as { chainId: string }).chainId);
+          const previous = state.chainId;
           state.chainId = target;
           persist();
           emit("chainChanged", hex(target));
+          if (state.revertSwitch)
+            setTimeout(() => {
+              state.chainId = previous;
+              persist();
+              emit("chainChanged", hex(previous));
+            }, 5);
           return null;
         }
         default:
@@ -293,6 +303,7 @@ export const test = base.extend<{
         chainId: setup.chainId ?? 84532,
         rejectConnect: setup.rejectConnect ?? false,
         rejectSwitch: setup.rejectSwitch ?? false,
+        revertSwitch: setup.revertSwitch ?? false,
         ignoreConnect: setup.ignoreConnect ?? false,
       });
     });

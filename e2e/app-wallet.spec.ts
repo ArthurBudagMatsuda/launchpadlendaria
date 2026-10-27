@@ -290,6 +290,37 @@ test.describe("RETRY app with a connected wallet", () => {
     );
   });
 
+  test("explains a switch the wallet confirms and then undoes", async ({
+    page,
+    wallet,
+  }) => {
+    await wallet({ chainId: 1, revertSwitch: true });
+    await page.goto(`${APP}/`);
+    await connectTestWallet(page);
+    await page
+      .getByRole("banner")
+      .getByRole("button", { name: "Wrong Network" })
+      .click();
+    const menu = page.getByTestId("rw3-wallet-menu");
+    await menu.getByRole("button", { name: "Switch to Base Sepolia" }).click();
+    await expect(menu.getByRole("alert").first()).toHaveText(
+      "Retry Test Wallet switched back to Ethereum. Open Retry Test Wallet, choose Base Sepolia there, and try again.",
+    );
+    await expect(page.getByTestId("rw3-network-indicator")).toHaveText(
+      "Wrong Network",
+    );
+    // The message stays until the wallet changes network.
+    await page.waitForTimeout(2_000);
+    await expect(menu.getByRole("alert").first()).toBeVisible();
+    await page.evaluate(() =>
+      (window as unknown as MockWindow).__retryMockWallet.changeChain(84532),
+    );
+    await expect(page.getByTestId("rw3-network-indicator")).toContainText(
+      "Base Sepolia",
+    );
+    await expect(menu.getByRole("alert")).toHaveCount(0);
+  });
+
   test("shows Balance unavailable when the RPC fails, never a number", async ({
     page,
     wallet,

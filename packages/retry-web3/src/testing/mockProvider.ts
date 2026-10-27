@@ -22,6 +22,12 @@ export interface MockWalletOptions {
   ignoreConnect?: boolean
   /** Reject `wallet_switchEthereumChain` with code 4001. */
   rejectSwitch?: boolean
+  /**
+   * Confirm `wallet_switchEthereumChain`, then go back to the previous chain a
+   * few milliseconds later. Phantom does this when another network is selected
+   * in the wallet itself.
+   */
+  revertSwitch?: boolean
   /** Chains the wallet already knows. Switching elsewhere first fails with 4902. Default: all. */
   knownChainIds?: number[] | undefined
   /** Reject `wallet_addEthereumChain` with code 4001. */
@@ -115,8 +121,15 @@ export function createMockEip1193Provider(options: MockWalletOptions = {}): Mock
           if (opts.rejectSwitch) throw rpcError(4001, 'User rejected the request.')
           if (!knowsChain(id)) throw rpcError(4902, 'Unrecognized chain ID.')
           if (id !== state.chainId) {
+            const previous = state.chainId
             state.chainId = id
             emit('chainChanged', numberToHex(id))
+            if (opts.revertSwitch) {
+              setTimeout(() => {
+                state.chainId = previous
+                emit('chainChanged', numberToHex(previous))
+              }, 5)
+            }
           }
           return null
         }
