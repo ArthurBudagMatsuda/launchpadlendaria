@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { assetPath } from "@/lib/asset-path";
 import { Providers } from "@/components/providers";
 import { Shell } from "@/components/layout/shell";
+import "@retry/web3/styles.css";
 import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "RETRY — A new beginning on Base", template: "%s | RETRY" },

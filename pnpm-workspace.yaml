@@ -1,8 +1,11 @@
 packages:
   - .
+  - packages/retry-web3
 allowBuilds:
   esbuild: true
   sharp: true
   "@tailwindcss/oxide": true
   unrs-resolver: true
   "@reown/appkit": false
+  # Pulled in by the MetaMask SDK (@metamask/connect-evm); its postinstall is not needed.
+  protobufjs: false

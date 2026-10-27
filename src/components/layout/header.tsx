@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowUpRight,
-  ChevronDown,
   Compass,
   Menu,
   Plus,
@@ -12,11 +11,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useConnection } from "wagmi";
+import { ConnectWalletButton, NetworkIndicator } from "@retry/web3";
 import { Brand } from "./brand";
-import { WalletButton, WalletMenu } from "@/components/wallet/wallet-button";
-import { useApp } from "@/components/providers";
-import { useMounted } from "@/hooks/use-mounted";
 const links = [
   { href: "/", label: "Discover", icon: Compass },
   { href: "/create", label: "Create", icon: Plus },
@@ -27,10 +23,6 @@ export function Header() {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
-  const { setWalletOpen, selectedChainId } = useApp();
-  const { chainId, isConnected } = useConnection();
-  const mounted = useMounted();
-  const networkId = mounted && isConnected ? chainId : selectedChainId;
   return (
     <>
       <header className="header">
@@ -63,22 +55,8 @@ export function Header() {
           />
           <kbd>↵</kbd>
         </form>
-        <button
-          className="network-button"
-          aria-label={`Network: ${networkId === 8453 ? "Base" : networkId === 84532 ? "Base Sepolia" : "Unsupported network"}. Open wallet menu`}
-          onClick={() => setWalletOpen(true)}
-        >
-          <span className="base-mark" />
-          <span>
-            {networkId === 8453
-              ? "Base"
-              : networkId === 84532
-                ? "Base Sepolia"
-                : "Wrong network"}
-          </span>
-          <ChevronDown size={13} />
-        </button>
-        <WalletButton />
+        <NetworkIndicator className="network-button" />
+        <ConnectWalletButton className="wallet-button" />
         <button
           className="icon-button mobile-toggle"
           aria-label={menu ? "Close navigation" : "Open navigation"}
@@ -104,7 +82,6 @@ export function Header() {
           </nav>
         ) : null}
       </header>
-      <WalletMenu />
     </>
   );
 }

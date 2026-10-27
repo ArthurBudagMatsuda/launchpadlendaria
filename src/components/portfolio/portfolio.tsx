@@ -1,7 +1,10 @@
 "use client";
 import { useState } from "react";
-import { useConnection } from "wagmi";
-import { formatEther } from "viem";
+import {
+  ConnectWalletButton,
+  SwitchNetworkButton,
+  useRetryWallet,
+} from "@retry/web3";
 import {
   ArrowUpRight,
   Copy,
@@ -11,18 +14,13 @@ import {
   Wallet,
 } from "lucide-react";
 import { useApp } from "@/components/providers";
-import { useWalletBalance } from "@/hooks/use-wallet-balance";
-import { useMounted } from "@/hooks/use-mounted";
-import { isSupportedChain } from "@/config/networks";
-import { WalletButton } from "@/components/wallet/wallet-button";
 import { EmptyState } from "@/components/ui/feedback";
 import { shorten } from "@/lib/format";
 import Link from "next/link";
 export function Portfolio() {
-  const { address, isConnected, chain, chainId } = useConnection();
-  const balance = useWalletBalance();
-  const { setWalletOpen, notify } = useApp();
-  const mounted = useMounted();
+  const wallet = useRetryWallet();
+  const { address, isConnected, chainId, balance, network } = wallet;
+  const { notify } = useApp();
   const [tab, setTab] = useState("holdings");
   return (
     <div className="portfolio-page">
@@ -35,7 +33,7 @@ export function Portfolio() {
         </div>
         <span className="status-label">Portfolio</span>
       </div>
-      {!mounted || !isConnected || !address ? (
+      {!isConnected || !address ? (
         <section className="panel portfolio-connect">
           <div className="portfolio-art">
             <Wallet size={41} />
@@ -46,7 +44,7 @@ export function Portfolio() {
             Connect your wallet to see your Base network and ETH balance. Token
             positions and activity will arrive in a future stage.
           </p>
-          <WalletButton />
+          <ConnectWalletButton align="start" />
           <div className="portfolio-features">
             <span>
               <LockKeyhole size={12} />
@@ -86,35 +84,32 @@ export function Portfolio() {
             </section>
             <section className="panel">
               <h2>Connected network</h2>
-              <strong>{chain?.name ?? "Unsupported network"}</strong>
-              <button
-                className="reference-button"
-                onClick={() => setWalletOpen(true)}
-              >
-                Change network
-                <ArrowUpRight size={12} />
-              </button>
+              <strong>
+                {network.isWrongNetwork
+                  ? `Wrong network (${wallet.networkName ?? chainId})`
+                  : wallet.networkName}
+              </strong>
+              {network.isWrongNetwork ? <SwitchNetworkButton /> : null}
               <p className="mt-3">Chain ID: {chainId}</p>
             </section>
             <section className="panel">
               <h2>Native ETH balance · Live RPC</h2>
-              <strong>
-                {!isSupportedChain(chainId)
-                  ? "Unsupported network"
-                  : balance.isPending
+              <strong title={balance.exact && `${balance.exact} ETH`}>
+                {balance.status === "success"
+                  ? balance.display
+                  : balance.status === "loading"
                     ? "Loading…"
-                    : balance.isError
-                      ? "Unavailable"
-                      : balance.data
-                        ? `${Number(formatEther(balance.data.value)).toFixed(5)} ETH`
-                        : "Unavailable"}
+                    : balance.status === "wrong-network"
+                      ? "Unsupported network"
+                      : "Unavailable"}
               </strong>
               <p>
-                {balance.isError
-                  ? "RPC request failed. No estimated balance is shown."
+                {balance.status === "error"
+                  ? (balance.error?.message ??
+                    "RPC request failed. No estimated balance is shown.")
                   : "Read from your wallet’s connected Base network."}
               </p>
-              {balance.isError ? (
+              {balance.status === "error" ? (
                 <button
                   className="reference-button mt-3"
                   onClick={() => balance.refetch()}
@@ -124,10 +119,10 @@ export function Portfolio() {
               ) : null}
             </section>
           </div>
-          {!isSupportedChain(chainId) ? (
+          {network.isWrongNetwork ? (
             <div className="notice-strip mb-5">
-              Switch to Base Sepolia or Base in the wallet menu to read your
-              native ETH balance.
+              {network.notice?.message ??
+                "Switch to a Base network to read your native ETH balance."}
             </div>
           ) : null}
           <section className="panel">

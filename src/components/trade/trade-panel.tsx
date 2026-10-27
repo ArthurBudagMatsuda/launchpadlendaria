@@ -1,21 +1,17 @@
 "use client";
 import { useState } from "react";
-import { formatEther } from "viem";
 import { LockKeyhole, Settings2 } from "lucide-react";
-import { useConnection } from "wagmi";
+import { useRetryBalance } from "@retry/web3";
 import type { Token } from "@/types/token";
-import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { number } from "@/lib/format";
 import { useApp } from "@/components/providers";
 import { Button } from "@/components/ui/button";
-import { isSupportedChain } from "@/config/networks";
 export function TradePanel({ token }: { token: Token }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("1");
   const { notify } = useApp();
-  const { isConnected, chainId } = useConnection();
-  const balance = useWalletBalance();
+  const balance = useRetryBalance();
   const quantity = Number(amount);
   const valid = Number.isFinite(quantity) && quantity > 0 && quantity <= 1e12;
   // This is a UI fixture ratio, unrelated to token prices, reserves or any live quote.
@@ -46,15 +42,17 @@ export function TradePanel({ token }: { token: Token }) {
         <label className="field-label" htmlFor="trade-amount">
           You {side === "buy" ? "pay" : "sell"}
           <span>
-            {side === "buy" && isConnected && isSupportedChain(chainId)
-              ? balance.data
-                ? `Balance: ${Number(formatEther(balance.data.value)).toFixed(4)} ETH`
-                : balance.isError
-                  ? "Balance unavailable"
-                  : "Reading balance…"
-              : side === "sell"
-                ? "Token balance: not indexed"
-                : "Wallet not connected"}
+            {side === "sell"
+              ? "Token balance: not indexed"
+              : balance.status === "success"
+                ? `Balance: ${balance.display}`
+                : balance.status === "loading"
+                  ? "Reading balance…"
+                  : balance.status === "disconnected"
+                    ? "Wallet not connected"
+                    : balance.status === "wrong-network"
+                      ? "Wrong network"
+                      : "Balance unavailable"}
           </span>
         </label>
         <div className="amount-box">
