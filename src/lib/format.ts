@@ -3,6 +3,9 @@ export const usd = (value: number, compact = true) =>
     style: "currency",
     currency: "USD",
     notation: compact ? "compact" : "standard",
+    // Compact currency defaults differ between ICU versions ($12.40K in
+    // Node 22, $12.4K in Node 24 and browsers), which breaks hydration.
+    ...(compact && { minimumFractionDigits: 0 }),
     maximumFractionDigits: value < 1 ? 7 : 2,
   }).format(value);
 export const number = (value: number) =>
