@@ -1,8 +1,8 @@
 'use client'
 
 import { useIsMutating } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo } from 'react'
-import { useConnection, useSwitchChain } from 'wagmi'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type Config, useConfig, useConnection, useSwitchChain } from 'wagmi'
 import {
   getChainDisplayName,
   getRetryNetwork,
@@ -11,7 +11,7 @@ import {
   type RetrySupportedChainId,
 } from '../../config/chains.js'
 import { RETRY_FINANCIAL_OPERATIONS_ENABLED } from '../../config/wagmi.js'
-import { type RetryWeb3Error, toRetryWeb3Error } from '../../lib/errors.js'
+import { RetryWeb3Error, toRetryWeb3Error } from '../../lib/errors.js'
 import { logWeb3Diagnostic } from '../../lib/logger.js'
 import { useRetryWeb3Settings } from '../context.js'
 
@@ -102,8 +102,55 @@ function buildNotice(
   }
 }
 
+/**
+ * How long the wallet must stay on the requested network after it confirms a
+ * switch. Some wallets confirm and then go back to the network selected in
+ * the wallet itself: Phantom does it within milliseconds.
+ */
+export const RETRY_SWITCH_SETTLE_MS = 1_500
+
+function activeChainId(config: Config): number | undefined {
+  const { status, current, connections } = config.state
+  if (status !== 'connected' || !current) return undefined
+  return connections.get(current)?.chainId
+}
+
+/** Waits until the wallet leaves `chainId` or `ms` pass, then reports where it is. */
+function settledChainId(config: Config, chainId: number, ms: number): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    let stop = () => {}
+    const finish = () => {
+      clearTimeout(timer)
+      stop()
+      resolve(activeChainId(config))
+    }
+    const timer = setTimeout(finish, ms)
+    stop = config.subscribe(
+      () => activeChainId(config),
+      (next) => {
+        if (next !== chainId) finish()
+      },
+    )
+  })
+}
+
+function switchNotApplied(options: {
+  walletName: string | undefined
+  reachedTarget: boolean
+  currentNetworkName: string
+  targetNetworkName: string
+}): RetryWeb3Error {
+  const { walletName, reachedTarget, currentNetworkName, targetNetworkName } = options
+  const subject = walletName ?? 'Your wallet'
+  const what = reachedTarget ? `switched back to ${currentNetworkName}` : `stayed on ${currentNetworkName}`
+  return new RetryWeb3Error('SWITCH_NOT_APPLIED', {
+    message: `${subject} ${what}. Open ${walletName ?? 'your wallet'}, choose ${targetNetworkName} there, and try again.`,
+  })
+}
+
 export function useRetryNetwork(): RetryNetworkState {
   const settings = useRetryWeb3Settings()
+  const config = useConfig()
   const connection = useConnection()
   const switchChain = useSwitchChain()
   const pendingSwitches = useIsMutating({ mutationKey: ['switchChain'] })
@@ -119,29 +166,61 @@ export function useRetryNetwork(): RetryNetworkState {
     else scenario = walletNetwork.id === targetNetwork.id ? 'target' : 'supported'
   }
 
-  const { reset, mutate } = switchChain
+  const { reset, mutateAsync } = switchChain
   // A switch done in the wallet itself makes any previous switch error stale.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the active chain changes
   useEffect(() => {
     reset()
   }, [walletChainId, reset])
 
+  // A confirmed switch only counts once the wallet stays on the new network.
+  const [notApplied, setNotApplied] = useState<{ chainId: number; error: RetryWeb3Error } | undefined>()
+  const [verifying, setVerifying] = useState(false)
+  const attempt = useRef(0)
+
+  const isConnected = connection.isConnected
+  const walletName = isConnected ? connection.connector?.name : undefined
   const switchTo = useCallback(
     (chainId: RetrySupportedChainId) => {
-      if (!connection.isConnected) return
-      mutate(
-        { chainId },
-        {
-          onError: (error) => logWeb3Diagnostic('switch chain failed', error),
+      if (!isConnected) return
+      const id = ++attempt.current
+      setNotApplied(undefined)
+      let reachedTarget = activeChainId(config) === chainId
+      const stopWatching = config.subscribe(
+        () => activeChainId(config),
+        (next) => {
+          if (next === chainId) reachedTarget = true
         },
       )
+      mutateAsync({ chainId })
+        .then(async () => {
+          if (attempt.current !== id) return
+          setVerifying(true)
+          const landed = await settledChainId(config, chainId, RETRY_SWITCH_SETTLE_MS)
+          if (attempt.current !== id || landed === undefined || landed === chainId) return
+          logWeb3Diagnostic('switch chain not kept by the wallet', { chainId, landed, reachedTarget })
+          setNotApplied({
+            chainId: landed,
+            error: switchNotApplied({
+              walletName,
+              reachedTarget,
+              currentNetworkName: getChainDisplayName(landed),
+              targetNetworkName: RETRY_NETWORKS[chainId].name,
+            }),
+          })
+        })
+        .catch((error: unknown) => logWeb3Diagnostic('switch chain failed', error))
+        .finally(() => {
+          stopWatching()
+          if (attempt.current === id) setVerifying(false)
+        })
     },
-    [connection.isConnected, mutate],
+    [isConnected, config, mutateAsync, walletName],
   )
 
   const switchToTarget = useCallback(() => switchTo(targetNetwork.id), [switchTo, targetNetwork.id])
 
-  const switchError = useMemo(
+  const requestError = useMemo(
     () =>
       switchChain.error
         ? toRetryWeb3Error(switchChain.error, {
@@ -151,6 +230,16 @@ export function useRetryNetwork(): RetryNetworkState {
         : undefined,
     [switchChain.error, targetNetwork.name],
   )
+  // Shown while the wallet is still on the network it went back to.
+  const notAppliedError = notApplied && notApplied.chainId === walletChainId ? notApplied.error : undefined
+  const switchError = requestError ?? notAppliedError
+
+  const resetSwitch = useCallback(() => {
+    attempt.current += 1
+    setNotApplied(undefined)
+    setVerifying(false)
+    reset()
+  }, [reset])
 
   return {
     scenario,
@@ -165,11 +254,11 @@ export function useRetryNetwork(): RetryNetworkState {
     notice: buildNotice(scenario, walletNetwork, walletNetworkName, targetNetwork),
     financialOperationsEnabled: RETRY_FINANCIAL_OPERATIONS_ENABLED,
     canSwitch: Boolean(connection.isConnected && connection.connector?.switchChain),
-    switchStatus: switchChain.status,
-    isSwitching: switchChain.isPending || pendingSwitches > 0,
+    switchStatus: switchError ? 'error' : verifying ? 'pending' : switchChain.status,
+    isSwitching: switchChain.isPending || pendingSwitches > 0 || verifying,
     switchError,
     switchToTarget,
     switchTo,
-    resetSwitch: reset,
+    resetSwitch,
   }
 }

@@ -196,6 +196,35 @@ describe('network handling', () => {
       params: [{ chainId: '0x14a34' }],
     })
     await waitFor(() => expect(hook.result.current.wallet.balance.formatted).toBe('0.0234'))
+    // The switch only counts once the wallet stays on Base Sepolia.
+    await waitFor(() => expect(hook.result.current.wallet.network.isSwitching).toBe(false), {
+      timeout: 3_000,
+    })
+    expect(hook.result.current.wallet.network.switchError).toBeUndefined()
+    expect(hook.result.current.wallet.network.scenario).toBe('target')
+  })
+
+  it('reports a switch the wallet confirms and then undoes (Phantom)', async () => {
+    const { hook, connect, provider } = setup({ wallet: { chainId: 1, revertSwitch: true } })
+    await connect()
+    act(() => hook.result.current.wallet.network.switchToTarget())
+    await waitFor(() =>
+      expect(hook.result.current.wallet.network.switchError?.code).toBe('SWITCH_NOT_APPLIED'),
+    )
+    const { network } = hook.result.current.wallet
+    expect(network.switchError?.message).toBe(
+      'Mock Wallet switched back to Ethereum. Open Mock Wallet, choose Base Sepolia there, and try again.',
+    )
+    expect(network.scenario).toBe('wrong-network')
+    expect(network.switchStatus).toBe('error')
+    expect(network.isSwitching).toBe(false)
+    // One request from the click; the app never retries or switches on its own.
+    expect(provider.calls.filter((call) => call.method === 'wallet_switchEthereumChain')).toHaveLength(1)
+
+    // Choosing Base Sepolia in the wallet clears the message.
+    act(() => provider.changeChain(84532))
+    await waitFor(() => expect(hook.result.current.wallet.network.scenario).toBe('target'))
+    expect(hook.result.current.wallet.network.switchError).toBeUndefined()
   })
 
   it('adds Base Sepolia to the wallet when it is unknown (4902)', async () => {

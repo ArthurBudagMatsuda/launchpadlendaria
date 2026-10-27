@@ -9,6 +9,7 @@ export type RetryWeb3ErrorCode =
   | 'ALREADY_CONNECTED'
   | 'SWITCH_REJECTED'
   | 'SWITCH_NOT_SUPPORTED'
+  | 'SWITCH_NOT_APPLIED'
   | 'CHAIN_NOT_ADDED'
   | 'UNSUPPORTED_CHAIN'
   | 'WRONG_NETWORK'
@@ -37,6 +38,7 @@ export const RETRY_WEB3_ERROR_MESSAGES: Readonly<Record<RetryWeb3ErrorCode, stri
   ALREADY_CONNECTED: 'This wallet is already connected.',
   SWITCH_REJECTED: 'Network switch rejected. Please switch to Base.',
   SWITCH_NOT_SUPPORTED: 'Your wallet cannot switch networks from here. Please switch to Base in your wallet.',
+  SWITCH_NOT_APPLIED: 'Your wallet did not stay on Base. Open your wallet, choose Base there, and try again.',
   CHAIN_NOT_ADDED: 'Base is not added to your wallet yet. Approve adding the network and try again.',
   UNSUPPORTED_CHAIN: 'This network is not supported by RETRY.',
   WRONG_NETWORK: 'Please switch to Base.',
