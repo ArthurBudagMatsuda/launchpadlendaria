@@ -518,14 +518,16 @@
 }
 
 /* Spinner */
+/* A faint full ring with one bright arc, one turn per second. */
 .rw3-spinner {
   display: inline-block;
+  flex: none;
   width: 14px;
   height: 14px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: currentColor;
   border-radius: 50%;
-  animation: rw3-spin 0.8s linear infinite;
+  animation: rw3-spin 1s linear infinite;
   vertical-align: middle;
 }
 
