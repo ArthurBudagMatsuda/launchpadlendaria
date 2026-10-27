@@ -87,7 +87,7 @@ Copy [.env.example](./.env.example). All four variables are optional.
 | --------------------------- | --------------------------------------------------------------------------------------------- |
 | `useRetryWallet`            | Everything at once: status, address, `shortAddress`, connector, chain, explorer URL, network, balance |
 | `useRetryConnectionStatus`  | `status`, `isConnected`, `isConnecting`, `isReconnecting`, `isDisconnected`                   |
-| `useRetryNetwork`           | `scenario` (`disconnected`, `target`, `supported`, `wrong-network`), notice, `switchLabel`, `switchToTarget()`, switch status and error |
+| `useRetryNetwork`           | `scenario` (`disconnected`, `target`, `supported`, `wrong-network`), notice, `switchLabel`, `switchToTarget()`, switch status and error (also when the wallet undoes the switch) |
 | `useRetryBalance`           | `status` (`disconnected`, `wrong-network`, `loading`, `success`, `error`), `value` (wei bigint), `formatted`, `exact`, `display`, `refetch()` |
 | `useRetryWalletActions`     | `connect()`, `cancelConnect()`, `disconnect()`, `switchToTarget()`, `switchTo()`, pending connector and mapped errors |
 | `useRetryWalletOptions`     | Wallet list for custom pickers                                                                |
