@@ -51,6 +51,9 @@ export function ConnectWalletButton({
 
   const address = connection.address
   const showAccount = Boolean(address) && (connection.isConnected || connection.isReconnecting)
+  // The picker is hidden as soon as an account shows, before it can close
+  // itself. Forget that it was open, or it reappears when the wallet disconnects.
+  if (showAccount && modalOpen) setModalOpen(false)
 
   let content: ReactNode = label
   let variant = 'primary'
