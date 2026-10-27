@@ -4,11 +4,15 @@ on:
     paths:
       - "packages/retry-web3/**"
       - "examples/web3-playground/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/retry-web3.yml"
   pull_request:
     paths:
       - "packages/retry-web3/**"
       - "examples/web3-playground/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/retry-web3.yml"
 permissions:
   contents: read
@@ -20,44 +24,33 @@ jobs:
     name: Typecheck, lint, test and build @retry/web3
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: packages/retry-web3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: packages/retry-web3/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+          cache: pnpm
+      # One workspace lockfile for the app, the module and the playground.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @retry/web3 typecheck
+      - run: pnpm --filter @retry/web3 lint
+      - run: pnpm --filter @retry/web3 test
+      - run: pnpm --filter @retry/web3 build
   playground:
     name: Playground build and Playwright (desktop and mobile)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: examples/web3-playground
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            packages/retry-web3/package-lock.json
-            examples/web3-playground/package-lock.json
-      # The playground compiles the module from source, which resolves its
-      # imports from packages/retry-web3/node_modules.
-      - run: npm ci
-        working-directory: packages/retry-web3
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npx playwright install --with-deps chromium
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter retry-web3-playground typecheck
+      - run: pnpm --filter retry-web3-playground exec playwright install --with-deps chromium
       # Builds and serves the playground itself (see playwright.config.ts).
       # The wallet and the Base RPC are simulated; no network access to Base is needed.
-      - run: npx playwright test
+      - run: pnpm --filter retry-web3-playground exec playwright test
