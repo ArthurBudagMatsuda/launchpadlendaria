@@ -130,6 +130,18 @@ describe('ConnectWalletButton', () => {
     )
   })
 
+  it('does not reopen the wallet picker after disconnecting', async () => {
+    renderApp()
+    await connectThroughModal()
+    const short = `${ALICE.slice(0, 6)}...${ALICE.slice(-4)}`
+    fireEvent.click(await header().findByRole('button', { name: short }))
+    const menu = await screen.findByTestId('rw3-wallet-menu')
+    fireEvent.click(within(menu).getByRole('button', { name: 'Disconnect' }))
+    const button = await header().findByRole('button', { name: 'Connect Wallet' })
+    expect(screen.queryByRole('dialog', { name: 'Connect Wallet' })).toBeNull()
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+  })
+
   it('shows the rejection message inside the picker', async () => {
     renderApp({ wallet: { rejectConnect: true } })
     fireEvent.click(header().getByRole('button', { name: 'Connect Wallet' }))
