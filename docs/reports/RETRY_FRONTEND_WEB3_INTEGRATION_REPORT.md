@@ -12,7 +12,7 @@ Nenhuma operação financeira foi ligada: não há swap, approve, criação de t
 
 O que foi verificado:
 
-- 24 testes Vitest do app (os 20 da Etapa 1, 2 de integração React com o provider real e 2 de formatação), 126 testes do módulo (124 da Etapa 2 e 2 de regressão novos), 22 testes Playwright no export estático do GitHub Pages (11 cenários × desktop e Pixel 7) e os 22 testes Playwright do playground. Todos passam localmente e no GitHub Actions.
+- 24 testes Vitest do app (os 20 da Etapa 1, 2 de integração React com o provider real e 2 de formatação), 126 testes do módulo (124 da Etapa 2 e 2 de regressão novos), 24 testes Playwright no export estático do GitHub Pages (12 cenários × desktop e Pixel 7) e os 22 testes Playwright do playground. Todos passam localmente e no GitHub Actions.
 - `format:check`, `lint`, `typecheck`, `build` e `build:pages` passam.
 
 Carteiras reais: a pedido de Iam, o app integrado foi publicado no preview do GitHub Pages a partir de uma branch temporária (`feat/retry-integrated-preview`), sem merge e sem mudar a `main`. Em 27/10 Iam testou MetaMask, Coinbase Wallet e Phantom. Conexão, header, saldo real, navegação e desconexão passaram. A volta para a Base Sepolia a partir de `Wrong Network` falhou: a Phantom aceita a troca e volta sozinha para a rede escolhida nela. O app agora detecta isso e mostra uma mensagem fixa explicando o que fazer; Iam confirmou a mensagem com a Phantom no preview. Na MetaMask, a troca de Base para Base Sepolia passou. Detalhes na seção 14. Os testes automatizados continuam usando carteira EIP-6963 e RPC simulados.
@@ -215,7 +215,7 @@ Ambiente local: container Linux, Node 24.22.1 (a versão pedida em `engines`) e 
 | `pnpm test`                                                | 24 testes Vitest em 5 arquivos (20 da Etapa 1, 2 de integração, 2 de formatação) | 24/24        | Passou         |
 | `pnpm build`                                               | Build Next.js para servidor Node                                                 | Passou       | Passou         |
 | `pnpm build:pages`                                         | Export estático com `/launchpadlendaria`                                         | Passou       | Passou         |
-| `pnpm test:e2e`                                            | 11 cenários × desktop Chrome e Pixel 7 no export estático                        | 22/22        | Passou         |
+| `pnpm test:e2e`                                            | 12 cenários × desktop Chrome e Pixel 7 no export estático                        | 24/24        | Passou         |
 | `pnpm --filter @retry/web3 check`                          | Tipos, Biome, 126 testes Vitest e build do módulo                                | 126/126      | Passou         |
 | `pnpm --filter retry-web3-playground exec playwright test` | 11 cenários × desktop e mobile no playground, depois da correção no módulo       | 22/22        | Passou         |
 
@@ -248,6 +248,7 @@ Ao final o teste confere: uma única solicitação de conexão durante toda a na
 9. Recarregar uma rota profunda conectada restaura a sessão sem erro de console.
 10. Desconectar pelo menu e quando a carteira encerra a sessão.
 11. Seletor aberto e fechado pelo teclado, sem entrada duplicada de carteira.
+12. Com "reduzir movimento" ligado no sistema, o círculo de carregamento continua girando devagar (2,4 s por volta).
 
 Esses testes provam o comportamento do app com uma carteira que segue os padrões EIP-1193/EIP-6963. Eles não provam compatibilidade com uma carteira real específica.
 
@@ -322,9 +323,12 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 | `ebacff5` | merge: `feat/etapa-2-web3` @ `746458c` (correção do seletor no PR #1; árvore igual)     |
 | `5c80098` | docs: estado final do CI e do PR #1 neste relatório                                     |
 | `e86a217` | fix(wallet): a troca de rede só conta quando a carteira fica na rede nova               |
-| (este)    | docs: resultados com carteira real e a correção da troca de rede                        |
+| `6cbf970` | docs: resultados com carteira real e a correção da troca de rede                        |
+| `5686967` | docs: novo teste da Phantom com a mensagem fixa                                         |
+| `f91872d` | fix(ui): o círculo de carregamento não pisca com "reduzir movimento"                    |
+| (este)    | docs: correção do círculo de carregamento neste relatório                               |
 
-**Preview temporário** (fora do PR #2, a pedido de Iam para testar carteiras reais sem merge): a branch `feat/retry-integrated-preview` tem o `pages.yml` proposto em `docs/integration/GITHUB_PAGES.md` (`f4435f2`), o registro de diagnóstico `?debug=web3` (`a195c44`) e o merge da correção (`6c96b56`). Cada push nela republica o site. Um push na `main` ou nas branches das etapas republica o preview dividido.
+**Preview temporário** (fora do PR #2, a pedido de Iam para testar carteiras reais sem merge): a branch `feat/retry-integrated-preview` tem o `pages.yml` proposto em `docs/integration/GITHUB_PAGES.md` (`f4435f2`), o registro de diagnóstico `?debug=web3` (`a195c44`) e os merges das correções (`6c96b56`, `09fd2b8`). Cada push nela republica o site. Um push na `main` ou nas branches das etapas republica o preview dividido.
 
 ## 17. Problemas Encontrados
 
@@ -340,6 +344,7 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 | O README da `main` era um placeholder de uma linha                                                                                                                                                                                                                                                                                                          | Substituído pelo README da Etapa 1 na importação e reescrito para o app integrado                                                                                                                                                                                                                     |
 | O ambiente não alcança `github.io` nem os RPCs da Base                                                                                                                                                                                                                                                                                                      | Testes com carteira e RPC simulados; verificação real fica pendente e marcada como tal                                                                                                                                                                                                                |
 | **Bug no módulo, achado com carteira real:** na Phantom, `Switch to Base Sepolia` não saía de `Wrong Network` e só aparecia um vermelho piscando. O registro `?debug=web3` mostrou que a Phantom responde `null`, emite `chainChanged` para 84532 e volta sozinha para a rede escolhida nela (46630) cerca de 10 ms depois. O app tratava isso como sucesso | O módulo espera a carteira ficar 1,5 s na rede pedida; se ela voltar ou não chegar, mostra `SWITCH_NOT_APPLIED` com o nome da carteira e da rede até a carteira mudar de rede. A carteira simulada ganhou `revertSwitch`; os testes novos do módulo e do Playwright falham sem a correção (`e86a217`) |
+| Iam achou o círculo de carregamento girando rápido demais, com cara de defeito. A regra global de "reduzir movimento" do app (Etapa 1) deixava toda animação com 0,01 ms e mantinha o giro infinito, então com os efeitos de animação do Windows desligados o círculo tremia                                                                                | A regra agora roda as animações uma vez só, e o círculo da carteira gira devagar (2,4 s por volta) nesse modo. No modo normal ele ficou mais suave: aro claro com um arco, uma volta por segundo. Teste Playwright novo (`f91872d`)                                                                   |
 | Erro de hidratação do React (#418) na página do token com build no Node 22: o servidor gera `$12.40K` e o Chrome `$12.4K`. Vem da Etapa 1 (`usd()` em `src/lib/format.ts`) e não aparece com Node 24, que é o do CI e do `pages.yml`                                                                                                                        | `minimumFractionDigits: 0` na notação compacta. Com isso o Node 22 e o Node 24 geram o mesmo texto, e o resultado no Node 24 não muda. Teste novo em `tests/format.test.ts` (falha antes da correção no Node 22). Todas as 18 rotas do export foram abertas sem erro de console com build no Node 22  |
 
 ## 18. Segurança
