@@ -1,0 +1,120 @@
+name: RETRY Meteora on-chain tests
+# Real transactions against Meteora's deployed programs, with test keys only:
+#  - validator: a local validator running the exact DBC, DAMM v2, Locker and
+#    Metaplex programs cloned from Devnet (plus the public DAMM v2 migration
+#    config), so the full flow including graduation runs for free.
+#  - devnet: the same flow on Solana Devnet with faucet SOL. It runs on
+#    manual dispatch, or on a push whose commit message contains [devnet].
+# Nothing here touches Mainnet, GitHub Pages, or holds a secret.
+on:
+  push:
+    paths:
+      - "src/lib/meteora/**"
+      - "src/config/retry-protocol.ts"
+      - "src/components/launch/**"
+      - "tests/chain/**"
+      - "e2e/chain/**"
+      - "infra/metadata-worker/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/meteora-chain.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: meteora-chain-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  AGAVE_VERSION: v3.1.10
+  DEVNET_RPC: https://api.devnet.solana.com
+jobs:
+  validator:
+    name: Local validator with Devnet programs (full flow + browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Agave (solana-test-validator)
+        run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${AGAVE_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar -xj -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/solana-release/bin" >> "$GITHUB_PATH"
+      - name: Start validator with programs cloned from Devnet
+        run: |
+          APP_CONFIG=$(node -e "const s=require('fs').readFileSync('src/config/retry-protocol.ts','utf8');const m=/devnet:\s*\{\s*address:\s*\"(\w+)\"/.exec(s);process.stdout.write(m?m[1]:'')")
+          echo "APP_CONFIG=$APP_CONFIG" >> "$GITHUB_ENV"
+          CLONE_CONFIG=""
+          if [ -n "$APP_CONFIG" ]; then CLONE_CONFIG="--clone $APP_CONFIG"; fi
+          solana-test-validator --reset --quiet --ledger "$RUNNER_TEMP/ledger" --url "$DEVNET_RPC" \
+            --clone-upgradeable-program dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN \
+            --clone-upgradeable-program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG \
+            --clone-upgradeable-program LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn \
+            --clone-upgradeable-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s \
+            --clone Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp \
+            $CLONE_CONFIG > "$RUNNER_TEMP/validator.log" 2>&1 &
+          for i in $(seq 1 90); do
+            if solana -u localhost cluster-version >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          solana -u localhost cluster-version
+      - name: Record the program binaries under test
+        run: |
+          for program in dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG; do
+            solana -u localhost program dump "$program" "$RUNNER_TEMP/$program.local.so" >/dev/null
+            solana -u https://api.mainnet-beta.solana.com program dump "$program" "$RUNNER_TEMP/$program.mainnet.so" >/dev/null || true
+            echo "PROGRAM_HASH $program devnet-clone=$(sha256sum "$RUNNER_TEMP/$program.local.so" | cut -c1-64) mainnet=$( [ -f "$RUNNER_TEMP/$program.mainnet.so" ] && sha256sum "$RUNNER_TEMP/$program.mainnet.so" | cut -c1-64 || echo unavailable)"
+          done
+          solana -u localhost program show dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN
+      - name: Chain flow (config, launch, trades, graduation, claim)
+        run: pnpm test:chain
+        env:
+          RETRY_CHAIN_MODE: local
+          RETRY_CHAIN_EVIDENCE: evidence-validator.json
+          RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
+      - name: Browser flow on the cloned RETRY Devnet config
+        if: env.APP_CONFIG != ''
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright test --config playwright.chain.config.ts
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: meteora-validator-evidence
+          path: |
+            evidence-validator.json
+            test-results
+          retention-days: 30
+  devnet:
+    name: Solana Devnet (faucet SOL)
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[devnet]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Chain flow on Devnet (reuses the app's Devnet config when set)
+        run: pnpm test:chain
+        env:
+          RETRY_CHAIN_MODE: devnet
+          RETRY_CHAIN_RPC: ${{ env.DEVNET_RPC }}
+          RETRY_CHAIN_USE_APP_CONFIG: "1"
+          RETRY_CHAIN_EVIDENCE: evidence-devnet.json
+          RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
+      - if: always()
+        run: cat evidence-devnet.json || true
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: meteora-devnet-evidence
+          path: evidence-devnet.json
+          retention-days: 90
