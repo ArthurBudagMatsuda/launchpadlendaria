@@ -24,6 +24,14 @@ export const sol = (lamports: bigint, places = 4) =>
 /** Raw RETRY token units (9 decimals) as a compact whole-token amount. */
 export const tokens = (raw: bigint) => tokenAmount(decimal(raw, TOKEN_UNIT, 9));
 
+/** Raw token units as a share of the fixed total supply, e.g. "24.43%". */
+export const supplyShare = (raw: bigint) =>
+  `${decimal(
+    (raw * 10_000n) / (BigInt(RETRY_LAUNCH.totalSupply) * TOKEN_UNIT),
+    100n,
+    2,
+  )}%`;
+
 function parse(text: string, decimals: number) {
   const value = text.trim();
   if (!/^\d{0,12}(\.\d*)?$/.test(value) || value === "" || value === ".")

@@ -21,7 +21,7 @@ import {
 } from "@/lib/meteora/create-token";
 import { curveSummary, RETRY_LAUNCH } from "@/lib/meteora/curve";
 import { feeSchedule } from "@/lib/meteora/fees";
-import { parseSol, sol, tokens } from "@/lib/meteora/format";
+import { parseSol, sol, supplyShare, tokens } from "@/lib/meteora/format";
 import {
   metadataEndpoint,
   uploadMetadata,
@@ -269,7 +269,7 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
               <dd>
                 {sol(review.initialBuy)}
                 {review.prepared.initialBuyOut != null
-                  ? ` → ~${tokens(review.prepared.initialBuyOut)} ${draft.symbol} (min ${tokens(review.prepared.initialBuyMinimumOut!)})`
+                  ? ` → ~${tokens(review.prepared.initialBuyOut)} ${draft.symbol}, ${supplyShare(review.prepared.initialBuyOut)} of the supply (min ${tokens(review.prepared.initialBuyMinimumOut!)})`
                   : ""}
               </dd>
             </div>

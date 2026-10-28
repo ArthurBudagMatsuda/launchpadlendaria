@@ -23,7 +23,13 @@ import {
 } from "@/lib/meteora/curve";
 import { userMessage } from "@/lib/meteora/errors";
 import { feeSchedule, splitTradingFee } from "@/lib/meteora/fees";
-import { parseSol, parseTokens, sol, solInput } from "@/lib/meteora/format";
+import {
+  parseSol,
+  parseTokens,
+  sol,
+  solInput,
+  supplyShare,
+} from "@/lib/meteora/format";
 import {
   decodeMetadata,
   isTrustedUrl,
@@ -502,6 +508,8 @@ describe("quotes, amounts and errors", () => {
     expect(parseTokens("1000")).toBe(1_000_000_000_000n);
     expect(sol(-127_038_080n, 6)).toBe("-0.127038 SOL");
     expect(solInput(1_500_000_000n)).toBe("1.5");
+    expect(supplyShare(130_564_541_249_646_396n)).toBe("13.05%");
+    expect(supplyShare(10n ** 18n)).toBe("100%");
   });
 
   it("maps program, wallet and RPC failures to plain messages", () => {
