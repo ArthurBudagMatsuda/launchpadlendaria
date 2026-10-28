@@ -1,5 +1,7 @@
 # RETRY — Relatório da migração Base → Solana
 
+> Registro da migração original. Para as correções posteriores, integração da `main` atual, novos totais de testes e pendências de carteiras reais, consulte [RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md](RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md).
+
 Data: **28/10/2026**. Escopo: aplicação e infraestrutura de leitura, com preservação da identidade RETRY. Programas financeiros, transações, pools e publicação pública não fazem parte desta entrega.
 
 ## 1. Resumo executivo

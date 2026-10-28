@@ -2,6 +2,10 @@
 
 ## Implementação
 
+Revisão posterior: [relatório do PR #6](reports/RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md) e [matriz reproduzível](testing/SOLANA_REAL_WALLET_TEST_MATRIX.md). O operador optou por manter testes de extensões reais pendentes nesta revisão.
+
+O seletor exige features v1 de conexão, eventos e desconexão, com métodos válidos; versões incompletas não são anunciadas como disponíveis. Marcas duplicadas são consolidadas na lista. Contas/eventos malformados e falhas de inscrição não derrubam a aplicação. Conexão e desconexão têm prazo de 20 s; uma resposta tardia não altera a sessão seguinte. A confirmação de cópia acompanha o endereço copiado.
+
 Um `RetrySolanaProvider` envolve toda a aplicação. Descoberta via `@wallet-standard/app`; conexão via `standard:connect`; desconexão via `standard:disconnect`; contas via `standard:events`. Phantom, Solflare e Backpack aparecem se registrarem suporte Solana. O nome de uma carteira no registro não certifica sua autenticidade; instalar somente pelos links oficiais apresentados na interface.
 
 O endereço retornado deve ser base58 com 32 bytes e corresponder aos bytes de `publicKey`. Contas Ethereum de extensões multichain não são aceitas. Uma conta deve declarar uma chain Solana. O cluster do aplicativo determina o RPC; não há `switchChain` Ethereum nem promessa de mudar a configuração da extensão. Se a conta não anunciar o cluster selecionado, a interface explica a limitação e só consulta sua identidade pública.

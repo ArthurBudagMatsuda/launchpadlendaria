@@ -30,7 +30,13 @@ export async function solanaFixture(
           : body.method === "getBalance"
             ? {
                 context: { slot: 123 },
-                value: body.params[0] === ALICE ? 1500000001 : 2500000000,
+                value: mainnet
+                  ? body.params[0] === ALICE
+                    ? 3500000001
+                    : 4500000000
+                  : body.params[0] === ALICE
+                    ? 1500000001
+                    : 2500000000,
               }
             : body.method === "getAccountInfo"
               ? {

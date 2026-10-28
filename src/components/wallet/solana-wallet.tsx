@@ -39,7 +39,7 @@ export function ConnectWalletButton({
   const wallet = useSolanaWallet();
   const balance = useSolBalance();
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const connected = wallet.status === "connected" && wallet.address;
   function dismiss(next: boolean) {
     if (!next && wallet.status === "connecting") wallet.cancel();
@@ -88,15 +88,16 @@ export function ConnectWalletButton({
               className="button button-secondary"
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(wallet.address!);
-                  setCopied(true);
+                  const address = wallet.address!;
+                  await navigator.clipboard.writeText(address);
+                  setCopiedAddress(address);
                 } catch {
-                  setCopied(false);
+                  setCopiedAddress(null);
                 }
               }}
             >
               <Copy size={15} />
-              {copied ? "Copied" : "Copy address"}
+              {copiedAddress === wallet.address ? "Copied" : "Copy address"}
             </button>
             {wallet.config ? (
               <a
@@ -121,9 +122,9 @@ export function ConnectWalletButton({
             </button>
             <button
               className="button button-secondary"
-              onClick={async () => {
-                await wallet.disconnect();
+              onClick={() => {
                 setOpen(false);
+                void wallet.disconnect();
               }}
             >
               <LogOut size={15} />

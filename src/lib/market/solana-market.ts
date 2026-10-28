@@ -3,6 +3,7 @@ import type { SolanaCluster } from "@/config/solana";
 import { getProviderJson, type MarketFetchOptions } from "./http";
 import { MarketDataError } from "./errors";
 import { compareDecimal, parseDecimal } from "./decimal";
+import { countGaps } from "./chart-series";
 import type {
   Candle,
   CandleInterval,
@@ -279,24 +280,24 @@ export function normalizeCandles(rows: unknown[], intervalSeconds: number) {
     byTime.set(time, { time, open, high, low, close, volumeUsd: volume });
   }
   const candles = [...byTime.values()].sort((a, b) => a.time - b.time);
-  let gaps = 0;
-  for (let i = 1; i < candles.length; i++)
-    gaps += (candles[i].time - candles[i - 1].time) / intervalSeconds - 1;
-  return { candles, dropped, gaps };
+  return { candles, dropped, gaps: countGaps(candles, intervalSeconds) };
 }
 export async function loadSolanaCandles(
   token: TokenRef,
   pool: SolanaAddress,
   interval: CandleInterval,
   options: MarketFetchOptions = {},
+  before?: number,
 ): Promise<CandleSeries> {
   mainnet(token.cluster);
   if (!parseAddress(pool)) throw new Error("Invalid pool address.");
+  if (before !== undefined && (!Number.isSafeInteger(before) || before <= 0))
+    throw new Error("Invalid history cursor.");
   const spec = SOLANA_INTERVALS[interval];
   const response = obj(
     await getProviderJson(
       "geckoterminal",
-      `/api/v2/networks/solana/pools/${pool}/ohlcv/${spec.timeframe}?aggregate=${spec.aggregate}&limit=365&currency=usd&token=${token.address}`,
+      `/api/v2/networks/solana/pools/${pool}/ohlcv/${spec.timeframe}?aggregate=${spec.aggregate}&limit=1000&currency=usd&token=${token.address}${before === undefined ? "" : `&before_timestamp=${before}`}`,
       { Accept: "application/json" },
       options,
     ),

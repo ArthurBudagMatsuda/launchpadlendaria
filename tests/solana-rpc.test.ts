@@ -43,6 +43,30 @@ function mockRpc(
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("verified Solana RPC reads", () => {
+  it("enforces its deadline even if the transport ignores cancellation", async () => {
+    mockRpc();
+    const outcome = await Promise.race([
+      readSolana(config(), () => new Promise(() => {}), undefined, 10).then(
+        () => "success",
+        () => "rejected",
+      ),
+      new Promise((resolve) => setTimeout(() => resolve("hung"), 500)),
+    ]);
+    expect(outcome).toBe("rejected");
+  });
+  it("does not turn malformed RPC or rate limiting into a zero balance", async () => {
+    for (const response of [
+      new Response("not json"),
+      new Response("{}", { status: 429 }),
+    ]) {
+      const fetch = vi.fn(async () => response.clone());
+      vi.stubGlobal("fetch", fetch);
+      await expect(readSolBalance(config(), owner)).rejects.toThrow(
+        /unavailable/,
+      );
+      expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+    }
+  });
   it("shows zero only when a successful RPC returns zero", async () => {
     mockRpc({}, "0");
     expect((await readSolBalance(config(), owner)).lamports).toBe(0n);

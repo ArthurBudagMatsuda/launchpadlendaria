@@ -12,10 +12,19 @@ import {
 } from "react";
 import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount } from "@wallet-standard/base";
+import {
+  StandardConnect,
+  StandardDisconnect,
+  StandardEvents,
+  type StandardConnectFeature,
+  type StandardDisconnectFeature,
+  type StandardEventsFeature,
+} from "@wallet-standard/features";
 import { useQuery } from "@tanstack/react-query";
 import {
   appSolanaConfig,
   CLUSTERS,
+  isCluster,
   type SolanaCluster,
   type SolanaConfig,
 } from "@/config/solana";
@@ -38,35 +47,71 @@ const subscribeWallets = (listener: () => void) => {
     b();
   };
 };
-interface ConnectFeature {
-  connect(input?: {
-    silent?: boolean;
-  }): Promise<{ accounts: readonly WalletAccount[] }>;
-}
-interface DisconnectFeature {
-  disconnect(): Promise<void>;
-}
-interface EventsFeature {
-  on(
-    event: "change",
-    listener: (event: { accounts?: readonly WalletAccount[] }) => void,
-  ): () => void;
+type ConnectFeature = StandardConnectFeature[typeof StandardConnect];
+type DisconnectFeature = StandardDisconnectFeature[typeof StandardDisconnect];
+type EventsFeature = StandardEventsFeature[typeof StandardEvents];
+class WalletTimeoutError extends Error {}
+async function walletResponse<T>(operation: () => Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new WalletTimeoutError(
+                "Wallet did not answer. Unlock it and try again.",
+              ),
+            ),
+          20_000,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 export function compatibleWallet(wallet: Wallet) {
-  const feature = wallet.features["standard:connect"] as
+  if (!wallet || typeof wallet !== "object") return false;
+  const feature = wallet.features?.[StandardConnect] as
     ConnectFeature | undefined;
+  const events = wallet.features?.[StandardEvents] as EventsFeature | undefined;
+  const disconnect = wallet.features?.[StandardDisconnect] as
+    DisconnectFeature | undefined;
   return (
-    wallet.chains.some((chain) => chain.startsWith("solana:")) &&
-    typeof feature?.connect === "function"
+    wallet.version === "1.0.0" &&
+    typeof wallet.name === "string" &&
+    wallet.name.trim().length > 0 &&
+    wallet.name.length <= 128 &&
+    Array.isArray(wallet.chains) &&
+    wallet.chains.some(
+      (chain) => typeof chain === "string" && chain.startsWith("solana:"),
+    ) &&
+    feature?.version === "1.0.0" &&
+    typeof feature.connect === "function" &&
+    events?.version === "1.0.0" &&
+    typeof events.on === "function" &&
+    disconnect?.version === "1.0.0" &&
+    typeof disconnect.disconnect === "function"
   );
 }
 export function selectAccount(
   accounts: readonly WalletAccount[],
   chain: string,
 ) {
-  const valid = accounts.filter(
+  const valid: WalletAccount[] = (
+    Array.isArray(accounts) ? accounts : []
+  ).filter(
     (account) =>
-      account.chains.some((value) => value.startsWith("solana:")) &&
+      account &&
+      Array.isArray(account.chains) &&
+      account.chains.some(
+        (value: unknown) =>
+          typeof value === "string" && value.startsWith("solana:"),
+      ) &&
+      ArrayBuffer.isView(account.publicKey) &&
+      account.publicKey.byteLength === 32 &&
       matchingPublicKey(account.address, new Uint8Array(account.publicKey)),
   );
   return (
@@ -91,6 +136,11 @@ interface WalletContext {
   selectCluster: (cluster: SolanaCluster) => void;
 }
 const Context = createContext<WalletContext | null>(null);
+interface Settings {
+  config: SolanaConfig | null;
+  error: string | null;
+  configured: Partial<Record<SolanaCluster, SolanaConfig>>;
+}
 export function RetrySolanaProvider({
   children,
   initialConfig,
@@ -98,12 +148,14 @@ export function RetrySolanaProvider({
   children: ReactNode;
   initialConfig?: SolanaConfig;
 }) {
-  const [settings, setSettings] = useState(() => {
+  const [settings, setSettings] = useState<Settings>(() => {
     try {
-      return { config: initialConfig ?? appSolanaConfig(), error: null };
+      const config = initialConfig ?? appSolanaConfig();
+      return { config, error: null, configured: { [config.cluster]: config } };
     } catch {
       return {
         config: null,
+        configured: {},
         error:
           "Invalid Solana configuration. Check the public cluster and RPC settings.",
       };
@@ -114,10 +166,16 @@ export function RetrySolanaProvider({
     registeredWallets,
     serverWallets,
   );
-  const wallets = useMemo(
-    () => registered.filter(compatibleWallet),
-    [registered],
-  );
+  const wallets = useMemo(() => {
+    const names = new Set<string>();
+    return registered.filter((candidate) => {
+      if (!compatibleWallet(candidate)) return false;
+      const name = candidate.name.trim().toLowerCase();
+      if (names.has(name)) return false;
+      names.add(name);
+      return true;
+    });
+  }, [registered]);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [account, setAccount] = useState<WalletAccount | null>(null);
   const [status, setStatus] = useState<WalletContext["status"]>("disconnected");
@@ -137,24 +195,16 @@ export function RetrySolanaProvider({
       const attempt = ++generation.current;
       setError(null);
       if (!silent) setStatus("connecting");
-      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         if (!compatibleWallet(selected))
           throw new Error("This wallet has no Solana connection support.");
         const feature = selected.features["standard:connect"] as ConnectFeature;
-        const response = await Promise.race([
+        const response = await walletResponse(() =>
           feature.connect({ silent }),
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(
-              () =>
-                reject(
-                  new Error("Wallet did not answer. Unlock it and try again."),
-                ),
-              20_000,
-            );
-          }),
-        ]);
+        );
         if (generation.current !== attempt) return;
+        if (!getWallets().get().includes(selected))
+          throw new Error("Wallet no longer available.");
         const next = selectAccount(response.accounts, currentChain);
         if (!next)
           throw new Error("The wallet did not return a valid Solana account.");
@@ -173,13 +223,10 @@ export function RetrySolanaProvider({
         setStatus("disconnected");
         if (!silent)
           setError(
-            cause instanceof Error &&
-              cause.message.startsWith("Wallet did not answer")
+            cause instanceof WalletTimeoutError
               ? cause.message
               : "Connection rejected or unavailable. Unlock your wallet and try again.",
           );
-      } finally {
-        clearTimeout(timer);
       }
     },
     [currentChain],
@@ -222,21 +269,57 @@ export function RetrySolanaProvider({
   useEffect(() => {
     if (!wallet) return;
     const subscribedGeneration = generation.current;
+    let active = true;
+    let off: unknown;
     const events = wallet.features["standard:events"] as
       EventsFeature | undefined;
-    return events?.on("change", (event) => {
-      if (generation.current !== subscribedGeneration || !event.accounts)
-        return;
-      const next = selectAccount(event.accounts, currentChain);
-      setAccount(next ?? null);
-      if (!next) {
+    const unavailable = () =>
+      queueMicrotask(() => {
+        if (!active || generation.current !== subscribedGeneration) return;
+        generation.current++;
         setWallet(null);
+        setAccount(null);
         setStatus("disconnected");
+        setError(
+          "Wallet account updates unavailable. Reconnect a compatible wallet.",
+        );
+      });
+    try {
+      if (!events || typeof events.on !== "function") unavailable();
+      else {
+        off = events.on("change", (event) => {
+          if (
+            !active ||
+            generation.current !== subscribedGeneration ||
+            !event ||
+            event.accounts === undefined
+          )
+            return;
+          const next = selectAccount(event.accounts, currentChain);
+          setAccount(next ?? null);
+          if (!next) {
+            setWallet(null);
+            setStatus("disconnected");
+          }
+        });
+        if (typeof off !== "function") unavailable();
       }
-    });
+    } catch {
+      unavailable();
+    }
+    return () => {
+      active = false;
+      if (typeof off === "function") {
+        try {
+          off();
+        } catch {
+          /* A faulty extension must not break React cleanup. */
+        }
+      }
+    };
   }, [wallet, currentChain, status]);
   const disconnect = useCallback(async () => {
-    generation.current++;
+    const attempt = ++generation.current;
     restored.current = true;
     setAccount(null);
     setWallet(null);
@@ -248,20 +331,26 @@ export function RetrySolanaProvider({
       /* Optional. */
     }
     try {
-      await (
-        wallet?.features["standard:disconnect"] as DisconnectFeature | undefined
-      )?.disconnect();
+      const feature = wallet?.features[StandardDisconnect] as
+        DisconnectFeature | undefined;
+      if (feature) await walletResponse(() => feature.disconnect());
     } catch {
-      setError(
-        "Disconnected from RETRY. The wallet could not revoke its session.",
-      );
+      if (generation.current === attempt)
+        setError(
+          "Disconnected from RETRY. The wallet could not revoke its session.",
+        );
     }
   }, [wallet]);
   const selectCluster = useCallback((cluster: SolanaCluster) => {
-    setSettings({
-      config: { cluster, rpcUrl: CLUSTERS[cluster].rpc },
+    if (!isCluster(cluster)) return;
+    setSettings((previous) => ({
+      ...previous,
+      config: previous.configured[cluster] ?? {
+        cluster,
+        rpcUrl: CLUSTERS[cluster].rpc,
+      },
       error: null,
-    });
+    }));
   }, []);
   return (
     <Context.Provider

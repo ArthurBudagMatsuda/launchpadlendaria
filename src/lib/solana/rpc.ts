@@ -2,6 +2,21 @@ import { createSolanaRpc } from "@solana/kit";
 import { CLUSTERS, type SolanaConfig } from "@/config/solana";
 import { parseAddress, type SolanaAddress } from "./address";
 const verified = new Map<string, number>();
+const clients = new Map<string, ReturnType<typeof createSolanaRpc>>();
+function rpcFor(url: string) {
+  let rpc = clients.get(url);
+  if (!rpc) {
+    rpc = createSolanaRpc(url);
+    if (clients.size >= 8) {
+      const oldest = clients.keys().next().value!;
+      clients.delete(oldest);
+      for (const cluster of ["devnet", "mainnet-beta"])
+        verified.delete(`${cluster}:${oldest}`);
+    }
+    clients.set(url, rpc);
+  }
+  return rpc;
+}
 export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 export const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 export type TokenProgram = typeof TOKEN_PROGRAM | typeof TOKEN_2022_PROGRAM;
@@ -16,22 +31,34 @@ export async function readSolana<T>(
 ): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const controller = new AbortController();
-    const abort = () => controller.abort();
+    let rejectAbort!: (reason: Error) => void;
+    const aborted = new Promise<never>((_resolve, reject) => {
+      rejectAbort = reject;
+    });
+    const abort = () => {
+      controller.abort();
+      rejectAbort(new Error("RPC read canceled or timed out."));
+    };
     const timer = setTimeout(abort, timeoutMs);
     signal?.addEventListener("abort", abort, { once: true });
     if (signal?.aborted) abort();
     try {
-      const rpc = createSolanaRpc(config.rpcUrl);
+      const rpc = rpcFor(config.rpcUrl);
       const key = `${config.cluster}:${config.rpcUrl}`;
-      if ((verified.get(key) ?? 0) < Date.now()) {
-        const genesis = await rpc
-          .getGenesisHash()
-          .send({ abortSignal: controller.signal });
-        if (genesis !== CLUSTERS[config.cluster].genesis)
-          throw new Error("RPC_CLUSTER_MISMATCH");
-        verified.set(key, Date.now() + 60_000);
-      }
-      return await read(rpc, controller.signal);
+      const operation = async () => {
+        if (controller.signal.aborted) throw new Error("RPC read canceled.");
+        if ((verified.get(key) ?? 0) < Date.now()) {
+          const genesis = await rpc
+            .getGenesisHash()
+            .send({ abortSignal: controller.signal });
+          if (genesis !== CLUSTERS[config.cluster].genesis)
+            throw new Error("RPC_CLUSTER_MISMATCH");
+          verified.set(key, Date.now() + 60_000);
+        }
+        if (controller.signal.aborted) throw new Error("RPC read canceled.");
+        return await read(rpc, controller.signal);
+      };
+      return await Promise.race([operation(), aborted]);
     } catch (error) {
       if (
         signal?.aborted ||

@@ -1,4 +1,32 @@
-import type { Candle } from "./types";
+import type { Candle, CandleInterval } from "./types";
+
+export const INTERVAL_SECONDS: Record<CandleInterval, number> = {
+  "5m": 300,
+  "15m": 900,
+  "1h": 3600,
+  "4h": 14_400,
+  "1d": 86_400,
+};
+
+/** Intervals without trades between the first and the last candle. */
+export function countGaps(candles: readonly Candle[], intervalSeconds: number) {
+  let gaps = 0;
+  for (let i = 1; i < candles.length; i += 1)
+    gaps += (candles[i].time - candles[i - 1].time) / intervalSeconds - 1;
+  return gaps;
+}
+
+/**
+ * Pages of one series as a single run of candles, oldest first. A candle in
+ * several pages keeps the copy from the latest argument, so pass the oldest
+ * page first and the newest page last.
+ */
+export function mergeCandles(...pages: readonly (readonly Candle[])[]) {
+  const byTime = new Map<number, Candle>();
+  for (const page of pages)
+    for (const candle of page) byTime.set(candle.time, candle);
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
 
 /**
  * How many of the newest candles the chart opens on: about 7 px per bar, so a

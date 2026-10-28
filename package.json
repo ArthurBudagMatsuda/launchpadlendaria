@@ -19,6 +19,7 @@
     "test:e2e": "playwright test",
     "test:chain": "vitest run --config vitest.chain.config.ts",
     "test:chain:browser": "playwright test --config playwright.chain.config.ts",
+    "test:rpc:live": "vitest run --config vitest.live.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

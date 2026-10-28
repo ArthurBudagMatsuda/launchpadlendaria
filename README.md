@@ -27,6 +27,7 @@ pnpm build
 pnpm build:pages
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm test:rpc:live
 ```
 
 Em ambientes com Chrome já instalado pode-se definir `PLAYWRIGHT_CHANNEL=chrome` para o teste local. CI usa o Chromium instalado pelo Playwright. Os testes de navegador servem o export sob `/launchpadlendaria/` e simulam Wallet Standard/RPC; não fazem transações.
@@ -37,11 +38,15 @@ Copie `.env.example` para configuração local quando necessário. Todos os `NEX
 
 A migração está na branch `migration/retry-solana`, baseada na versão integrada `b5a19d4` de `main`. O trabalho é revisado por Draft PR. CI gera artefatos de teste; esta branch não contém job de publicação pública. Nenhuma alteração foi aplicada ao site público nem ao protocolo em Mainnet.
 
+A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histórico paginado do gráfico. Estado atual: revisão técnica com validação manual de extensões pendente. `test:rpc:live` é uma sonda opt-in de contas públicas, não um teste de carteira.
+
 `build:pages` gera `out/`, `.nojekyll` e URLs sob `/launchpadlendaria`. O export continua compatível com GitHub Pages. Os headers do build Node não são configuráveis pelo Pages; escolher hospedagem/domínio e política de segurança antes de uma publicação autorizada.
 
 ## Documentação atual
 
 - [Relatório completo da migração](docs/reports/RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md)
+- [Revisão do PR #6 e correções](docs/reports/RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md)
+- [Matriz de carteiras reais e simuladas](docs/testing/SOLANA_REAL_WALLET_TEST_MATRIX.md)
 - [Arquitetura](docs/SOLANA_ARCHITECTURE.md)
 - [Carteiras e matriz manual](docs/SOLANA_WALLET_INTEGRATION.md)
 - [Configuração de redes e RPC](docs/SOLANA_NETWORK_CONFIGURATION.md)
