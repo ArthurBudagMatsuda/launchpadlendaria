@@ -199,7 +199,7 @@ Nenhum override foi aplicado para essas duas: forçar versões maiores dentro de
 
 ## 12. Discover/Trade/Create
 
-- **Discover:** sem mudança de comportamento. O banner do topo agora é o mesmo do X (fundo sem logo e sem texto, proporção 3:1), com a logo 3D flutuando no lugar dela num ciclo de 5 s, só com CSS. O título continua na página para leitores de tela, e com "reduzir movimento" a logo fica parada. Pedido de Iam em 28/10. O catálogo demo (15 tokens fictícios, marcados `Demo Data`) não depende da carteira. O Playwright confere o catálogo demo, a rede alvo com a carteira desconectada e as imagens com base path. Filtros e busca não mudaram e seguem cobertos pelos testes da Etapa 1.
+- **Discover:** sem mudança de comportamento. O banner do topo agora usa o fundo do banner do X (sem logo e sem texto, proporção 3:1), com a logo 3D flutuando no lugar dela num ciclo de 5 s, só com CSS, e o título, a frase e o botão "Create Token" da Etapa 1 por cima do lado esquerdo. No celular o card tem altura fixa e a arte desliza para a direita, ao lado do texto. Com "reduzir movimento" a logo fica parada. Pedido de Iam em 28/10. O catálogo demo (15 tokens fictícios, marcados `Demo Data`) não depende da carteira. O Playwright confere o catálogo demo, a rede alvo com a carteira desconectada e as imagens com base path. Filtros e busca não mudaram e seguem cobertos pelos testes da Etapa 1.
 - **Trade (`/token/[id]`):** o painel mostra `WalletStatus` (endereço e rede, ou rede errada com troca) e o saldo real em ETH no lugar da leitura antiga. A estimativa continua com a taxa ilustrativa fixa da Etapa 1, e o botão "Trading Coming Soon" só mostra um aviso. Nenhuma chamada de assinatura, envio ou approve acontece (verificado).
 - **Create:** o fluxo de três passos e o rascunho local não mudaram. O resumo do lançamento mostra o estado da carteira e explica que conectar é opcional por enquanto. O botão de lançar continua desligado. O Playwright confere que o rascunho (com imagem) continua salvo depois de desconectar.
 
@@ -249,7 +249,7 @@ Ao final o teste confere: uma única solicitação de conexão durante toda a na
 10. Desconectar pelo menu e quando a carteira encerra a sessão.
 11. Seletor aberto e fechado pelo teclado, sem entrada duplicada de carteira.
 12. Com "reduzir movimento" ligado no sistema, o círculo de carregamento continua girando devagar (2,4 s por volta).
-13. O banner do Discover carrega o fundo e a logo com base path, mantém a proporção 3:1 e a logo flutua; com "reduzir movimento" ela fica parada.
+13. O banner do Discover mostra o título e o botão "Create Token", carrega o fundo e a logo com base path, mantém a arte em 3:1 com o título antes da logo, e a logo flutua; com "reduzir movimento" ela fica parada.
 
 Esses testes provam o comportamento do app com uma carteira que segue os padrões EIP-1193/EIP-6963. Eles não provam compatibilidade com uma carteira real específica.
 
@@ -331,7 +331,9 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 | `6b03949` | docs: Phantom volta ao normal e troca da Coinbase, segundo Iam                          |
 | `f9c5b69` | docs: Iam confirmou o círculo no preview                                                |
 | `85df3ed` | feat(discover): banner do X com a logo flutuando                                        |
-| (este)    | docs: banner do Discover neste relatório                                                |
+| `2ed334a` | docs: banner do Discover neste relatório                                                |
+| `d4d3465` | feat(discover): título e botão de volta sobre o banner novo                             |
+| (este)    | docs: título de volta no banner                                                         |
 
 **Preview temporário** (fora do PR #2, a pedido de Iam para testar carteiras reais sem merge): a branch `feat/retry-integrated-preview` tem o `pages.yml` proposto em `docs/integration/GITHUB_PAGES.md` (`f4435f2`), o registro de diagnóstico `?debug=web3` (`a195c44`) e os merges das correções (`6c96b56`, `09fd2b8`). Cada push nela republica o site. Um push na `main` ou nas branches das etapas republica o preview dividido.
 
