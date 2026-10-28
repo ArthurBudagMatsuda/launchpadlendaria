@@ -41,14 +41,28 @@ No primeiro teste com os programas clonados, a pool authority tinha 0 SOL no val
 
 Config RETRY: 50% da liquidez graduada para o parceiro e 50% para o criador, **as duas partes 100% travadas para sempre** (`permanentLockedLiquidityPercentage`), 0% livre, sem vesting.
 
+**Resto de arredondamento**: o DBC calcula a parte travada de cada posição arredondando para baixo (`get_liquidity_distribution`). O que sobra, no máximo 1 unidade de liquidez, fica destravado na posição do criador. Nos testes foi exatamente 1 unidade, contra cerca de 4,1 × 10³² unidades travadas por posição. É poeira sem valor prático, mas a afirmação exata é "toda a liquidez travada para sempre, exceto 1 unidade de arredondamento".
+
 Na migração o DBC chama `permanent_lock_position` do DAMM v2 para cada posição e depois passa a NFT da posição para o parceiro (fee claimer da config) e para o criador. Quem tem a NFT pode coletar as taxas de LP da pool graduada (1%), mas **não pode retirar a liquidez**.
 
 O teste on-chain (`tests/chain/meteora-flow.chain.ts`, etapa "migrates to DAMM v2") lê as duas contas `Position` do DAMM v2 depois da migração e exige:
 
-- `unlocked_liquidity = 0` e `vested_liquidity = 0`;
+- `unlocked_liquidity ≤ 1` (o resto de arredondamento acima) e `vested_liquidity = 0`;
 - `permanent_locked_liquidity > 0`;
 - uma NFT com o parceiro e outra com o criador;
 - `isMigrated = 1`, status `graduated`, e a pool DAMM v2 pertencendo ao programa cp-amm.
+
+### Resultado medido
+
+No GitHub Actions, com os binários de Devnet e com os de Mainnet ([execução](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40769483758)):
+
+- migração confirmada, pool DAMM v2 criada, `isMigrated = 1`;
+- custo total para quem enviou: **0,032518200 SOL** (0,000015 de taxa de rede, 3 assinaturas, e o resto é o aluguel das contas novas do DAMM v2, reembolsado à pool authority), cerca de 280 mil compute units;
+- as duas posições com `permanent_locked_liquidity` ≈ 4,1166 × 10³² e `vested_liquidity = 0`; `unlocked_liquidity = 1` numa e `0` na outra;
+- uma NFT de posição com o parceiro e a outra com o criador;
+- saldo da pool authority depois da migração: não diminuiu.
+
+Saldo da pool authority medido em 28/10/2026: 99,226635387 SOL na Devnet e 68,824058017 SOL na Mainnet.
 
 Os resultados de cada execução estão no relatório: [RETRY_METEORA_MVP_IMPLEMENTATION_REPORT.md](../reports/RETRY_METEORA_MVP_IMPLEMENTATION_REPORT.md), seções 21 a 23.
 
