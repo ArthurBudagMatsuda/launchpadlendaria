@@ -78,19 +78,20 @@ O RETRY deixou de mostrar o catálogo fictício. Discover, página do token e Po
 
 As leituras foram feitas pelo script `scripts/verify-market-data.mjs`, que só faz chamadas `eth_*` de leitura e GETs HTTP. Ele roda no workflow `.github/workflows/market-data-verify.yml` (permissão `contents: read`, nunca publica nada). Evidências: runs [40623949754](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40623949754) (bloco 53.183.474) e [40624224187](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40624224187) (bloco 53.183.561), ambas em 28/10/2026.
 
-| Verificação                          | Resultado                                                                                                                              |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Formato e checksum                   | Válido. Checksum: `0xB200000000000000000000585fd80C20af698f01`                                                                         |
-| Rede do RPC                          | `eth_chainId` = 8453 (Base mainnet)                                                                                                    |
-| Código no endereço                   | 1 byte, `0xef`. É o marcador dos tokens B20, que são precompiles em Rust. Um teste de "bytecode maior que zero" sozinho seria enganoso |
-| Proxy                                | Slots EIP-1967 (implementation, admin, beacon) vazios. Não é proxy EIP-1967 nem clone EIP-1167                                         |
-| `name()` / `symbol()` / `decimals()` | "one life, its worth an attempt" / `worth` / 18                                                                                        |
-| `totalSupply()`                      | 1.000.000.000.000.000.000.000.000.000 unidades = 1.000.000.000 tokens                                                                  |
-| Fábrica B20 (`0xB20f…0000`)          | `isB20` = true, `isB20Initialized` = true. Byte 10 do endereço = `0x00`, variante ASSET                                                |
-| `contractURI()`                      | `ipfs://bafkreif2dl3lqoipfn7eow6j3yfz45b75oqjec4zxpzux3r43gbnr2dslm`. Não foi carregado nem usado: metadados de marca não verificados  |
-| `owner()`                            | A chamada falhou. Nenhum dono foi identificado                                                                                         |
-| Logs de Transfer recentes            | `eth_getLogs` falhou no RPC público. Holders não foram indexados                                                                       |
-| Mesmo endereço em outras redes       | Base Sepolia: `isB20Initialized` = false e `name()` reverte. Ethereum, Arbitrum e Optimism: sem código                                 |
+| Verificação                          | Resultado                                                                                                                                                                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Formato e checksum                   | Válido. Checksum: `0xB200000000000000000000585fd80C20af698f01`                                                                                                                                                                                                     |
+| Rede do RPC                          | `eth_chainId` = 8453 (Base mainnet)                                                                                                                                                                                                                                |
+| Código no endereço                   | 1 byte, `0xef`. É o marcador dos tokens B20, que são precompiles em Rust. Um teste de "bytecode maior que zero" sozinho seria enganoso                                                                                                                             |
+| Proxy                                | Slots EIP-1967 (implementation, admin, beacon) vazios. Não é proxy EIP-1967 nem clone EIP-1167                                                                                                                                                                     |
+| Verificação em explorador            | Não confirmada. O Blockscout respondeu 403, e o BaseScan não foi consultado porque a API dele exige chave. Com o código `0xef` de precompile, não há código-fonte de contrato para verificar do jeito usual: a identidade vem da fábrica B20 e das leituras ERC-20 |
+| `name()` / `symbol()` / `decimals()` | "one life, its worth an attempt" / `worth` / 18                                                                                                                                                                                                                    |
+| `totalSupply()`                      | 1.000.000.000.000.000.000.000.000.000 unidades = 1.000.000.000 tokens                                                                                                                                                                                              |
+| Fábrica B20 (`0xB20f…0000`)          | `isB20` = true, `isB20Initialized` = true. Byte 10 do endereço = `0x00`, variante ASSET                                                                                                                                                                            |
+| `contractURI()`                      | `ipfs://bafkreif2dl3lqoipfn7eow6j3yfz45b75oqjec4zxpzux3r43gbnr2dslm`. Não foi carregado nem usado: metadados de marca não verificados                                                                                                                              |
+| `owner()`                            | A chamada falhou. Nenhum dono foi identificado                                                                                                                                                                                                                     |
+| Logs de Transfer recentes            | `eth_getLogs` falhou no RPC público. Holders não foram indexados                                                                                                                                                                                                   |
+| Mesmo endereço em outras redes       | Base Sepolia: `isB20Initialized` = false e `name()` reverte. Ethereum, Arbitrum e Optimism: sem código                                                                                                                                                             |
 
 **Conclusão:** é um token B20 real e ativo na Base mainnet. O endereço válido não prova legitimidade e nada liga o token à RETRY. Por isso ele aparece como token externo rastreado, sem logo, site ou redes sociais, já que nenhum desses metadados foi verificado. Existe um token **impostor**, `0x5e5Ff0170d13049e0e048F8eabc98f8FBd4eEFD1`, com o mesmo nome e símbolo (`worth`), pareado contra o verdadeiro. O token é identificado sempre por chain + endereço, nunca pelo símbolo.
 
@@ -218,6 +219,7 @@ src/components/market/          token em destaque, página do token, gráfico, b
 ## 11. Token Detail
 
 - `/token/base/<endereço>/` é gerada no build para cada token de `TRACKED_ASSETS`, com `dynamicParams = false`. Rotas desconhecidas dão 404 de verdade.
+- As URLs antigas da demo (`/token/orbit/` e parecidas) deixaram de existir, porque eram páginas de tokens que nunca existiram. Os links internos apontam para as rotas novas, e as demais rotas (`/`, `/create/`, `/portfolio/`) continuam iguais.
 - **Cabeçalho:** nome e símbolo do RPC, selo "Tracked on RETRY · External token", "Base mainnet · Chain 8453", selo "B20 · Asset", botão de copiar endereço e link do BaseScan. Se os metadados on-chain mudarem em relação ao snapshot verificado, aparece um aviso.
 - **Estatísticas:** preço em USD com a variação de 24 h, preço em ETH, volume de 24 h da pool, liquidez da pool, **FDV · calculated** (supply on-chain × preço da pool primária) e **Market cap: Unavailable**. Abaixo, a faixa de variações (5m, 1h, 6h, 24h), compras e vendas em 24 h e holders "Unavailable".
 - **Gráfico:** seção 9.
@@ -307,16 +309,19 @@ src/components/market/          token em destaque, página do token, gráfico, b
 
 ## 16. Testes
 
-| Comando                                                     | Resultado                                                                            |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm format:check`                                         | Passou                                                                               |
-| `pnpm lint` (`--max-warnings 0`)                            | Passou, 0 avisos                                                                     |
-| `pnpm typecheck`                                            | Passou                                                                               |
-| `pnpm test` (Vitest)                                        | **10 arquivos, 80 testes, todos passando**                                           |
-| `pnpm build`                                                | Passou; `/token/base/0xb200…8f01` gerada como SSG                                    |
-| `NEXT_PUBLIC_BASE_PATH=/launchpadlendaria pnpm build:pages` | Passou; rotas da seção 13 exportadas                                                 |
-| `pnpm test:e2e` (Playwright, Chromium)                      | **34 de 34 passando** (17 cenários × desktop Chrome e Pixel 7), em cerca de 1 minuto |
-| Cada commit intermediário                                   | `tsc --noEmit` e Vitest passando em `a46f942`, `17742e7` e `efa129f`                 |
+| Comando                                                                            | Resultado                                                                            |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `pnpm install --frozen-lockfile`                                                   | Passou no CI; o lockfile não mudou                                                   |
+| `pnpm format:check`                                                                | Passou                                                                               |
+| `pnpm lint` (`--max-warnings 0`)                                                   | Passou, 0 avisos                                                                     |
+| `pnpm typecheck`                                                                   | Passou                                                                               |
+| `pnpm test` (Vitest)                                                               | **10 arquivos, 80 testes, todos passando**                                           |
+| `pnpm build`                                                                       | Passou; `/token/base/0xb200…8f01` gerada como SSG                                    |
+| `NEXT_PUBLIC_BASE_PATH=/launchpadlendaria pnpm build:pages`                        | Passou; rotas da seção 13 exportadas                                                 |
+| `pnpm test:e2e` (Playwright, Chromium)                                             | **34 de 34 passando** (17 cenários × desktop Chrome e Pixel 7), em cerca de 1 minuto |
+| Cada commit intermediário                                                          | `tsc --noEmit` e Vitest passando em `a46f942`, `17742e7` e `efa129f`                 |
+| `pnpm --filter @retry/web3 check` (módulo da carteira, sem alterações nesta etapa) | Passou: typecheck, Biome (61 arquivos), **12 arquivos e 126 testes** Vitest e build  |
+| `pnpm --filter retry-web3-playground exec playwright test` (bancada Web3)          | Passou: **22 de 22** (11 cenários × desktop e celular)                               |
 
 Testes Vitest por arquivo:
 
@@ -340,6 +345,8 @@ Cenários Playwright novos ou alterados:
 Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-responses.ts`, copiadas das execuções do workflow), RPC simulado e carteira EIP-6963 simulada. O e2e bloqueia qualquer host fora da allowlist.
 
 **Não testado nesta sessão:** a interface contra as APIs ao vivo num navegador real, porque o container não tem rede para a Base nem para os provedores (as respostas ao vivo foram verificadas pelo workflow, mas não renderizadas), e carteiras reais.
+
+**Não se aplica:** credenciais de API ausentes, porque nenhum provedor usado exige chave. Não houve falhas preexistentes nem regressões nos comandos acima.
 
 ## 17. Segurança
 
@@ -386,7 +393,8 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
   - `efa129f` feat(ui): real Base market data on Discover, Token Detail and Portfolio
   - `9bad240` refactor(demo): move the fictional catalogue into test fixtures
   - `5ffba2e` docs: describe the real market data flow and its hosting limits
-  - o commit deste relatório
+  - `b1c6e95` docs(report): Stage 4 real market data report (pt-BR)
+  - um último commit com ajustes deste relatório (testes do módulo Web3, explorador e situação final)
 - **Pull request:** [#3](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/3), em Draft, sem auto-merge, atribuída a CapotaVelha.
   - O pedido de revisão para CapotaVelha foi recusado pelo GitHub, porque a sessão publica como CapotaVelha, que é o autor da PR.
   - A base é `feat/retry-frontend-web3-integration`, para o diff mostrar só a Etapa 4. Se a PR #2 entrar na `main` antes, esta PR deve ser redirecionada para a `main`.
@@ -397,7 +405,7 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
     - CI no push ([40629723139](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40629723139)): os jobs `validate` e "Browser tests (static export, desktop and mobile)" passaram.
     - CI na PR ([40629769840](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40629769840)): passou.
     - Nova verificação ao vivo ([40629723131](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40629723131), de 03:59 a 04:01 UTC): passou. Os detalhes estão na seção 9.
-  - O commit deste relatório só altera documentação. O resultado do CI dele aparece na PR #3.
+  - Os commits deste relatório só alteram documentação. O CI deles aparece na PR #3.
 - **GitHub Pages:** nada publicado.
 
 ## 20. Pendências (Critical/High/Medium/Low)
@@ -436,7 +444,10 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
 4. Ordem de merge: PR #2 primeiro, depois esta PR, redirecionada para a `main`.
 5. Planejar um indexador (holders, supply circulante, eventos da futura fábrica RETRY) antes de mostrar market cap ou tokens lançados na RETRY.
 6. A Etapa 5 (contratos da fábrica, curva e graduação) continua separada, com especificação e auditoria próprias.
+7. Trading de verdade só depois dos contratos auditados e de uma rota verificada: cotação vinda da rota real, simulação antes do envio e confirmação explícita na carteira. Até lá, o painel continua sem execução.
 
 ## 22. Conclusão
 
 O RETRY agora mostra o mercado real de um token verificado na Base, com proveniência em cada número, uma política de pools que resiste ao token impostor, gráficos reais com lacunas preservadas e falhas de provedor visíveis, sem dado substituto. O catálogo fictício saiu do app e um teste impede que volte. Trading, carteira custodial e qualquer escrita on-chain continuam fora. A branch está publicada com a Draft PR #3; o preview público só muda com a aprovação de Iam.
+
+**Situação:** a Etapa 4 está concluída no escopo pedido. Os 27 critérios de aceite têm evidência e nenhum ficou bloqueado. Falta uma validação: ver a interface contra as APIs ao vivo num navegador real, o que depende do preview ou de uma execução local com rede.
