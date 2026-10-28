@@ -86,7 +86,7 @@ pnpm preview:pages            # serves out/ at http://127.0.0.1:4174/launchpadle
 
 CI (`.github/workflows/ci.yml` and `retry-web3.yml`) runs the checks above on every push and pull request with read-only permissions and never deploys. The Pages export is uploaded as a 7-day build artifact for review.
 
-The public preview at <https://arthurbudagmatsuda.github.io/launchpadlendaria/> is **not** this app yet: `.github/workflows/pages.yml` still publishes the Stage 1 branch at `/` and the Stage 2 test bench at `/web3/` ([docs/PREVIEW.md](docs/PREVIEW.md)). Switching it to the integrated app is a separate, reviewable change described in [docs/integration/GITHUB_PAGES.md](docs/integration/GITHUB_PAGES.md).
+`.github/workflows/pages.yml` publishes this app from `main` at <https://arthurbudagmatsuda.github.io/launchpadlendaria/>, with the Web3 test bench at `/web3/`. Pushes to other branches do not publish anything; see [docs/integration/GITHUB_PAGES.md](docs/integration/GITHUB_PAGES.md).
 
 GitHub Pages is static hosting: the security headers in `next.config.ts` apply only to the Node build, and the wallet session is restored in the browser after load. MetaMask currently flags the shared `*.github.io` domain on its connect screen; a public launch should use RETRY's own domain.
 

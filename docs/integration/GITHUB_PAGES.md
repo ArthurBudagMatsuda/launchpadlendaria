@@ -1,12 +1,12 @@
 # Publishing the integrated app on GitHub Pages
 
-**Status: not applied.** The shared workflow `.github/workflows/pages.yml` is unchanged on every branch. It still builds the Stage 1 app from `feat/etapa-1-foundation` and the Web3 playground from `feat/etapa-2-web3`, and it only runs on pushes to `main`, `feat/etapa-1-foundation` and `feat/etapa-2-web3` (or by hand). Pushing `feat/retry-frontend-web3-integration` does not deploy anything, and merging it into `main` would republish the same two stage branches, not the integrated app.
+**Status: applied in this branch (PR #2), on Iam's go-ahead to merge.** `.github/workflows/pages.yml` now builds the integrated app and the Web3 test bench from the commit being published and runs only on pushes to `main` (or by hand). Pushing `feat/retry-frontend-web3-integration` does not deploy anything; merging it into `main` publishes the integrated app.
 
-Switching the public preview to the integrated app is a publication decision for the repository owner. This page has the workflow to use when that is approved.
+Before this change the workflow built the Stage 1 app from `feat/etapa-1-foundation` and the playground from `feat/etapa-2-web3`, so merging the integration would have brought back the split preview. While the change was pending, the integrated app was published for real-wallet tests from the temporary branch `feat/retry-integrated-preview`, which has its own copy of this workflow.
 
 ## What changes
 
-| Today (`pages.yml`)                                                        | Proposed                                                                   |
+| Before (`pages.yml`)                                                       | Now                                                                        |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | App from `feat/etapa-1-foundation`, playground from `feat/etapa-2-web3`    | Both from the commit being published (`main` after the integration merges) |
 | Two installs: pnpm for the app, `npm ci` for the module and the playground | One `pnpm install --frozen-lockfile` for the workspace                     |
@@ -18,7 +18,7 @@ URLs stay the same: the app at `https://arthurbudagmatsuda.github.io/launchpadle
 
 ## Workflow
 
-Replace the `build` job's steps in `.github/workflows/pages.yml` with the steps below and narrow the trigger to `main`. The `deploy` job, permissions and concurrency stay as they are.
+The `build` job's steps in `.github/workflows/pages.yml` are the ones below, and the trigger is narrowed to `main`. The `deploy` job, permissions and concurrency did not change.
 
 ```yaml
 on:
@@ -73,16 +73,17 @@ jobs:
   # deploy: unchanged
 ```
 
-These commands were run on the integration branch: `pnpm build:pages`, then the playground build with `--base=/launchpadlendaria/web3/`, combined into `out/` and served under `/launchpadlendaria` with `pnpm preview:pages`. Both `/launchpadlendaria/` and `/launchpadlendaria/web3/` loaded with no page errors. The workflow itself has not run, because applying it would publish.
+The same steps have published the temporary preview from `feat/retry-integrated-preview` since 2026-10-27 (only the trigger and the `preview-version.txt` line differ), and real wallets were tested there. Locally, `pnpm build:pages` plus the playground build with `--base=/launchpadlendaria/web3/`, served under `/launchpadlendaria` with `pnpm preview:pages`, loaded both pages with no page errors.
 
 ## Order of operations
 
-1. Review and merge the integration pull request into `main`. That push runs the current `pages.yml`, which republishes the two stage branches as they are today, so the public site does not change.
-2. Commit the workflow above to `main` (a separate, reviewable change). Its push publishes the integrated app.
-3. Check `https://arthurbudagmatsuda.github.io/launchpadlendaria/preview-version.txt` shows the new commit, then connect a wallet on `/` and on a token page.
-4. If something is wrong, run the previous workflow by hand from the Actions tab (or revert the workflow commit) to restore the split preview.
+1. Merge PR #2 into `main` with "Create a merge commit". That push runs this workflow and publishes the integrated app.
+2. Check `https://arthurbudagmatsuda.github.io/launchpadlendaria/preview-version.txt` shows the merge commit, then connect a wallet on `/` and on a token page.
+3. If the deploy job waits, allow `main` under Settings → Environments → `github-pages`.
+4. Delete `feat/retry-integrated-preview` once the site from `main` is confirmed; it carries a debug panel that is not part of `main`.
+5. If something is wrong, revert the workflow commit on `main` to restore the split preview.
 
-`feat/etapa-1-foundation` and `feat/etapa-2-web3` carry their own copy of `pages.yml`. After the switch, pushes to those branches would still publish their old split preview over the integrated one, so remove the stage branches from their copies too (or stop pushing to them).
+`feat/etapa-1-foundation` and `feat/etapa-2-web3` carry their own copy of `pages.yml`. A push to either still publishes the old split preview over the integrated one, so stop pushing to them after the merge (or remove the stage branches from their copies).
 
 ## Hosting limits that do not change
 

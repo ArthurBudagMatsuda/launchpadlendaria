@@ -12,7 +12,7 @@ Nenhuma operação financeira foi ligada: não há swap, approve, criação de t
 
 O que foi verificado:
 
-- 24 testes Vitest do app (os 20 da Etapa 1, 2 de integração React com o provider real e 2 de formatação), 126 testes do módulo (124 da Etapa 2 e 2 de regressão novos), 26 testes Playwright no export estático do GitHub Pages (13 cenários × desktop e Pixel 7) e os 22 testes Playwright do playground. Todos passam localmente e no GitHub Actions.
+- 24 testes Vitest do app (os 20 da Etapa 1, 2 de integração React com o provider real e 2 de formatação), 126 testes do módulo (124 da Etapa 2 e 2 de regressão novos), 26 testes Playwright no export estático do GitHub Pages (13 cenários × desktop e Pixel 7) e os 24 testes Playwright do playground. Todos passam localmente e no GitHub Actions.
 - `format:check`, `lint`, `typecheck`, `build` e `build:pages` passam.
 
 Carteiras reais: a pedido de Iam, o app integrado foi publicado no preview do GitHub Pages a partir de uma branch temporária (`feat/retry-integrated-preview`), sem merge e sem mudar a `main`. Em 27/10 Iam testou MetaMask, Coinbase Wallet e Phantom. Conexão, header, saldo real, navegação e desconexão passaram. A volta para a Base Sepolia a partir de `Wrong Network` falhou: a Phantom aceita a troca e volta sozinha para a rede escolhida nela. O app agora detecta isso e mostra uma mensagem fixa explicando o que fazer; Iam confirmou a mensagem com a Phantom no preview e que, ao escolher Base Sepolia dentro da Phantom, o app volta ao normal. Na MetaMask, a troca de Base para Base Sepolia passou. A Coinbase Wallet passou no passo 4, segundo Iam. Detalhes na seção 14. Os testes automatizados continuam usando carteira EIP-6963 e RPC simulados.
@@ -122,7 +122,7 @@ Workspace pnpm com três pacotes (`.`, `packages/retry-web3`, `examples/web3-pla
 - `src/components/wallet/wallet-button.tsx`, `src/config/wagmi.ts`, `src/hooks/use-mounted.ts`, `src/hooks/use-wallet-balance.ts`: substituídos pelo módulo.
 - `packages/retry-web3/package-lock.json`, `examples/web3-playground/package-lock.json`: o workspace usa só `pnpm-lock.yaml`.
 
-`pages.yml`, o código Solidity e a simulação econômica (`feat/retry-protocol-architecture`) não foram alterados.
+O código Solidity e a simulação econômica (`feat/retry-protocol-architecture`) não foram alterados. O `pages.yml` só foi trocado no fim, quando Iam decidiu fazer o merge (seção 15).
 
 ## 7. Dependências
 
@@ -207,17 +207,17 @@ Nenhum override foi aplicado para essas duas: forçar versões maiores dentro de
 
 Ambiente local: container Linux, Node 24.22.1 (a versão pedida em `engines`) e Chromium do Playwright 1.63.0. O GitHub Actions também usa Node 24. Os testes Playwright do app também foram rodados com um build feito no Node 22.22.0, que foi onde apareceu o erro de hidratação da seção 17.
 
-| Comando                                                    | O que cobre                                                                      | Local, 27/10 | GitHub Actions |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------ | -------------- |
-| `pnpm format:check`                                        | Prettier no app e na documentação                                                | Passou       | Passou         |
-| `pnpm lint`                                                | ESLint, zero avisos                                                              | Passou       | Passou         |
-| `pnpm typecheck`                                           | Módulo compilado + `next typegen` + `tsc --noEmit`                               | Passou       | Passou         |
-| `pnpm test`                                                | 24 testes Vitest em 5 arquivos (20 da Etapa 1, 2 de integração, 2 de formatação) | 24/24        | Passou         |
-| `pnpm build`                                               | Build Next.js para servidor Node                                                 | Passou       | Passou         |
-| `pnpm build:pages`                                         | Export estático com `/launchpadlendaria`                                         | Passou       | Passou         |
-| `pnpm test:e2e`                                            | 13 cenários × desktop Chrome e Pixel 7 no export estático                        | 26/26        | Passou         |
-| `pnpm --filter @retry/web3 check`                          | Tipos, Biome, 126 testes Vitest e build do módulo                                | 126/126      | Passou         |
-| `pnpm --filter retry-web3-playground exec playwright test` | 11 cenários × desktop e mobile no playground, depois da correção no módulo       | 22/22        | Passou         |
+| Comando                                                    | O que cobre                                                                         | Local, 27/10 | GitHub Actions |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------ | -------------- |
+| `pnpm format:check`                                        | Prettier no app e na documentação                                                   | Passou       | Passou         |
+| `pnpm lint`                                                | ESLint, zero avisos                                                                 | Passou       | Passou         |
+| `pnpm typecheck`                                           | Módulo compilado + `next typegen` + `tsc --noEmit`                                  | Passou       | Passou         |
+| `pnpm test`                                                | 24 testes Vitest em 5 arquivos (20 da Etapa 1, 2 de integração, 2 de formatação)    | 24/24        | Passou         |
+| `pnpm build`                                               | Build Next.js para servidor Node                                                    | Passou       | Passou         |
+| `pnpm build:pages`                                         | Export estático com `/launchpadlendaria`                                            | Passou       | Passou         |
+| `pnpm test:e2e`                                            | 13 cenários × desktop Chrome e Pixel 7 no export estático                           | 26/26        | Passou         |
+| `pnpm --filter @retry/web3 check`                          | Tipos, Biome, 126 testes Vitest e build do módulo                                   | 126/126      | Passou         |
+| `pnpm --filter retry-web3-playground exec playwright test` | 12 cenários × desktop e mobile no playground, com o da troca desfeita pela carteira | 24/24        | Passou         |
 
 **Teste de integração React** (`tests/integration/app-wallet.test.tsx`), com o `Providers` real, o header, a navegação e as páginas, e uma carteira EIP-1193 simulada:
 
@@ -279,9 +279,9 @@ O ambiente onde este trabalho foi feito não alcança `github.io` nem os RPCs da
 | ------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | `ci.yml` (RETRY quality checks)      | push e pull_request                                              | Job `validate`: install, format, lint, typecheck, test, build, `build:pages` e upload do export como artefato por 7 dias. Job `browser`: Playwright desktop + mobile, traces como artefato quando falha | Não    |
 | `retry-web3.yml` (RETRY Web3 module) | push e pull_request em arquivos do módulo, playground e lockfile | Módulo (tipos, lint, testes, build) e Playwright do playground, agora com pnpm                                                                                                                          | Não    |
-| `pages.yml`                          | push em `main`, `feat/etapa-1-foundation`, `feat/etapa-2-web3`   | **Sem alteração.** Publica as duas etapas separadas                                                                                                                                                     | Sim    |
+| `pages.yml`                          | push em `main` (antes também nas duas branches de etapa)         | **Alterado em 28/10** (`8eebd91`). Publica o app integrado e o playground em `/web3/` a partir da `main`. Antes publicava as duas etapas separadas                                                      | Sim    |
 
-Todas as actions estão fixadas por SHA, e as permissões são somente leitura (`contents: read`). Como esta branch não está no gatilho do `pages.yml`, os pushes dela não publicam nada. Fazer merge na `main` dispara o `pages.yml` atual, que republica as duas branches de etapa como estão hoje: o site público não muda. A troca do site para o app integrado é uma mudança separada, descrita em `docs/integration/GITHUB_PAGES.md`.
+Todas as actions estão fixadas por SHA, e as permissões são somente leitura (`contents: read`). Como esta branch não está no gatilho do `pages.yml`, os pushes dela não publicam nada. Sem a troca, o merge na `main` rodaria o `pages.yml` antigo e traria de volta o preview dividido; com ela, o merge publica o app integrado a partir da `main`. Os passos são os mesmos que publicam o preview temporário desde 27/10. Detalhes e ordem de operações em `docs/integration/GITHUB_PAGES.md`.
 
 Execuções no commit `ee9af28`:
 
@@ -308,34 +308,37 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 - **Push:** normal (`git push -u origin`), sem force push, direto no repositório oficial (não no fork)
 - **PR:** [#2](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/2), Draft para `main`, sem merge automático. Contém todos os commits do PR #1
 
-| Commit    | Descrição                                                                               |
-| --------- | --------------------------------------------------------------------------------------- |
-| `e3d0400` | merge: Etapa 2 (`feat/etapa-2-web3` @ `ab9b7d5`)                                        |
-| `61e4765` | chore(repo): importa a Etapa 1 (`feat/etapa-1-foundation` @ `2c8a156`) com proveniência |
-| `dade82d` | feat(web3): aplica o patch de integração do `@retry/web3` no app                        |
-| `2fc2554` | chore(deps): um workspace pnpm e uma cópia do wagmi para app, módulo e playground       |
-| `b329cc5` | fix(wallet): o seletor de carteira não reabre depois de desconectar                     |
-| `3d1067d` | feat(wallet): estado real da carteira no Portfolio, Trade e Create                      |
-| `8f1fda9` | test(integration): integração React e Playwright do app                                 |
-| `ee9af28` | ci: valida o app integrado, o export do Pages e os testes de navegador                  |
-| `8bc6c62` | fix(format): valores compactos em dólar iguais no build e no navegador                  |
-| `9380642` | docs: README, guia de publicação no Pages e este relatório                              |
-| `01a43ac` | docs: link do PR e execuções do CI neste relatório                                      |
-| `ebacff5` | merge: `feat/etapa-2-web3` @ `746458c` (correção do seletor no PR #1; árvore igual)     |
-| `5c80098` | docs: estado final do CI e do PR #1 neste relatório                                     |
-| `e86a217` | fix(wallet): a troca de rede só conta quando a carteira fica na rede nova               |
-| `6cbf970` | docs: resultados com carteira real e a correção da troca de rede                        |
-| `5686967` | docs: novo teste da Phantom com a mensagem fixa                                         |
-| `f91872d` | fix(ui): o círculo de carregamento não pisca com "reduzir movimento"                    |
-| `41d87a9` | docs: correção do círculo de carregamento neste relatório                               |
-| `6b03949` | docs: Phantom volta ao normal e troca da Coinbase, segundo Iam                          |
-| `f9c5b69` | docs: Iam confirmou o círculo no preview                                                |
-| `85df3ed` | feat(discover): banner do X com a logo flutuando                                        |
-| `2ed334a` | docs: banner do Discover neste relatório                                                |
-| `d4d3465` | feat(discover): título e botão de volta sobre o banner novo                             |
-| (este)    | docs: título de volta no banner                                                         |
+| Commit    | Descrição                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------ |
+| `e3d0400` | merge: Etapa 2 (`feat/etapa-2-web3` @ `ab9b7d5`)                                           |
+| `61e4765` | chore(repo): importa a Etapa 1 (`feat/etapa-1-foundation` @ `2c8a156`) com proveniência    |
+| `dade82d` | feat(web3): aplica o patch de integração do `@retry/web3` no app                           |
+| `2fc2554` | chore(deps): um workspace pnpm e uma cópia do wagmi para app, módulo e playground          |
+| `b329cc5` | fix(wallet): o seletor de carteira não reabre depois de desconectar                        |
+| `3d1067d` | feat(wallet): estado real da carteira no Portfolio, Trade e Create                         |
+| `8f1fda9` | test(integration): integração React e Playwright do app                                    |
+| `ee9af28` | ci: valida o app integrado, o export do Pages e os testes de navegador                     |
+| `8bc6c62` | fix(format): valores compactos em dólar iguais no build e no navegador                     |
+| `9380642` | docs: README, guia de publicação no Pages e este relatório                                 |
+| `01a43ac` | docs: link do PR e execuções do CI neste relatório                                         |
+| `ebacff5` | merge: `feat/etapa-2-web3` @ `746458c` (correção do seletor no PR #1; árvore igual)        |
+| `5c80098` | docs: estado final do CI e do PR #1 neste relatório                                        |
+| `e86a217` | fix(wallet): a troca de rede só conta quando a carteira fica na rede nova                  |
+| `6cbf970` | docs: resultados com carteira real e a correção da troca de rede                           |
+| `5686967` | docs: novo teste da Phantom com a mensagem fixa                                            |
+| `f91872d` | fix(ui): o círculo de carregamento não pisca com "reduzir movimento"                       |
+| `41d87a9` | docs: correção do círculo de carregamento neste relatório                                  |
+| `6b03949` | docs: Phantom volta ao normal e troca da Coinbase, segundo Iam                             |
+| `f9c5b69` | docs: Iam confirmou o círculo no preview                                                   |
+| `85df3ed` | feat(discover): banner do X com a logo flutuando                                           |
+| `2ed334a` | docs: banner do Discover neste relatório                                                   |
+| `d4d3465` | feat(discover): título e botão de volta sobre o banner novo                                |
+| `f18d017` | docs: título de volta no banner                                                            |
+| `c03d86b` | merge: `feat/etapa-2-web3` @ `34de682` (cabeça do PR #1: cenário da troca desfeita e docs) |
+| `8eebd91` | ci(pages): publica o app integrado a partir da `main`                                      |
+| (este)    | docs: merge do PR #1 e troca do `pages.yml` neste relatório                                |
 
-**Preview temporário** (fora do PR #2, a pedido de Iam para testar carteiras reais sem merge): a branch `feat/retry-integrated-preview` tem o `pages.yml` proposto em `docs/integration/GITHUB_PAGES.md` (`f4435f2`), o registro de diagnóstico `?debug=web3` (`a195c44`) e os merges das correções (`6c96b56`, `09fd2b8`). Cada push nela republica o site. Um push na `main` ou nas branches das etapas republica o preview dividido.
+**Preview temporário** (fora do PR #2, a pedido de Iam para testar carteiras reais sem merge): a branch `feat/retry-integrated-preview` tem o `pages.yml` proposto em `docs/integration/GITHUB_PAGES.md` (`f4435f2`), o registro de diagnóstico `?debug=web3` (`a195c44`) e os merges das correções (`6c96b56`, `09fd2b8`). Cada push nela republica o site. Depois do merge, a `main` publica o app integrado e esta branch pode ser apagada. As branches das etapas ainda têm o `pages.yml` antigo: um push nelas publica o preview dividido.
 
 ## 17. Problemas Encontrados
 
@@ -347,7 +350,7 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 | **Bug no módulo:** depois de conectar pelo seletor e desconectar pelo menu, o seletor reaparecia aberto                                                                                                                                                                                                                                                     | O seletor era só escondido quando a conta aparecia, e o estado `aberto` ficava `true`. Agora é zerado quando a conta aparece. Teste de regressão no módulo; a mesma correção foi aplicada no PR #1 (`746458c`) e trazida de volta por merge (`ebacff5`)                                               |
 | O conector simulado pede `wallet_requestPermissions`, não `eth_requestAccounts`                                                                                                                                                                                                                                                                             | O teste conta qualquer um dos dois como a única solicitação de conexão                                                                                                                                                                                                                                |
 | ESLint tratava o `use` das fixtures do Playwright como hook React                                                                                                                                                                                                                                                                                           | Regra desligada só para `e2e/**`                                                                                                                                                                                                                                                                      |
-| `pages.yml` ainda passa `VITE_DEFAULT_CHAIN` ao playground, nome que o playground não lê (ele lê `VITE_DEFAULT_NETWORK`)                                                                                                                                                                                                                                    | Sem efeito prático (o padrão já é Base Sepolia). Documentado e corrigido no workflow proposto; o `pages.yml` não foi mexido                                                                                                                                                                           |
+| `pages.yml` ainda passa `VITE_DEFAULT_CHAIN` ao playground, nome que o playground não lê (ele lê `VITE_DEFAULT_NETWORK`)                                                                                                                                                                                                                                    | Sem efeito prático (o padrão já é Base Sepolia). Corrigido no `pages.yml` da `main` (`8eebd91`)                                                                                                                                                                                                       |
 | O README da `main` era um placeholder de uma linha                                                                                                                                                                                                                                                                                                          | Substituído pelo README da Etapa 1 na importação e reescrito para o app integrado                                                                                                                                                                                                                     |
 | O ambiente não alcança `github.io` nem os RPCs da Base                                                                                                                                                                                                                                                                                                      | Testes com carteira e RPC simulados; verificação real fica pendente e marcada como tal                                                                                                                                                                                                                |
 | **Bug no módulo, achado com carteira real:** na Phantom, `Switch to Base Sepolia` não saía de `Wrong Network` e só aparecia um vermelho piscando. O registro `?debug=web3` mostrou que a Phantom responde `null`, emite `chainChanged` para 84532 e volta sozinha para a rede escolhida nela (46630) cerca de 10 ms depois. O app tratava isso como sucesso | O módulo espera a carteira ficar 1,5 s na rede pedida; se ela voltar ou não chegar, mostra `SWITCH_NOT_APPLIED` com o nome da carteira e da rede até a carteira mudar de rede. A carteira simulada ganhou `revertSwitch`; os testes novos do módulo e do Playwright falham sem a correção (`e86a217`) |
@@ -373,19 +376,19 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 **Crítica**
 
 - Rabby, WalletConnect e celular continuam sem teste no app integrado. A troca de rede da Coinbase Wallet passou por relato, sem registro; vale guardar um registro `?debug=web3` dela num próximo teste.
-- Decidir a publicação definitiva: hoje o preview mostra o app integrado a partir da branch temporária, com o registro de diagnóstico que não faz parte do PR. Depois do merge, aplicar `docs/integration/GITHUB_PAGES.md`, se aprovado.
+- Depois do merge, conferir o site publicado pela `main` (`preview-version.txt` com o commit do merge) e conectar uma carteira. Se o deploy ficar esperando, liberar a `main` em Settings → Environments → `github-pages`.
 
 **Alta**
 
 - Aviso de domínio da MetaMask: domínio próprio para o RETRY e pedido de revisão se continuar marcado.
-- Revisar e decidir o merge do PR #1 junto com este PR (este PR contém o PR #1). A correção do seletor já foi levada ao PR #1 (`746458c`, cherry-pick de `b329cc5`).
+- Este PR contém a cabeça do PR #1 (`34de682`, merge `c03d86b`), então o merge daqui também fecha o PR #1. Fazer o merge com "Create a merge commit", não squash.
+- Depois do merge, mudar a base do PR #3 (dados de mercado) de `feat/retry-frontend-web3-integration` para `main`.
 - RPC dedicado para produção (os públicos da Base limitam requisições) e domínios permitidos no projeto Reown do WalletConnect.
 
 **Média**
 
 - `zod <4.6.6` e `uuid <11.1.1` transitivos: acompanhar atualização dos SDKs de carteira ou testar overrides com carteira real.
-- Corrigir `VITE_DEFAULT_CHAIN` → `VITE_DEFAULT_NETWORK` no `pages.yml` (já incluído no workflow proposto).
-- Remover as branches de etapa do gatilho dos `pages.yml` delas depois da troca, para não sobrescreverem o site integrado.
+- Parar de usar `feat/etapa-1-foundation` e `feat/etapa-2-web3` depois do merge (ou tirar elas do gatilho dos `pages.yml` delas), para não sobrescreverem o site integrado.
 - Apagar a branch temporária `feat/retry-integrated-preview` (e com ela o registro `?debug=web3`) quando os testes com carteira real acabarem, com aprovação.
 - Testar Base Mainnet com RPC real.
 
