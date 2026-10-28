@@ -31,23 +31,23 @@ flowchart LR
 
 ## Módulos (`src/lib/meteora/`)
 
-| Arquivo | Papel |
-| --- | --- |
-| `sdk.ts`, `buffer-polyfill.ts` | Único ponto de importação do SDK. Instala `Buffer` global antes, porque o SDK depende dele no navegador. |
-| `programs.ts` | Program IDs (DBC, DAMM v2, Locker, Metaplex, SPL, WSOL), conferidos contra o SDK em teste. |
-| `client.ts` | `MeteoraContext`, `assertCluster`, `assertWritable` (política de execução). |
-| `curve.ts` | `RETRY_LAUNCH`, `retryCurve()` (via `buildCurve` do SDK) e `configMismatches()`, que compara a config on-chain com a revisada. |
-| `pools.ts` | Decodificação de `PoolConfig`/`VirtualPool`, validação de que a pool é RETRY, status, progresso, listagem. |
-| `quotes.ts` | Quotes com `swapQuote2` do SDK sobre o estado lido da pool. Mínimo de saída, impacto de preço, conclusão de curva. |
-| `create-token.ts` | Criação da pool + primeira compra numa transação. Id de requisição para evitar duplicatas. |
-| `trade.ts` | Compra/venda com `swap2`, revalidando a quote contra o estado atual. |
-| `graduation.ts` | Estado de graduação e migração manual para DAMM v2. |
-| `fees.ts` | Divisão das taxas, tabela de taxas, saque das taxas do criador. |
-| `transactions.ts` | Allowlist, simulação, assinatura, verificação pós-assinatura, envio, confirmação e reconciliação. |
-| `operations.ts` | Registro local das operações (localStorage) para recuperação após recarregar. |
-| `metadata.ts`, `metadata-upload.ts` | Leitura Metaplex e upload/verificação dos metadados no host RETRY. |
-| `errors.ts` | Uma frase por erro, para o usuário. |
-| `format.ts` | Conversões exatas em `bigint` (lamports e unidades do token). |
+| Arquivo                             | Papel                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `sdk.ts`, `buffer-polyfill.ts`      | Único ponto de importação do SDK. Instala `Buffer` global antes, porque o SDK depende dele no navegador.                       |
+| `programs.ts`                       | Program IDs (DBC, DAMM v2, Locker, Metaplex, SPL, WSOL), conferidos contra o SDK em teste.                                     |
+| `client.ts`                         | `MeteoraContext`, `assertCluster`, `assertWritable` (política de execução).                                                    |
+| `curve.ts`                          | `RETRY_LAUNCH`, `retryCurve()` (via `buildCurve` do SDK) e `configMismatches()`, que compara a config on-chain com a revisada. |
+| `pools.ts`                          | Decodificação de `PoolConfig`/`VirtualPool`, validação de que a pool é RETRY, status, progresso, listagem.                     |
+| `quotes.ts`                         | Quotes com `swapQuote2` do SDK sobre o estado lido da pool. Mínimo de saída, impacto de preço, conclusão de curva.             |
+| `create-token.ts`                   | Criação da pool + primeira compra numa transação. Id de requisição para evitar duplicatas.                                     |
+| `trade.ts`                          | Compra/venda com `swap2`, revalidando a quote contra o estado atual.                                                           |
+| `graduation.ts`                     | Estado de graduação e migração manual para DAMM v2.                                                                            |
+| `fees.ts`                           | Divisão das taxas, tabela de taxas, saque das taxas do criador.                                                                |
+| `transactions.ts`                   | Allowlist, simulação, assinatura, verificação pós-assinatura, envio, confirmação e reconciliação.                              |
+| `operations.ts`                     | Registro local das operações (localStorage) para recuperação após recarregar.                                                  |
+| `metadata.ts`, `metadata-upload.ts` | Leitura Metaplex e upload/verificação dos metadados no host RETRY.                                                             |
+| `errors.ts`                         | Uma frase por erro, para o usuário.                                                                                            |
+| `format.ts`                         | Conversões exatas em `bigint` (lamports e unidades do token).                                                                  |
 
 ## Interface
 

@@ -4,43 +4,43 @@ Fonte: `src/lib/meteora/curve.ts` (`RETRY_LAUNCH` e `retryCurveParams()`), const
 
 ## Programas usados
 
-| Programa | Endereço | Observação |
-| --- | --- | --- |
-| Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | mesmo endereço em Devnet e Mainnet |
-| Meteora DAMM v2 (cp-amm) | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | destino da graduação |
-| Meteora Locker | `LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn` | usado pelo DBC em vesting; RETRY não usa vesting |
-| Metaplex Token Metadata | `metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s` | metadados do token |
-| Config DAMM v2 de migração (FixedBps100) | `Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp` | config pública da Meteora para LP de 1% |
+| Programa                                 | Endereço                                       | Observação                                       |
+| ---------------------------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| Meteora DBC                              | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN`  | mesmo endereço em Devnet e Mainnet               |
+| Meteora DAMM v2 (cp-amm)                 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG`  | destino da graduação                             |
+| Meteora Locker                           | `LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn`  | usado pelo DBC em vesting; RETRY não usa vesting |
+| Metaplex Token Metadata                  | `metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s`  | metadados do token                               |
+| Config DAMM v2 de migração (FixedBps100) | `Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp` | config pública da Meteora para LP de 1%          |
 
 Os IDs são comparados com as constantes do SDK em `tests/meteora.test.ts`. O workflow `meteora-chain.yml` registra o hash dos binários do DBC, do DAMM v2 e do Locker em Devnet e Mainnet a cada execução (linhas `PROGRAM_HASH`).
 
 ## Parâmetros
 
-| Parâmetro | Valor | Motivo |
-| --- | --- | --- |
-| Tipo de token | SPL Token (não Token-2022) | maior compatibilidade com carteiras e DEXs; sem transfer hook |
-| Supply total | 1.000.000.000 | fixo, igual para todo token RETRY |
-| Decimals | 9 | padrão Solana |
-| Autoridade de mint | nenhuma após a criação | sem mint ilimitado |
-| Autoridade de freeze | nenhuma | ninguém congela saldos |
-| Autoridade de metadados | `Immutable` (`System Program`) | nome, símbolo e URI não mudam depois |
-| Quote | SOL (WSOL `So11111111111111111111111111111111111111112`) | — |
-| Taxa de negociação | 1% fixa (`FeeSchedulerLinear` com início = fim = 100 bps) | simples de explicar; sem taxa dinâmica |
-| Coleta de taxa | em SOL (`CollectFeeMode.QuoteToken`) | o criador recebe SOL, não o próprio token |
-| Parte do criador | 50% do que sobra após a parte da Meteora | ver [FEES_AND_COSTS.md](FEES_AND_COSTS.md) |
-| Taxa de criação de pool | 0 | RETRY não cobra para lançar |
-| Primeira compra com taxa mínima | desligada | ninguém tem condição especial |
-| Threshold de graduação | 10 SOL na curva | mínimo do keeper da Meteora para pools em SOL |
-| Supply na migração | 20% | vai para o DAMM v2 com o SOL arrecadado |
-| Supply vendido na curva | ~80% | resultado do `buildCurve` |
-| Destino | `MET_DAMM_V2` | — |
-| LP do DAMM v2 | `FixedBps100` (1%) | — |
-| Taxa de migração do parceiro/criador | 0% | RETRY não cobra na graduação |
-| Liquidez travada para sempre | 50% parceiro + 50% criador = 100% | ninguém pode retirar a liquidez graduada |
-| Liquidez livre | 0% | — |
-| Vesting / alocação do criador | nenhuma | sem alocação escondida |
-| Leftover | 0 | todo token não vendido vai para a liquidez |
-| Ativação | por timestamp, imediata | — |
+| Parâmetro                            | Valor                                                     | Motivo                                                        |
+| ------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------- |
+| Tipo de token                        | SPL Token (não Token-2022)                                | maior compatibilidade com carteiras e DEXs; sem transfer hook |
+| Supply total                         | 1.000.000.000                                             | fixo, igual para todo token RETRY                             |
+| Decimals                             | 9                                                         | padrão Solana                                                 |
+| Autoridade de mint                   | nenhuma após a criação                                    | sem mint ilimitado                                            |
+| Autoridade de freeze                 | nenhuma                                                   | ninguém congela saldos                                        |
+| Autoridade de metadados              | `Immutable` (`System Program`)                            | nome, símbolo e URI não mudam depois                          |
+| Quote                                | SOL (WSOL `So11111111111111111111111111111111111111112`)  | —                                                             |
+| Taxa de negociação                   | 1% fixa (`FeeSchedulerLinear` com início = fim = 100 bps) | simples de explicar; sem taxa dinâmica                        |
+| Coleta de taxa                       | em SOL (`CollectFeeMode.QuoteToken`)                      | o criador recebe SOL, não o próprio token                     |
+| Parte do criador                     | 50% do que sobra após a parte da Meteora                  | ver [FEES_AND_COSTS.md](FEES_AND_COSTS.md)                    |
+| Taxa de criação de pool              | 0                                                         | RETRY não cobra para lançar                                   |
+| Primeira compra com taxa mínima      | desligada                                                 | ninguém tem condição especial                                 |
+| Threshold de graduação               | 10 SOL na curva                                           | mínimo do keeper da Meteora para pools em SOL                 |
+| Supply na migração                   | 20%                                                       | vai para o DAMM v2 com o SOL arrecadado                       |
+| Supply vendido na curva              | ~80%                                                      | resultado do `buildCurve`                                     |
+| Destino                              | `MET_DAMM_V2`                                             | —                                                             |
+| LP do DAMM v2                        | `FixedBps100` (1%)                                        | —                                                             |
+| Taxa de migração do parceiro/criador | 0%                                                        | RETRY não cobra na graduação                                  |
+| Liquidez travada para sempre         | 50% parceiro + 50% criador = 100%                         | ninguém pode retirar a liquidez graduada                      |
+| Liquidez livre                       | 0%                                                        | —                                                             |
+| Vesting / alocação do criador        | nenhuma                                                   | sem alocação escondida                                        |
+| Leftover                             | 0                                                         | todo token não vendido vai para a liquidez                    |
+| Ativação                             | por timestamp, imediata                                   | —                                                             |
 
 ## Números observados (validador local com os programas oficiais)
 

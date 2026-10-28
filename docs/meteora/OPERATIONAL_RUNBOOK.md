@@ -58,15 +58,15 @@ Ver [infra/metadata-worker/README.md](../../infra/metadata-worker/README.md). Se
 
 ## Incidentes
 
-| Sintoma | O que fazer |
-| --- | --- |
-| "The on-chain RETRY config does not match this app." | A config mudou ou o endereço está errado. Não contornar. Conferir `RETRY_DBC_CONFIGS` e `configMismatches`. |
-| Transação "Sent" sem confirmar | A tela reconcilia ao recarregar. Se expirou, nada foi debitado além do que o explorer mostra. Não reenviar à mão a mesma transação. |
-| "Meteora's migration rent float is empty" | A pool authority do DBC está sem SOL no cluster. Ninguém consegue migrar até a Meteora repor. Avisar a Meteora. |
-| Worker retornando 429 | Limite por IP por hora. Aumentar `UPLOADS_PER_HOUR` só se for abuso descartado. |
-| Worker fora do ar | Lançamentos ficam bloqueados; negociação continua funcionando. |
-| RPC público instável | Definir `NEXT_PUBLIC_SOLANA_RPC_URL` com um RPC dedicado. |
-| Suspeita de transação adulterada | O app recusa qualquer instrução ou conta fora da allowlist e qualquer mudança feita pela carteira. Registrar a mensagem e a carteira usada. |
+| Sintoma                                              | O que fazer                                                                                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| "The on-chain RETRY config does not match this app." | A config mudou ou o endereço está errado. Não contornar. Conferir `RETRY_DBC_CONFIGS` e `configMismatches`.                                 |
+| Transação "Sent" sem confirmar                       | A tela reconcilia ao recarregar. Se expirou, nada foi debitado além do que o explorer mostra. Não reenviar à mão a mesma transação.         |
+| "Meteora's migration rent float is empty"            | A pool authority do DBC está sem SOL no cluster. Ninguém consegue migrar até a Meteora repor. Avisar a Meteora.                             |
+| Worker retornando 429                                | Limite por IP por hora. Aumentar `UPLOADS_PER_HOUR` só se for abuso descartado.                                                             |
+| Worker fora do ar                                    | Lançamentos ficam bloqueados; negociação continua funcionando.                                                                              |
+| RPC público instável                                 | Definir `NEXT_PUBLIC_SOLANA_RPC_URL` com um RPC dedicado.                                                                                   |
+| Suspeita de transação adulterada                     | O app recusa qualquer instrução ou conta fora da allowlist e qualquer mudança feita pela carteira. Registrar a mensagem e a carteira usada. |
 
 ## O que nunca fazer
 

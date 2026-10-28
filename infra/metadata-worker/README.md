@@ -4,11 +4,11 @@ Guarda o JSON de metadados e a imagem de cada token lançado pela RETRY, endere�
 
 ## Endpoints
 
-| Método e caminho | O que faz |
-| --- | --- |
-| `POST /v1/metadata` | Recebe `{name, symbol, description, image (data URL PNG/JPEG/WebP ≤ 2 MB), website?, twitter?, telegram?}`. Aceita só origens de `ALLOWED_ORIGINS`, corpo ≤ 3 MB, revalida os campos e os bytes da imagem, aplica `UPLOADS_PER_HOUR` por IP. Responde `{uri, image}`. |
-| `GET /v1/m/<sha256>.json` | JSON de metadados (formato Metaplex), cache imutável, CORS aberto. |
-| `GET /v1/i/<sha256>` | Imagem, com o tipo verificado, `nosniff`, cache imutável. |
+| Método e caminho          | O que faz                                                                                                                                                                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/metadata`       | Recebe `{name, symbol, description, image (data URL PNG/JPEG/WebP ≤ 2 MB), website?, twitter?, telegram?}`. Aceita só origens de `ALLOWED_ORIGINS`, corpo ≤ 3 MB, revalida os campos e os bytes da imagem, aplica `UPLOADS_PER_HOUR` por IP. Responde `{uri, image}`. |
+| `GET /v1/m/<sha256>.json` | JSON de metadados (formato Metaplex), cache imutável, CORS aberto.                                                                                                                                                                                                    |
+| `GET /v1/i/<sha256>`      | Imagem, com o tipo verificado, `nosniff`, cache imutável.                                                                                                                                                                                                             |
 
 O mesmo conteúdo sempre gera a mesma URI. Uma URI nunca passa a apontar para outro conteúdo, e o app confere o hash ao ler de volta.
 

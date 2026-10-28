@@ -6,14 +6,14 @@ Código: `src/lib/meteora/graduation.ts`, `src/lib/meteora/pools.ts` (status) e 
 
 Calculados apenas do estado on-chain da pool (`VirtualPool`) e da config:
 
-| Status | Condição | Na tela |
-| --- | --- | --- |
-| `active` | reserva de SOL abaixo de 80% do threshold | "On the curve" (seção New do Discover) |
-| `near-graduation` | ≥ 80% do threshold | "Graduating soon" (seção Graduating) |
-| `graduation-ready` | reserva ≥ threshold e `migrationProgress = LockedVesting (2)` | "Ready to graduate" |
-| `migrating` | `migrationProgress` em transição | "Graduating" |
-| `graduated` | `isMigrated = 1` | "Graduated" (seção Graduated), com link para a pool DAMM v2 |
-| `needs-attention` | combinação inesperada | "Check status" |
+| Status             | Condição                                                      | Na tela                                                     |
+| ------------------ | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `active`           | reserva de SOL abaixo de 80% do threshold                     | "On the curve" (seção New do Discover)                      |
+| `near-graduation`  | ≥ 80% do threshold                                            | "Graduating soon" (seção Graduating)                        |
+| `graduation-ready` | reserva ≥ threshold e `migrationProgress = LockedVesting (2)` | "Ready to graduate"                                         |
+| `migrating`        | `migrationProgress` em transição                              | "Graduating"                                                |
+| `graduated`        | `isMigrated = 1`                                              | "Graduated" (seção Graduated), com link para a pool DAMM v2 |
+| `needs-attention`  | combinação inesperada                                         | "Check status"                                              |
 
 O progresso é `quoteReserve / migrationQuoteThreshold` em basis points. O painel mostra o SOL que falta, o threshold de 10 SOL e a pool DAMM v2 de destino (derivada da config pública FixedBps100, do mint e do WSOL).
 

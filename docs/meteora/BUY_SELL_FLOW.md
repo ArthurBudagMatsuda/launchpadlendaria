@@ -41,10 +41,10 @@ Mesmo executor de todas as operações (`execute`): simulação → assinatura n
 
 ## Resultados on-chain (validador local com os programas oficiais)
 
-| Operação | Resultado |
-| --- | --- |
-| Compra de 0,5 SOL | recebeu exatamente a quantidade cotada (130.564.541,249646396 tokens); taxa 0,005 SOL = 0,001 Meteora + 0,002 criador + 0,002 RETRY; impacto 15,58%; variação de saldo 0,502039280 SOL (inclui aluguel da ATA nova) |
-| Venda de metade | recebeu ≥ mínimo cotado; +0,261505003 SOL |
-| Venda acima do saldo | recusada antes de assinar |
-| Slippage violado | recusado pelo programa na simulação; mensagem de slippage |
-| Compra que completa a curva | preenchimento parcial até 10 SOL; quotes seguintes recusadas |
+| Operação                    | Resultado                                                                                                                                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compra de 0,5 SOL           | recebeu exatamente a quantidade cotada (130.564.541,249646396 tokens); taxa 0,005 SOL = 0,001 Meteora + 0,002 criador + 0,002 RETRY; impacto 15,58%; variação de saldo 0,502039280 SOL (inclui aluguel da ATA nova) |
+| Venda de metade             | recebeu ≥ mínimo cotado; +0,261505003 SOL                                                                                                                                                                           |
+| Venda acima do saldo        | recusada antes de assinar                                                                                                                                                                                           |
+| Slippage violado            | recusado pelo programa na simulação; mensagem de slippage                                                                                                                                                           |
+| Compra que completa a curva | preenchimento parcial até 10 SOL; quotes seguintes recusadas                                                                                                                                                        |

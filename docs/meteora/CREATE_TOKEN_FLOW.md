@@ -6,12 +6,12 @@ Telas: Create, etapas 1 e 2 (dados e imagem, do PR #6) e etapa 3 (`src/component
 
 1. **Dados**: nome (2–32 bytes), ticker (2–10 letras maiúsculas ou números), descrição, imagem PNG/JPEG/WebP de até 2 MB, links opcionais (site, X, Telegram), validados por `src/lib/validation.ts`.
 2. **Condições do lançamento** (etapa 3): a tela mostra supply fixo de 1 bilhão, 9 decimals, sem autoridade de mint/freeze, metadados imutáveis, taxa de 1% e divisão, threshold de 10 SOL e liquidez 100% travada na graduação.
-3. **Primeira compra opcional**: de 0 a 1 SOL (`MAX_INITIAL_BUY_LAMPORTS`). Ela entra **na mesma transação** da criação, então ninguém compra antes do criador e o criador não recebe nada além do que comprou.
+3. **Primeira compra opcional**: de 0 a 1 SOL (`MAX_INITIAL_BUY_LAMPORTS`). Ela entra **na mesma transação** da criação, então ninguém compra antes do criador e o criador não recebe nada além do que comprou. Pela curva RETRY, 0,1 SOL compra 3,08% do supply, 0,5 SOL 13,79% e 1 SOL 24,43%; a revisão mostra a porcentagem antes de assinar.
 4. **"Review launch cost"**:
    - envia os metadados para o host RETRY (uma vez por rascunho; o resultado fica em cache);
    - calcula o id da requisição (`launchRequestId`: SHA-256 de carteira, nome, ticker e URI) e recusa se já existe um lançamento pendente ou confirmado com o mesmo id;
    - monta a transação (`prepareCreateToken`) e simula;
-   - mostra o custo simulado: primeira compra, aluguel e taxas de programa, taxa de rede e total.
+   - mostra o custo simulado: primeira compra (com tokens recebidos e % do supply), aluguel e taxas de programa, taxa de rede e total.
 5. **"Sign & launch"**: válido por 45 segundos depois da revisão. A revisão fica presa aos dados revisados; se algo mudar, é preciso revisar de novo.
 6. **Envio e confirmação**: a assinatura é registrada no navegador antes do envio. Depois da confirmação, aparece "Launched." com link para o explorer e "Open your token".
 
