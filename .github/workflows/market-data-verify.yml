@@ -1,0 +1,36 @@
+name: Verify featured market data (live, read-only)
+# Collects live evidence for the featured token: Base RPC reads (chain ID,
+# bytecode, ERC-20 metadata, B20 factory checks) and what the public market
+# data providers return. Read-only: eth_* calls and HTTP GETs, no keys, no
+# signing, no deployment. Kept out of ci.yml so live-network flakiness never
+# blocks a merge.
+on:
+  push:
+    branches: [feat/retry-real-market-data]
+    paths:
+      - scripts/verify-market-data.mjs
+      - src/config/featured-assets.ts
+      - .github/workflows/market-data-verify.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Read the featured token on Base and query the providers
+        run: node scripts/verify-market-data.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: market-data-verification
+          path: market-data-verification.json
+          retention-days: 30

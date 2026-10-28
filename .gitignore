@@ -12,3 +12,4 @@ coverage/
 .qa/
 test-results/
 playwright-report/
+market-data-verification.json
