@@ -30,8 +30,8 @@ const pair = {
 afterEach(() => vi.unstubAllGlobals());
 describe("Solana market identity and history", () => {
   it("requests the largest page and validates an older-page cursor before HTTP", async () => {
-    const fetch = vi.fn(
-      async (_url: string) =>
+    const fetch = vi.fn<(url: string) => Promise<Response>>(
+      async () =>
         new Response(
           JSON.stringify({
             meta: { base: { address: mint } },

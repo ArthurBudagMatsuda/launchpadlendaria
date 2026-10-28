@@ -114,7 +114,7 @@ export function SolanaTokenTerminal({ token }: { token: TokenRef }) {
           onRetry={() => onchain.refetch()}
         />
       ) : null}
-      {onchain.isPending ? (
+      {onchain.isError && !facts ? null : onchain.isPending ? (
         <LoadingSkeleton />
       ) : facts?.verdict !== "token" ? (
         <EmptyState

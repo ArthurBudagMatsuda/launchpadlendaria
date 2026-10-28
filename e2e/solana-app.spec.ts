@@ -1,6 +1,81 @@
 import { test, expect } from "@playwright/test";
 import { ALICE, BOB, solanaFixture } from "./solana-fixtures";
 const root = "/launchpadlendaria";
+test("copy confirmation follows the account being copied", async ({ page }) => {
+  await solanaFixture(page);
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async () => {} },
+    }),
+  );
+  await page.goto(`${root}/`);
+  await connect(page);
+  await page.locator("header .wallet-button").click();
+  await page.getByRole("button", { name: "Copy address", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Copied", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    (
+      window as unknown as { solanaTest: { change: () => void } }
+    ).solanaTest.change(),
+  );
+  await expect(page.getByRole("dialog")).toContainText(BOB);
+  await expect(
+    page.getByRole("button", { name: "Copy address", exact: true }),
+  ).toBeVisible();
+});
+test("Create preserves validated metadata and image through the disabled launch summary", async ({
+  page,
+}) => {
+  await solanaFixture(page, { absent: true });
+  await page.goto(`${root}/create/`);
+  await page.locator("#name").fill("Review Token");
+  await page.locator("#symbol").fill("rev");
+  await page
+    .locator("#description")
+    .fill("Local Solana token preview for integration review.");
+  await page.locator("#website").fill("https://retry.example");
+  await page.locator("#twitter").fill("https://x.com/retry");
+  await page.locator("#telegram").fill("https://t.me/retry");
+  await page.locator("#token-image").setInputFiles({
+    name: "review.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await page.getByRole("button", { name: "Continue to Preview" }).click();
+  await page.getByRole("button", { name: "Continue to Summary" }).click();
+  await expect(
+    page.getByRole("button", { name: /Launch Token.*Coming Soon/ }),
+  ).toBeDisabled();
+  await expect(page.locator(".create-form")).toContainText("Review Token");
+  await page.reload();
+  await expect(page.locator("#name")).toHaveValue("Review Token");
+  await expect(page.locator("#symbol")).toHaveValue("REV");
+  await expect(page.locator("#website")).toHaveValue("https://retry.example");
+  await expect(page.locator("#twitter")).toHaveValue("https://x.com/retry");
+  await expect(page.locator(".image-preview")).toBeVisible();
+});
+test("a failed mint RPC is unavailable data, not proof of a non-token", async ({
+  page,
+}) => {
+  await solanaFixture(page, { failRpc: true, absent: true });
+  await page.goto(`${root}/token/?mint=${ALICE}&cluster=devnet`);
+  await expect(
+    page.getByText(
+      "Mint identity unavailable from Solana RPC. No token identity is inferred.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "This account is not an initialized SPL mint",
+    }),
+  ).toHaveCount(0);
+});
 test("older Solana candles load when panning and preserve the chart view", async ({
   page,
 }) => {
@@ -121,6 +196,11 @@ async function connect(
   await expect(page.getByRole("dialog")).toContainText(ALICE);
   await page.getByLabel("Close dialog").click();
 }
+async function navigate(page: import("@playwright/test").Page, name: string) {
+  const menu = page.getByRole("button", { name: "Open navigation" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator("header").getByRole("link", { name, exact: true }).click();
+}
 test("preserved discovery, empty featured section, navigation and responsive layout", async ({
   page,
 }, info) => {
@@ -162,11 +242,29 @@ for (const name of ["Phantom", "Solflare", "Backpack"])
     const calls = await solanaFixture(page, { name });
     await page.goto(`${root}/`);
     await connect(page, name);
-    await page.goto(`${root}/portfolio/`); // Authorized restore after a complete navigation.
+    await navigate(page, "Portfolio");
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { solanaTest: { connections: boolean[] } })
+            .solanaTest.connections,
+      ),
+    ).toEqual([false]);
     await expect(page.locator(".portfolio-overview")).toContainText(
       "1.500000001 SOL",
     );
     await expect(page.locator(".portfolio-overview")).toContainText(ALICE);
+    await page.reload();
+    await expect(page.locator(".portfolio-overview")).toContainText(
+      "1.500000001 SOL",
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { solanaTest: { connections: boolean[] } })
+            .solanaTest.connections,
+      ),
+    ).toEqual([true]);
     await page.evaluate(() =>
       (
         window as unknown as { solanaTest: { change: () => void } }
@@ -180,7 +278,7 @@ for (const name of ["Phantom", "Solflare", "Backpack"])
     await expect(page.locator(".portfolio-overview")).toContainText(
       "Solana Mainnet",
     );
-    await expect(page.locator(".portfolio-overview")).toContainText("2.5 SOL");
+    await expect(page.locator(".portfolio-overview")).toContainText("4.5 SOL");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
