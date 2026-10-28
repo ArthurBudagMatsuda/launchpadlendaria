@@ -1,278 +1,364 @@
 "use client";
-import { useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Bar,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { Candle, CandleInterval } from "@/lib/market/types";
+  CandlestickSeries,
+  ColorType,
+  createChart,
+  CrosshairMode,
+  HistogramSeries,
+  LineSeries,
+  LineStyle,
+  PriceScaleMode,
+  TickMarkType,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from "lightweight-charts";
+import { RotateCcw } from "lucide-react";
+import {
+  initialBars,
+  priceStep,
+  type ChartSeries,
+  type ChartSlot,
+} from "@/lib/market/chart-series";
+import type { CandleInterval } from "@/lib/market/types";
 import { usdAmount, usdPrice } from "@/lib/format";
-import { EmptyState } from "@/components/ui/feedback";
-
-export const INTERVAL_SECONDS: Record<CandleInterval, number> = {
-  "5m": 300,
-  "15m": 900,
-  "1h": 3600,
-  "4h": 14_400,
-  "1d": 86_400,
-};
-
-interface Row {
-  time: number;
-  candle: Candle | null;
-  range: [number, number] | null;
-  close: number | null;
-  volume: number | null;
-  up: boolean;
-}
-
-/**
- * Missing buckets become empty rows so the time axis keeps its spacing and
- * the gap stays visible. Nothing is interpolated: an empty row draws nothing.
- * Very sparse series are not padded beyond `maxRows`.
- */
-export function rowsWithGaps(
-  candles: Candle[],
-  intervalSeconds: number,
-  maxRows = 600,
-): Row[] {
-  const row = (candle: Candle): Row => ({
-    time: candle.time,
-    candle,
-    range: [candle.low, candle.high],
-    close: candle.close,
-    volume: candle.volumeUsd,
-    up: candle.close >= candle.open,
-  });
-  if (!candles.length) return [];
-  const span = (candles.at(-1)!.time - candles[0].time) / intervalSeconds + 1;
-  if (span > maxRows) return candles.map(row);
-  const rows: Row[] = [];
-  for (let i = 0; i < candles.length; i += 1) {
-    if (i > 0)
-      for (
-        let t = candles[i - 1].time + intervalSeconds;
-        t < candles[i].time;
-        t += intervalSeconds
-      )
-        rows.push({
-          time: t,
-          candle: null,
-          range: null,
-          close: null,
-          volume: null,
-          up: true,
-        });
-    rows.push(row(candles[i]));
-  }
-  return rows;
-}
 
 const UP = "#5bd5a3";
 const DOWN = "#f07787";
+const UP_VOLUME = "rgba(91, 213, 163, 0.32)";
+const DOWN_VOLUME = "rgba(240, 119, 135, 0.32)";
+/** Empty bars kept right of the newest candle. */
+const RIGHT_OFFSET = 4;
 
-function timeLabel(seconds: number, interval: CandleInterval) {
+interface ChartApi {
+  chart: IChartApi;
+  candles: ISeriesApi<"Candlestick">;
+  line: ISeriesApi<"Line">;
+  volume: ISeriesApi<"Histogram">;
+}
+
+/** "Oct 28, 13:00 UTC", or "Oct 28, 2026" for daily candles. */
+function slotTime(seconds: number, interval: CandleInterval) {
   const date = new Date(seconds * 1000);
-  return interval === "4h" || interval === "1d"
+  return interval === "1d"
     ? date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
+        year: "numeric",
         timeZone: "UTC",
       })
-    : date.toLocaleTimeString("en-US", {
+    : `${date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false,
+        hourCycle: "h23",
         timeZone: "UTC",
-      });
+      })} UTC`;
 }
 
-/** Wick from high to low and a body from open to close, inside the bar's box. */
-function CandleShape(props: {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  payload?: Row;
-}) {
-  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
-  const candle = payload?.candle;
-  if (!candle) return null;
-  const color = payload.up ? UP : DOWN;
-  const span = candle.high - candle.low;
-  const toY = (value: number) =>
-    span > 0 ? y + ((candle.high - value) / span) * height : y;
-  const top = toY(Math.max(candle.open, candle.close));
-  const bottom = toY(Math.min(candle.open, candle.close));
-  const bodyWidth = Math.max(1, Math.min(width * 0.7, 12));
-  const center = x + width / 2;
-  return (
-    <g>
-      <line
-        x1={center}
-        x2={center}
-        y1={y}
-        y2={y + height}
-        stroke={color}
-        strokeWidth={1}
-      />
-      <rect
-        x={center - bodyWidth / 2}
-        y={top}
-        width={bodyWidth}
-        height={Math.max(1, bottom - top)}
-        fill={color}
-      />
-    </g>
-  );
+/** Axis labels in UTC: "13:00" inside a day, "Oct 28" at a new day. */
+function tickLabel(seconds: number, type: TickMarkType) {
+  const options: Intl.DateTimeFormatOptions =
+    type === TickMarkType.Year
+      ? { year: "numeric" }
+      : type === TickMarkType.Month
+        ? { month: "short" }
+        : type === TickMarkType.DayOfMonth
+          ? { month: "short", day: "numeric" }
+          : { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+  return new Date(seconds * 1000).toLocaleString("en-US", {
+    ...options,
+    timeZone: "UTC",
+  });
 }
 
+const price = (value: number) => usdPrice(String(value));
+/** The axis pads below the lowest candle; a price is never negative. */
+const axisPrice = (value: number) => (value < 0 ? "" : price(value));
+/** Room above the candles for the legend, which wraps on phones. */
+const priceMargins = (width: number) => ({
+  top: width < 560 ? 0.2 : 0.1,
+  bottom: 0.24,
+});
+
+/**
+ * OHLCV chart on TradingView's open-source Lightweight Charts: drag to move,
+ * wheel or pinch to zoom, axes in UTC with dates. Empty buckets stay empty
+ * slots on the time axis; nothing is interpolated. It opens on the newest
+ * candles, and older history is one drag or zoom away.
+ */
 export default function CandleChart({
-  candles,
+  series,
   interval,
   mode,
   pairLabel,
 }: {
-  candles: Candle[];
+  series: ChartSeries;
   interval: CandleInterval;
   mode: "candles" | "line";
   pairLabel: string;
 }) {
-  const rows = useMemo(
-    () => rowsWithGaps(candles, INTERVAL_SECONDS[interval]),
-    [candles, interval],
-  );
-  if (!candles.length)
-    return (
-      <EmptyState title="No candles for this interval">
-        The provider has no trades recorded for this pool in this window. No
-        prices are drawn where nothing was observed.
-      </EmptyState>
+  const host = useRef<HTMLDivElement>(null);
+  const api = useRef<ChartApi | null>(null);
+  const slots = useRef<ChartSlot[]>(series.slots);
+  const placed = useRef(false);
+  const [hovered, setHovered] = useState<ChartSlot | null>(null);
+  const [range, setRange] = useState<{ from: number; to: number } | null>(null);
+  const [logScale, setLogScale] = useState(false);
+
+  const resetView = useCallback(() => {
+    const current = api.current;
+    if (!current) return;
+    const total = slots.current.length;
+    const bars = initialBars(host.current?.clientWidth ?? 600, total);
+    current.chart.priceScale("right").applyOptions({ autoScale: true });
+    if (bars >= total) current.chart.timeScale().fitContent();
+    else
+      current.chart.timeScale().setVisibleLogicalRange({
+        from: total - bars,
+        to: total - 1 + RIGHT_OFFSET,
+      });
+  }, []);
+
+  // One chart per interval; refreshes only replace its data.
+  useEffect(() => {
+    const element = host.current!;
+    const chart = createChart(element, {
+      autoSize: true,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#7e91b4",
+        fontSize: 10,
+        fontFamily: getComputedStyle(element).fontFamily,
+        // Lightweight Charts is Apache-2.0; its notice asks for this link.
+        attributionLogo: true,
+      },
+      grid: {
+        vertLines: { visible: false },
+        horzLines: { color: "#283248", style: LineStyle.Dashed },
+      },
+      crosshair: { mode: CrosshairMode.Normal },
+      rightPriceScale: {
+        borderVisible: false,
+        scaleMargins: priceMargins(element.clientWidth),
+      },
+      timeScale: {
+        borderVisible: false,
+        rightOffset: RIGHT_OFFSET,
+        barSpacing: 7,
+        minBarSpacing: 0.5,
+        fixLeftEdge: true,
+        lockVisibleTimeRangeOnResize: true,
+        timeVisible: interval !== "1d",
+        secondsVisible: false,
+        tickMarkFormatter: (time: unknown, type: TickMarkType) =>
+          tickLabel(Number(time), type),
+      },
+      // Vertical swipes keep scrolling the page on phones.
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: true,
+        axisDoubleClickReset: true,
+      },
+      localization: {
+        locale: "en-US",
+        priceFormatter: axisPrice,
+        timeFormatter: (time: unknown) => slotTime(Number(time), interval),
+      },
+    });
+    const candles = chart.addSeries(CandlestickSeries, {
+      upColor: UP,
+      downColor: DOWN,
+      wickUpColor: UP,
+      wickDownColor: DOWN,
+      borderVisible: false,
+    });
+    const line = chart.addSeries(LineSeries, {
+      color: "#7da1ff",
+      lineWidth: 2,
+      visible: false,
+    });
+    const volume = chart.addSeries(HistogramSeries, {
+      priceScaleId: "volume",
+      priceFormat: { type: "volume" },
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    chart.priceScale("volume").applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    });
+    // Every slot, empty or not, is one logical index on the time axis.
+    chart.subscribeCrosshairMove(({ time, logical }) =>
+      setHovered(
+        time !== undefined && logical !== undefined
+          ? (slots.current[Math.round(logical)] ?? null)
+          : null,
+      ),
     );
-  const lows = candles.map((c) => c.low);
-  const highs = candles.map((c) => c.high);
-  const min = Math.min(...lows);
-  const max = Math.max(...highs);
-  const pad = (max - min) * 0.08 || max * 0.02;
-  const maxVolume = Math.max(...candles.map((c) => c.volumeUsd), 0);
+    chart
+      .timeScale()
+      .subscribeVisibleLogicalRangeChange((visible) =>
+        setRange(visible ? { from: visible.from, to: visible.to } : null),
+      );
+    chart
+      .timeScale()
+      .subscribeSizeChange((width) =>
+        chart
+          .priceScale("right")
+          .applyOptions({ scaleMargins: priceMargins(width) }),
+      );
+    api.current = { chart, candles, line, volume };
+    placed.current = false;
+    return () => {
+      api.current = null;
+      chart.remove();
+    };
+  }, [interval]);
+
+  useEffect(() => {
+    const current = api.current;
+    if (!current) return;
+    slots.current = series.slots;
+    const time = (slot: ChartSlot) => slot.time as UTCTimestamp;
+    current.candles.setData(
+      series.slots.map((slot) =>
+        slot.candle
+          ? {
+              time: time(slot),
+              open: slot.candle.open,
+              high: slot.candle.high,
+              low: slot.candle.low,
+              close: slot.candle.close,
+            }
+          : { time: time(slot) },
+      ),
+    );
+    current.line.setData(
+      series.slots.map((slot) =>
+        slot.candle
+          ? { time: time(slot), value: slot.candle.close }
+          : { time: time(slot) },
+      ),
+    );
+    current.volume.setData(
+      series.slots.map((slot) =>
+        slot.candle
+          ? {
+              time: time(slot),
+              value: slot.candle.volumeUsd,
+              color:
+                slot.candle.close >= slot.candle.open ? UP_VOLUME : DOWN_VOLUME,
+            }
+          : { time: time(slot) },
+      ),
+    );
+    const priceFormat = {
+      type: "custom" as const,
+      formatter: axisPrice,
+      minMove: priceStep(
+        series.slots.flatMap((slot) => (slot.candle ? [slot.candle] : [])),
+      ),
+    };
+    current.candles.applyOptions({ priceFormat });
+    current.line.applyOptions({ priceFormat });
+    // Refreshes keep the reader's zoom; only a new chart's first data sets
+    // the view.
+    if (!placed.current) {
+      placed.current = true;
+      resetView();
+    }
+  }, [series, interval, resetView]);
+
+  // Also re-applied to the new chart when the interval changes.
+  useEffect(() => {
+    api.current?.candles.applyOptions({ visible: mode === "candles" });
+    api.current?.line.applyOptions({ visible: mode === "line" });
+  }, [mode, interval]);
+
+  useEffect(() => {
+    api.current?.chart.priceScale("right").applyOptions({
+      mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+    });
+  }, [logScale, interval]);
+
+  const candles = series.slots.flatMap((slot) =>
+    slot.candle ? [slot.candle] : [],
+  );
   const first = candles[0];
-  const last = candles.at(-1)!;
+  const last = candles.at(-1);
+  const shown = hovered ?? series.slots.at(-1) ?? null;
+  const summary =
+    first && last
+      ? `${pairLabel} ${interval} candles in USD from ${slotTime(first.time, interval)} to ${slotTime(last.time, interval)}. Low ${price(Math.min(...candles.map((c) => c.low)))}, high ${price(Math.max(...candles.map((c) => c.high)))}, last close ${price(last.close)}.`
+      : `${pairLabel} ${interval} chart with no candles.`;
   return (
-    <div
-      className="price-chart"
-      role="img"
-      aria-label={`${pairLabel} ${interval} candles in USD from ${new Date(first.time * 1000).toUTCString()} to ${new Date(last.time * 1000).toUTCString()}. Low ${usdPrice(String(min))}, high ${usdPrice(String(max))}, last close ${usdPrice(String(last.close))}.`}
-    >
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-        minWidth={0}
-        minHeight={0}
+    <>
+      <div
+        className="price-chart"
+        data-visible-from={range ? range.from.toFixed(1) : undefined}
+        data-visible-to={range ? range.to.toFixed(1) : undefined}
       >
-        <ComposedChart
-          data={rows}
-          margin={{ top: 15, right: 8, left: 12, bottom: 0 }}
-          barCategoryGap="15%"
-        >
-          <CartesianGrid
-            stroke="#283248"
-            strokeDasharray="3 5"
-            vertical={false}
-          />
-          <XAxis
-            dataKey="time"
-            tickFormatter={(t) => timeLabel(Number(t), interval)}
-            tick={{ fill: "#7e91b4", fontSize: 9 }}
-            tickLine={false}
-            axisLine={false}
-            minTickGap={60}
-          />
-          <YAxis
-            yAxisId="price"
-            orientation="right"
-            domain={[Math.max(0, min - pad), max + pad]}
-            tickFormatter={(v) => usdPrice(String(v))}
-            tick={{ fill: "#7e91b4", fontSize: 9 }}
-            tickLine={false}
-            axisLine={false}
-            width={80}
-            allowDataOverflow
-          />
-          <YAxis yAxisId="volume" hide domain={[0, maxVolume * 4 || 1]} />
-          <Tooltip
-            cursor={{ stroke: "#5e78b8", strokeDasharray: "3 3" }}
-            isAnimationActive={false}
-            content={({ active, payload }) => {
-              const row = payload?.[0]?.payload as Row | undefined;
-              if (!active || !row) return null;
-              const c = row.candle;
-              return (
-                <div className="chart-tooltip">
-                  <span className="muted">
-                    {new Date(row.time * 1000)
-                      .toUTCString()
-                      .replace(" GMT", " UTC")}
-                  </span>
-                  {c ? (
-                    <dl className="ohlc">
-                      <dt>O</dt>
-                      <dd>{usdPrice(String(c.open))}</dd>
-                      <dt>H</dt>
-                      <dd>{usdPrice(String(c.high))}</dd>
-                      <dt>L</dt>
-                      <dd>{usdPrice(String(c.low))}</dd>
-                      <dt>C</dt>
-                      <dd className={row.up ? "positive" : "negative"}>
-                        {usdPrice(String(c.close))}
-                      </dd>
-                      <dt>Vol</dt>
-                      <dd>{usdAmount(String(c.volumeUsd))}</dd>
-                    </dl>
-                  ) : (
-                    <p>No trades in this interval.</p>
-                  )}
-                </div>
-              );
-            }}
-          />
-          <Bar
-            yAxisId="volume"
-            dataKey="volume"
-            isAnimationActive={false}
-            maxBarSize={12}
+        <div
+          ref={host}
+          className="price-chart-canvas"
+          role="img"
+          aria-label={summary}
+        />
+        {shown ? (
+          <div className="chart-legend" aria-hidden="true">
+            <span className="muted">{slotTime(shown.time, interval)}</span>
+            {shown.candle ? (
+              <dl
+                className={
+                  shown.candle.close >= shown.candle.open
+                    ? "positive"
+                    : "negative"
+                }
+              >
+                <dt>O</dt>
+                <dd>{price(shown.candle.open)}</dd>
+                <dt>H</dt>
+                <dd>{price(shown.candle.high)}</dd>
+                <dt>L</dt>
+                <dd>{price(shown.candle.low)}</dd>
+                <dt>C</dt>
+                <dd>{price(shown.candle.close)}</dd>
+                <dt>Vol</dt>
+                <dd>{usdAmount(String(shown.candle.volumeUsd))}</dd>
+              </dl>
+            ) : (
+              <span>No trades in this interval</span>
+            )}
+          </div>
+        ) : null}
+      </div>
+      <div className="chart-controls">
+        <span className="tiny muted">
+          Drag to move · scroll or pinch to zoom
+        </span>
+        <div>
+          <button
+            onClick={() => setLogScale(!logScale)}
+            aria-pressed={logScale}
+            title="Logarithmic price scale"
           >
-            {rows.map((row) => (
-              <Cell key={row.time} fill={row.up ? `${UP}40` : `${DOWN}40`} />
-            ))}
-          </Bar>
-          {mode === "candles" ? (
-            <Bar
-              yAxisId="price"
-              dataKey="range"
-              isAnimationActive={false}
-              shape={<CandleShape />}
-              maxBarSize={14}
-            />
-          ) : (
-            <Line
-              yAxisId="price"
-              type="linear"
-              dataKey="close"
-              stroke="#7da1ff"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-          )}
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
+            Log
+          </button>
+          <button onClick={resetView} title="Back to the newest candles">
+            <RotateCcw size={11} />
+            Reset view
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

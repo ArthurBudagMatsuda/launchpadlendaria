@@ -2,7 +2,7 @@
 
 ## Runtime and composition
 
-Next.js App Router with React, strict TypeScript and Tailwind 4. Pages render static shells; client views fetch market data in the browser through TanStack Query, so the static export carries no prices and needs no server. Radix Dialog supplies focus trapping, keyboard dismissal and accessible modal semantics. A small shadcn-style button primitive uses `clsx`/`tailwind-merge`; there is no large component framework. CSS transitions provide lightweight animation, with reduced-motion overrides. Recharts is loaded only on token detail views through a dynamic import.
+Next.js App Router with React, strict TypeScript and Tailwind 4. Pages render static shells; client views fetch market data in the browser through TanStack Query, so the static export carries no prices and needs no server. Radix Dialog supplies focus trapping, keyboard dismissal and accessible modal semantics. A small shadcn-style button primitive uses `clsx`/`tailwind-merge`; there is no large component framework. CSS transitions provide lightweight animation, with reduced-motion overrides. The price chart uses TradingView's open-source Lightweight Charts (Apache-2.0, with its attribution logo), loaded only on token detail views through a dynamic import.
 
 Design tokens are in `src/app/globals.css`: charcoal background, dark surfaces, discreet borders, electric blue brand, occasional lime, independent positive/negative colors. The original cycling mark is supplied as SVG for full/compact contexts and favicon. Tokens get a monogram built from their verified symbol: third-party logos are not loaded, because their provenance is unverified and fetching them would expose visitors' IPs. The system font stack keeps the build independent of external font downloads.
 

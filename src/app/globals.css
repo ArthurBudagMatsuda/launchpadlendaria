@@ -1476,18 +1476,66 @@ select option {
   align-items: center;
 }
 .price-chart {
-  width: 100%;
+  position: relative;
   height: 330px;
-  padding: 10px 10px 15px 0;
+  margin: 0 6px 0 12px;
 }
-.chart-tooltip {
-  border: 1px solid #3b4c71;
-  background: #181f30;
-  padding: 10px;
-  font-size: 11px;
-  line-height: 1.8;
-  border-radius: 6px;
-  box-shadow: var(--shadow);
+.price-chart-canvas {
+  position: absolute;
+  inset: 0;
+}
+.chart-legend {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 72px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 10px;
+  line-height: 1.5;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.chart-legend dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  margin: 0;
+}
+.chart-legend dt {
+  color: #7f8da8;
+}
+.chart-legend dd {
+  margin: 0 6px 0 0;
+}
+.chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px 0;
+}
+.chart-controls > div {
+  display: flex;
+  gap: 6px;
+}
+.chart-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid #343e52;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #8e9cba;
+  font-size: 10px;
+}
+.chart-controls button[aria-pressed="true"] {
+  color: #b0c5ff;
+  background: #477bff20;
+  border-color: #477bff60;
 }
 .trade-panel {
   padding: 19px;
@@ -1942,20 +1990,6 @@ select option {
 }
 .trade-info .about-warning svg {
   margin-top: 4px;
-}
-.chart-tooltip .ohlc {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 0 12px;
-  margin: 4px 0 0;
-  font-variant-numeric: tabular-nums;
-}
-.chart-tooltip .ohlc dt {
-  color: #7f8da8;
-}
-.chart-tooltip .ohlc dd {
-  margin: 0;
-  text-align: right;
 }
 .token-liquidity {
   display: flex;
@@ -2937,6 +2971,10 @@ select option {
   }
   .price-chart {
     height: 285px;
+    margin: 0 2px 0 8px;
+  }
+  .chart-controls {
+    padding: 8px 12px 0;
   }
   .chart-toolbar {
     gap: 8px;

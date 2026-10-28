@@ -11,6 +11,7 @@ import {
   TOKEN_PAGE,
   WORTH,
 } from "./fixtures";
+import { geckoOhlcvResponse } from "../tests/fixtures/market-responses";
 
 type MockWindow = {
   __retryMockWallet: {
@@ -202,7 +203,7 @@ test.describe("RETRY app with a connected wallet", () => {
 
     // Real OHLCV with the missing hour left empty.
     const chart = page.locator(".chart-panel");
-    await expect(chart.locator(".price-chart svg").first()).toBeVisible();
+    await expect(chart.locator(".price-chart canvas").first()).toBeVisible();
     await expect(chart.locator(".source-line")).toContainText(
       "1h OHLCV · UTC · 1 interval without trades left empty",
     );
@@ -264,6 +265,130 @@ test.describe("RETRY app with a connected wallet", () => {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test("the price chart opens on the newest candles and zooms and pans with mouse or touch", async ({
+    page,
+  }, testInfo) => {
+    // 200 hourly candles (newest first, like GeckoTerminal), so there is
+    // older history to scroll to. Registered last, so it wins for /ohlcv/.
+    const rows = Array.from({ length: 200 }, (_, i) => {
+      const open = 0.0015 + 0.0002 * Math.sin(i / 7);
+      const close = 0.0015 + 0.0002 * Math.sin((i + 1) / 7);
+      return [
+        1_793_156_400 - i * 3600,
+        open,
+        Math.max(open, close) * 1.01,
+        Math.min(open, close) * 0.99,
+        close,
+        1000 + i,
+      ];
+    });
+    await page.route(
+      /^https:\/\/api\.geckoterminal\.com\/.*\/ohlcv\//,
+      (route) =>
+        route.fulfill({
+          status: 200,
+          headers: { "access-control-allow-origin": "*" },
+          contentType: "application/json",
+          body: JSON.stringify(geckoOhlcvResponse(rows)),
+        }),
+    );
+    const errors = collectPageErrors(page);
+    await page.goto(TOKEN_PAGE);
+    const chart = page.locator(".price-chart");
+    await expect(chart).toHaveAttribute("data-visible-to", /\d/);
+    await chart.scrollIntoViewIfNeeded();
+    const range = async () => {
+      const from = Number(await chart.getAttribute("data-visible-from"));
+      const to = Number(await chart.getAttribute("data-visible-to"));
+      return { from, to, width: to - from };
+    };
+    // Opens on the newest candles, not the whole history.
+    const initial = await range();
+    expect(initial.to).toBeGreaterThan(199);
+    expect(initial.from).toBeGreaterThan(0);
+    const box = (await chart.boundingBox())!;
+    const x = box.x + box.width * 0.45;
+    const y = box.y + box.height * 0.45;
+
+    if (testInfo.project.name === "mobile") {
+      // Real touch input through the Chrome DevTools protocol.
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (
+        type: "touchStart" | "touchMove" | "touchEnd",
+        points: [number, number][],
+      ) =>
+        cdp.send("Input.dispatchTouchEvent", {
+          type,
+          touchPoints: points.map(([px, py], id) => ({ x: px, y: py, id })),
+        });
+      // One finger dragging right moves to older candles.
+      await touch("touchStart", [[x - 60, y]]);
+      for (let i = 1; i <= 10; i += 1)
+        await touch("touchMove", [[x - 60 + i * 15, y]]);
+      await touch("touchEnd", []);
+      await expect
+        .poll(async () => (await range()).from)
+        .toBeLessThan(initial.from - 5);
+      // Two fingers spreading apart zoom in.
+      const before = (await range()).width;
+      await touch("touchStart", [
+        [x - 30, y],
+        [x + 30, y],
+      ]);
+      for (let i = 1; i <= 10; i += 1)
+        await touch("touchMove", [
+          [x - 30 - i * 8, y],
+          [x + 30 + i * 8, y],
+        ]);
+      await touch("touchEnd", []);
+      await expect
+        .poll(async () => (await range()).width)
+        .toBeLessThan(before * 0.8);
+      // A vertical swipe over the chart still scrolls the page.
+      const scrolled = await page.evaluate(() => window.scrollY);
+      await touch("touchStart", [[x, y + 40]]);
+      for (let i = 1; i <= 10; i += 1)
+        await touch("touchMove", [[x, y + 40 - i * 12]]);
+      await touch("touchEnd", []);
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY))
+        .toBeGreaterThan(scrolled + 30);
+    } else {
+      // The legend follows the pointer with the candle's own values.
+      await page.mouse.move(x, y);
+      await expect(page.locator(".chart-legend")).toContainText(
+        /Oct \d+, \d\d:00 UTC/,
+      );
+      await expect(page.locator(".chart-legend")).toContainText(
+        /O\$0\.001\d+H\$/,
+      );
+      // Each wheel notch zooms in by about a tenth.
+      for (let notch = 0; notch < 4; notch += 1)
+        await page.mouse.wheel(0, -100);
+      await expect
+        .poll(async () => (await range()).width)
+        .toBeLessThan(initial.width * 0.8);
+      // Dragging right moves to older candles.
+      const zoomed = await range();
+      await page.mouse.down();
+      await page.mouse.move(x + 250, y, { steps: 12 });
+      await page.mouse.up();
+      await expect
+        .poll(async () => (await range()).from)
+        .toBeLessThan(zoomed.from - 5);
+      // The log scale toggles.
+      const log = page.getByRole("button", { name: "Log" });
+      await log.click();
+      await expect(log).toHaveAttribute("aria-pressed", "true");
+    }
+    // Reset view goes back to the newest candles.
+    await page.getByRole("button", { name: "Reset view" }).click();
+    await expect
+      .poll(async () => (await range()).from)
+      .toBeCloseTo(initial.from, 0);
     expect(errors).toEqual([]);
   });
 
