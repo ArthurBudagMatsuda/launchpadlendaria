@@ -22,4 +22,6 @@ Cada operação tem até duas tentativas, 7 s por tentativa e 150 ms entre tenta
 
 Explorer recebe `?cluster=devnet` para Devnet. O cluster escolhido no RETRY não altera as preferências da carteira. Não há seleção EVM por chain ID.
 
+Atualização da revisão do PR #6: o RPC configurado inicialmente é preservado ao sair do cluster e voltar. O cliente RPC é reutilizado em cache limitado a oito URLs. O prazo de leitura rejeita também quando um transporte ignora o cancelamento; não depende apenas do AbortController. As sondas reais dos dois clusters e seus limites de evidência estão no [relatório de revisão](reports/RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md).
+
 Fontes: [clusters](https://solana.com/docs/references/clusters), [RPC HTTP](https://solana.com/docs/rpc/http), [getBalance](https://solana.com/docs/rpc/http/getbalance), [getGenesisHash](https://solana.com/docs/rpc/http/getgenesishash).

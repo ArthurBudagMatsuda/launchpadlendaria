@@ -4,6 +4,8 @@ Estado em 28/10/2026. A aplicação é Next.js 16, React 19 e TypeScript. A iden
 
 ## Fluxo implementado
 
+O gráfico preserva a integração mais recente de `main` (`0fcc9e5`): paginação retroativa de candles, sem interpolação, cache por cluster/mint/pool/intervalo e preservação de viewport. A revisão de carteira/RPC está no [relatório do PR #6](reports/RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md).
+
 ```mermaid
 flowchart LR
   UI[Header / Portfolio / Create / Terminal] --> Provider[RetrySolanaProvider único]

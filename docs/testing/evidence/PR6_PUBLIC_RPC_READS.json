@@ -1,0 +1,33 @@
+{
+  "classification": "REAL PUBLIC RPC — not a real wallet test",
+  "command": "pnpm exec vitest run --config vitest.live.config.ts --reporter=verbose --reporter=json --outputFile=.qa/review-rpc-results.json",
+  "application_reader": "src/lib/solana/rpc.ts: readSolBalance",
+  "account": "11111111111111111111111111111111",
+  "account_role": "Public System Program account; not an operator or user wallet",
+  "methods": ["getGenesisHash", "getBalance"],
+  "commitment": "confirmed",
+  "results": [
+    {
+      "cluster": "devnet",
+      "endpoint": "https://api.devnet.solana.com",
+      "verified_genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "slot": "516171787",
+      "lamports": "1",
+      "sol": "0.000000001",
+      "checked_at_utc": "2026-10-28T20:14:50.012Z",
+      "status": "passed"
+    },
+    {
+      "cluster": "mainnet-beta",
+      "endpoint": "https://api.mainnet.solana.com",
+      "verified_genesis": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+      "slot": "462607636",
+      "lamports": "1",
+      "sol": "0.000000001",
+      "checked_at_utc": "2026-10-28T20:14:50.623Z",
+      "status": "passed"
+    }
+  ],
+  "wallet_extension_connected": false,
+  "signatures_or_transactions": false
+}
