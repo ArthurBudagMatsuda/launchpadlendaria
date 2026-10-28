@@ -393,8 +393,9 @@ b {
   background: #ddc790;
 }
 /* The X banner backdrop (3:1, no text) with the 3D logo floating where the
-   banner has it. The box keeps the banner's ratio, so the percentages below
-   line the logo up with the glow and orbits at any width. */
+   banner has it, and the headline over the empty left side. The art layer
+   keeps the banner's ratio, so the percentages below line the logo up with
+   the glow and orbits at any width. */
 .discovery-hero {
   aspect-ratio: 3 / 1;
   background: #051248;
@@ -402,6 +403,12 @@ b {
   border-radius: 11px;
   overflow: hidden;
   position: relative;
+  display: flex;
+  align-items: center;
+}
+.hero-art {
+  position: absolute;
+  inset: 0;
 }
 .hero-backdrop {
   object-fit: cover;
@@ -431,6 +438,49 @@ b {
   );
   transform: translate(-50%, 370%);
   animation: hero-shade 5s ease-in-out infinite;
+}
+.hero-content {
+  padding: 0 0 0 6.5%;
+  position: relative;
+  z-index: 2;
+}
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b0c2f3;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.hero-eyebrow .base-mark {
+  width: 13px;
+  height: 13px;
+}
+.hero-eyebrow .base-mark:after {
+  width: 9px;
+  top: 5.5px;
+  height: 1.5px;
+}
+.hero-content h1 {
+  font-size: clamp(30px, 3.5vw, 54px);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  font-weight: 650;
+}
+.hero-content h1 span {
+  color: #88a8ff;
+}
+.hero-content p {
+  color: #a9b6d6;
+  font-size: 13px;
+  margin: 14px 0 22px;
+}
+.hero-content .button {
+  min-height: 38px;
+  font-size: 12px;
+  padding: 9px 15px;
+  gap: 32px;
 }
 .trending-section {
   display: flex;
@@ -2066,6 +2116,16 @@ select option {
   }
 }
 @media (min-width: 1600px) {
+  .hero-eyebrow {
+    font-size: 12px;
+  }
+  .hero-content p {
+    font-size: 15px;
+  }
+  .hero-content .button {
+    min-height: 42px;
+    font-size: 13px;
+  }
   .main {
     padding-left: 46px;
     padding-right: 46px;
@@ -2131,6 +2191,10 @@ select option {
   }
 }
 @media (max-width: 1000px) {
+  /* Keeps the eyebrow clear of the banner's star. */
+  .hero-content {
+    padding-top: 28px;
+  }
   .header-search {
     display: none;
   }
@@ -2274,6 +2338,39 @@ select option {
   .demo-label {
     font-size: 8px;
     padding: 4px 6px;
+  }
+  /* Too narrow for 3:1 with text: a fixed-height card, and the art layer,
+     still 3:1 (708 x 236), slides so the logo sits right of the text. */
+  .discovery-hero {
+    aspect-ratio: auto;
+    height: 236px;
+  }
+  .hero-art {
+    right: auto;
+    width: 708px;
+    left: calc(81% - 526px);
+  }
+  .hero-content {
+    padding: 0 20px;
+  }
+  .hero-eyebrow {
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  .hero-content h1 {
+    font-size: 26px;
+  }
+  .hero-content p {
+    max-width: 190px;
+    line-height: 1.6;
+    font-size: 11px;
+    margin: 10px 0 14px;
+  }
+  .hero-content .button {
+    min-height: 34px;
+    font-size: 11px;
+    padding: 8px 13px;
+    gap: 24px;
   }
   .trending-section {
     gap: 13px;
@@ -2618,6 +2715,14 @@ select option {
   }
   .skeleton-wrap {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 380px) {
+  .hero-content h1 {
+    font-size: 24px;
+  }
+  .hero-content p {
+    max-width: 175px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

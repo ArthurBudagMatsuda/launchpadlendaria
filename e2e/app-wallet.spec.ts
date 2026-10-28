@@ -80,12 +80,16 @@ test.describe("RETRY app with a connected wallet", () => {
     ).toHaveCount(0);
   });
 
-  test("shows the X banner with the logo floating, and still when the system reduces motion", async ({
+  test("shows the X banner with the headline and the logo floating, and still when the system reduces motion", async ({
     page,
   }) => {
     await page.goto(`${APP}/`);
     const hero = page.locator(".discovery-hero");
-    await expect(hero.getByRole("heading", { level: 1 })).toHaveText(/RETRY/);
+    const heading = hero.getByRole("heading", { level: 1 });
+    await expect(heading).toHaveText("Your next tokenstarts here.");
+    await expect(
+      hero.getByRole("link", { name: "Create Token" }),
+    ).toHaveAttribute("href", `${APP}/create/`);
     // Both images load from the Pages base path.
     const images = hero.locator("img");
     await expect(images).toHaveCount(2);
@@ -99,9 +103,13 @@ test.describe("RETRY app with a connected wallet", () => {
         .toBeGreaterThan(0);
     }
     // The logo positions assume the banner's 3:1 ratio.
-    const box = await hero.boundingBox();
-    expect(box!.width / box!.height).toBeCloseTo(3, 1);
+    const art = await hero.locator(".hero-art").boundingBox();
+    expect(art!.width / art!.height).toBeCloseTo(3, 1);
     const logo = hero.locator(".hero-logo");
+    // The headline stays left of the logo.
+    const headingBox = (await heading.boundingBox())!;
+    const logoBox = (await logo.boundingBox())!;
+    expect(headingBox.x + headingBox.width).toBeLessThan(logoBox.x);
     await expect(logo).toHaveCSS("animation-name", "hero-float");
     await expect(logo).toHaveCSS("animation-iteration-count", "infinite");
     await page.emulateMedia({ reducedMotion: "reduce" });

@@ -11,6 +11,7 @@ import {
   Flame,
   GraduationCap,
   LayoutGrid,
+  Plus,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -82,29 +83,43 @@ export function Discover({
         </span>
         <DemoLabel />
       </div>
-      <section className="discovery-hero" aria-labelledby="hero-title">
-        <h1 id="hero-title" className="sr-only">
-          RETRY. Your next token starts here.
-        </h1>
-        <Image
-          className="hero-backdrop"
-          src={assetPath("/brand/retry-hero-bg.webp")}
-          alt=""
-          fill
-          sizes="(max-width: 760px) 100vw, 1600px"
-          preload
-          unoptimized
-        />
-        <span className="hero-shadow" aria-hidden="true" />
-        <Image
-          className="hero-logo"
-          src={assetPath("/brand/retry-logo-3d.webp")}
-          alt=""
-          width={474}
-          height={480}
-          loading="eager"
-          unoptimized
-        />
+      <section className="discovery-hero">
+        <div className="hero-art" aria-hidden="true">
+          <Image
+            className="hero-backdrop"
+            src={assetPath("/brand/retry-hero-bg.webp")}
+            alt=""
+            fill
+            sizes="(max-width: 760px) 720px, 1600px"
+            preload
+            unoptimized
+          />
+          <span className="hero-shadow" />
+          <Image
+            className="hero-logo"
+            src={assetPath("/brand/retry-logo-3d.webp")}
+            alt=""
+            width={474}
+            height={480}
+            loading="eager"
+            unoptimized
+          />
+        </div>
+        <div className="hero-content">
+          <div className="hero-eyebrow">
+            <span className="base-mark" />A fresh start. Onchain.
+          </div>
+          <h1>
+            Your next token
+            <br />
+            starts <span>here.</span>
+          </h1>
+          <p>Discover, launch and trade the next wave on Base.</p>
+          <Link href="/create" className="button button-primary">
+            Create Token
+            <Plus size={16} />
+          </Link>
+        </div>
       </section>
       <section className="trending-section" aria-label="Trending demo tokens">
         <div className="trending-heading">
