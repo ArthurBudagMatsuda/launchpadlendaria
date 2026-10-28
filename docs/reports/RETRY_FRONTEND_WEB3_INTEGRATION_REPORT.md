@@ -12,7 +12,7 @@ Nenhuma operação financeira foi ligada: não há swap, approve, criação de t
 
 O que foi verificado:
 
-- 24 testes Vitest do app (os 20 da Etapa 1, 2 de integração React com o provider real e 2 de formatação), 126 testes do módulo (124 da Etapa 2 e 2 de regressão novos), 24 testes Playwright no export estático do GitHub Pages (12 cenários × desktop e Pixel 7) e os 22 testes Playwright do playground. Todos passam localmente e no GitHub Actions.
+- 24 testes Vitest do app (os 20 da Etapa 1, 2 de integração React com o provider real e 2 de formatação), 126 testes do módulo (124 da Etapa 2 e 2 de regressão novos), 26 testes Playwright no export estático do GitHub Pages (13 cenários × desktop e Pixel 7) e os 22 testes Playwright do playground. Todos passam localmente e no GitHub Actions.
 - `format:check`, `lint`, `typecheck`, `build` e `build:pages` passam.
 
 Carteiras reais: a pedido de Iam, o app integrado foi publicado no preview do GitHub Pages a partir de uma branch temporária (`feat/retry-integrated-preview`), sem merge e sem mudar a `main`. Em 27/10 Iam testou MetaMask, Coinbase Wallet e Phantom. Conexão, header, saldo real, navegação e desconexão passaram. A volta para a Base Sepolia a partir de `Wrong Network` falhou: a Phantom aceita a troca e volta sozinha para a rede escolhida nela. O app agora detecta isso e mostra uma mensagem fixa explicando o que fazer; Iam confirmou a mensagem com a Phantom no preview e que, ao escolher Base Sepolia dentro da Phantom, o app volta ao normal. Na MetaMask, a troca de Base para Base Sepolia passou. A Coinbase Wallet passou no passo 4, segundo Iam. Detalhes na seção 14. Os testes automatizados continuam usando carteira EIP-6963 e RPC simulados.
@@ -199,7 +199,7 @@ Nenhum override foi aplicado para essas duas: forçar versões maiores dentro de
 
 ## 12. Discover/Trade/Create
 
-- **Discover:** sem mudança de comportamento. O catálogo demo (15 tokens fictícios, marcados `Demo Data`) não depende da carteira. O Playwright confere o catálogo demo, a rede alvo com a carteira desconectada e as imagens com base path. Filtros e busca não mudaram e seguem cobertos pelos testes da Etapa 1.
+- **Discover:** sem mudança de comportamento. O banner do topo agora é o mesmo do X (fundo sem logo e sem texto, proporção 3:1), com a logo 3D flutuando no lugar dela num ciclo de 5 s, só com CSS. O título continua na página para leitores de tela, e com "reduzir movimento" a logo fica parada. Pedido de Iam em 28/10. O catálogo demo (15 tokens fictícios, marcados `Demo Data`) não depende da carteira. O Playwright confere o catálogo demo, a rede alvo com a carteira desconectada e as imagens com base path. Filtros e busca não mudaram e seguem cobertos pelos testes da Etapa 1.
 - **Trade (`/token/[id]`):** o painel mostra `WalletStatus` (endereço e rede, ou rede errada com troca) e o saldo real em ETH no lugar da leitura antiga. A estimativa continua com a taxa ilustrativa fixa da Etapa 1, e o botão "Trading Coming Soon" só mostra um aviso. Nenhuma chamada de assinatura, envio ou approve acontece (verificado).
 - **Create:** o fluxo de três passos e o rascunho local não mudaram. O resumo do lançamento mostra o estado da carteira e explica que conectar é opcional por enquanto. O botão de lançar continua desligado. O Playwright confere que o rascunho (com imagem) continua salvo depois de desconectar.
 
@@ -215,7 +215,7 @@ Ambiente local: container Linux, Node 24.22.1 (a versão pedida em `engines`) e 
 | `pnpm test`                                                | 24 testes Vitest em 5 arquivos (20 da Etapa 1, 2 de integração, 2 de formatação) | 24/24        | Passou         |
 | `pnpm build`                                               | Build Next.js para servidor Node                                                 | Passou       | Passou         |
 | `pnpm build:pages`                                         | Export estático com `/launchpadlendaria`                                         | Passou       | Passou         |
-| `pnpm test:e2e`                                            | 12 cenários × desktop Chrome e Pixel 7 no export estático                        | 24/24        | Passou         |
+| `pnpm test:e2e`                                            | 13 cenários × desktop Chrome e Pixel 7 no export estático                        | 26/26        | Passou         |
 | `pnpm --filter @retry/web3 check`                          | Tipos, Biome, 126 testes Vitest e build do módulo                                | 126/126      | Passou         |
 | `pnpm --filter retry-web3-playground exec playwright test` | 11 cenários × desktop e mobile no playground, depois da correção no módulo       | 22/22        | Passou         |
 
@@ -249,6 +249,7 @@ Ao final o teste confere: uma única solicitação de conexão durante toda a na
 10. Desconectar pelo menu e quando a carteira encerra a sessão.
 11. Seletor aberto e fechado pelo teclado, sem entrada duplicada de carteira.
 12. Com "reduzir movimento" ligado no sistema, o círculo de carregamento continua girando devagar (2,4 s por volta).
+13. O banner do Discover carrega o fundo e a logo com base path, mantém a proporção 3:1 e a logo flutua; com "reduzir movimento" ela fica parada.
 
 Esses testes provam o comportamento do app com uma carteira que segue os padrões EIP-1193/EIP-6963. Eles não provam compatibilidade com uma carteira real específica.
 
@@ -328,7 +329,9 @@ Execuções de push intermediárias aparecem como canceladas porque o `ci.yml` c
 | `f91872d` | fix(ui): o círculo de carregamento não pisca com "reduzir movimento"                    |
 | `41d87a9` | docs: correção do círculo de carregamento neste relatório                               |
 | `6b03949` | docs: Phantom volta ao normal e troca da Coinbase, segundo Iam                          |
-| (este)    | docs: Iam confirmou o círculo no preview                                                |
+| `f9c5b69` | docs: Iam confirmou o círculo no preview                                                |
+| `85df3ed` | feat(discover): banner do X com a logo flutuando                                        |
+| (este)    | docs: banner do Discover neste relatório                                                |
 
 **Preview temporário** (fora do PR #2, a pedido de Iam para testar carteiras reais sem merge): a branch `feat/retry-integrated-preview` tem o `pages.yml` proposto em `docs/integration/GITHUB_PAGES.md` (`f4435f2`), o registro de diagnóstico `?debug=web3` (`a195c44`) e os merges das correções (`6c96b56`, `09fd2b8`). Cada push nela republica o site. Um push na `main` ou nas branches das etapas republica o preview dividido.
 
