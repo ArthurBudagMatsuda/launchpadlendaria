@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { tokens } from "@/data/tokens";
 import {
   filterTokens,
   generateHistory,
   tokenProvider,
-} from "@/services/token-provider";
+  tokens,
+} from "./fixtures/demo-market";
 import {
   financialActionsEnabled,
   isSupportedChain,
   supportedChains,
 } from "@/config/networks";
-describe("demo token catalog", () => {
+describe("demo token catalog (test fixture)", () => {
   it("has stable unique identities and no fake deployed addresses", () => {
     expect(new Set(tokens.map((t) => t.id)).size).toBe(tokens.length);
     expect(
