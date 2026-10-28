@@ -15,6 +15,8 @@ import type { Wallet, WalletAccount } from "@wallet-standard/base";
 import { getAddressEncoder } from "@solana/kit";
 import {
   RetrySolanaProvider,
+  compatibleWallet,
+  selectAccount,
   useSolBalance,
   useSolanaWallet,
 } from "@/components/wallet/solana-provider";
@@ -29,14 +31,15 @@ const account = (address = A): WalletAccount => ({
   features: [],
 });
 let unregister: (() => void) | undefined;
+const unregisterAll: (() => void)[] = [];
 function fixture(
   name = "Phantom",
   connect = vi.fn(async () => ({ accounts: [account()] })),
+  disconnect = vi.fn(async () => {}),
 ) {
   const listeners = new Set<
     (event: { accounts: readonly WalletAccount[] }) => void
   >();
-  const disconnect = vi.fn(async () => {});
   const wallet: Wallet = {
     version: "1.0.0",
     name,
@@ -59,7 +62,9 @@ function fixture(
     },
   };
   unregister = getWallets().register(wallet);
+  unregisterAll.push(unregister);
   return {
+    wallet,
     connect,
     disconnect,
     change: (accounts: WalletAccount[]) =>
@@ -83,6 +88,7 @@ function Probe() {
       </output>
       <output data-testid="error">{w.error}</output>
       <output data-testid="cluster">{w.config?.cluster}</output>
+      <output data-testid="rpc">{w.config?.rpcUrl}</output>
       {w.wallets.map((wallet) => (
         <button key={wallet.name} onClick={() => w.connect(wallet)}>
           {wallet.name}
@@ -91,6 +97,7 @@ function Probe() {
       <button onClick={w.disconnect}>Disconnect</button>
       <button onClick={w.cancel}>Cancel</button>
       <button onClick={() => w.selectCluster("mainnet-beta")}>Mainnet</button>
+      <button onClick={() => w.selectCluster("devnet")}>Devnet</button>
     </>
   );
 }
@@ -131,13 +138,139 @@ function rpc(fail = false) {
   });
 }
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   unregister?.();
+  unregisterAll.splice(0).forEach((off) => off());
   unregister = undefined;
   localStorage.clear();
   vi.unstubAllGlobals();
 });
 describe("single Solana context with Wallet Standard", () => {
+  it("bounds a wallet disconnect that never answers", async () => {
+    vi.stubGlobal("fetch", rpc());
+    fixture(
+      "Phantom",
+      vi.fn(async () => ({ accounts: [account()] })),
+      vi.fn(() => new Promise<void>(() => {})),
+    );
+    mount();
+    fireEvent.click(screen.getByText("Phantom"));
+    await waitFor(() =>
+      expect(screen.getByTestId("identity").textContent).toBe(`connected:${A}`),
+    );
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByText("Disconnect"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_001);
+    });
+    expect(screen.getByTestId("identity").textContent).toBe(
+      "disconnected:none",
+    );
+    expect(screen.getByTestId("error").textContent).toContain(
+      "could not revoke",
+    );
+  });
+  it("contains a wallet subscription failure instead of crashing the app", async () => {
+    const f = fixture();
+    Object.assign(f.wallet.features["standard:events"] as object, {
+      on: () => {
+        throw new Error("unavailable");
+      },
+    });
+    vi.stubGlobal("fetch", rpc());
+    mount();
+    fireEvent.click(screen.getByText("Phantom"));
+    await waitFor(() =>
+      expect(screen.getByTestId("error").textContent).toContain(
+        "account updates unavailable",
+      ),
+    );
+    expect(screen.getByTestId("identity").textContent).toBe(
+      "disconnected:none",
+    );
+  });
+  it("refuses an EVM account or a mismatched public key", () => {
+    expect(
+      selectAccount(
+        [
+          {
+            ...account(),
+            address: "0x1111111111111111111111111111111111111111",
+            chains: ["eip155:8453"],
+          },
+        ],
+        "solana:devnet",
+      ),
+    ).toBeUndefined();
+    expect(
+      selectAccount(
+        [{ ...account(B), publicKey: new Uint8Array(32) }],
+        "solana:devnet",
+      ),
+    ).toBeUndefined();
+  });
+  it("preserves a configured RPC after a cluster round trip", () => {
+    mount();
+    fireEvent.click(screen.getByText("Mainnet"));
+    fireEvent.click(screen.getByText("Devnet"));
+    expect(screen.getByTestId("rpc").textContent).toBe(
+      "https://wallet-tests.example",
+    );
+  });
+  it("does not let a late disconnect error overwrite a reconnected session", async () => {
+    let rejectDisconnect!: (cause: Error) => void;
+    fixture(
+      "Phantom",
+      vi.fn(async () => ({ accounts: [account()] })),
+      vi.fn(
+        () =>
+          new Promise<void>((_done, reject) => {
+            rejectDisconnect = reject;
+          }),
+      ),
+    );
+    fixture("Solflare");
+    vi.stubGlobal("fetch", rpc());
+    mount();
+    fireEvent.click(screen.getByText("Phantom"));
+    await waitFor(() =>
+      expect(screen.getByTestId("identity").textContent).toBe(`connected:${A}`),
+    );
+    fireEvent.click(screen.getByText("Disconnect"));
+    fireEvent.click(screen.getByText("Solflare"));
+    await waitFor(() =>
+      expect(screen.getByTestId("identity").textContent).toBe(`connected:${A}`),
+    );
+    await act(async () => rejectDisconnect(new Error("old rejection")));
+    expect(screen.getByTestId("error").textContent).toBe("");
+  });
+  it("rejects incomplete wallet lifecycle features", () => {
+    const f = fixture();
+    expect(
+      compatibleWallet({
+        ...f.wallet,
+        features: {
+          "standard:connect": f.wallet.features["standard:connect"],
+          "standard:events": { version: "1.0.0" },
+        },
+      }),
+    ).toBe(false);
+  });
+  it("does not throw on malformed account events", () => {
+    expect(() =>
+      selectAccount(null as unknown as WalletAccount[], "solana:devnet"),
+    ).not.toThrow();
+    expect(
+      selectAccount([{} as WalletAccount], "solana:devnet"),
+    ).toBeUndefined();
+  });
+  it("shows one option for repeated registrations of the same wallet brand", () => {
+    fixture("Phantom");
+    fixture("Phantom");
+    mount();
+    expect(screen.getAllByText("Phantom")).toHaveLength(1);
+  });
   it.each(["Phantom", "Solflare", "Backpack"])(
     "connects %s, reads lamports, handles account changes and disconnects",
     async (name) => {
