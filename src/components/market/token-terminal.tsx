@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowLeft,
@@ -23,6 +23,7 @@ import {
   useOnchainToken,
   useTokenMarket,
 } from "@/hooks/use-market";
+import { chartSeries, INTERVAL_SECONDS } from "@/lib/market/chart-series";
 import { errorMessage } from "@/lib/market/errors";
 import {
   computeFdvUsd,
@@ -116,7 +117,12 @@ export function TokenTerminal({
         Back to Discover
       </Link>
       <div className="token-detail-heading">
-        <TokenMark symbol={symbol} address={token.address} size={60} />
+        <TokenMark
+          symbol={symbol}
+          address={token.address}
+          size={60}
+          logo={asset?.logo}
+        />
         <div>
           <h1>
             {facts?.name ??
@@ -411,6 +417,16 @@ function ChartPanel({
   const [interval, setInterval] = useState<CandleInterval>("1h");
   const [mode, setMode] = useState<"candles" | "line">("candles");
   const candles = useCandles(token, primary?.pool.id, interval);
+  const series = useMemo(
+    () =>
+      candles.data
+        ? chartSeries(
+            candles.data.candles,
+            INTERVAL_SECONDS[candles.data.interval],
+          )
+        : null,
+    [candles.data],
+  );
   return (
     <section className="panel chart-panel">
       <div className="panel-heading">
@@ -465,20 +481,27 @@ function ChartPanel({
           message={`Price history is unavailable: ${errorMessage(candles.error)}`}
           onRetry={() => candles.refetch()}
         />
-      ) : candles.data ? (
+      ) : candles.data && series ? (
         <>
-          <CandleChart
-            candles={candles.data.candles}
-            interval={interval}
-            mode={mode}
-            pairLabel={pair?.pair ?? symbol}
-          />
+          {series.slots.length ? (
+            <CandleChart
+              series={series}
+              interval={candles.data.interval}
+              mode={mode}
+              pairLabel={pair?.pair ?? symbol}
+            />
+          ) : (
+            <EmptyState title="No candles for this interval">
+              The provider has no trades recorded for this pool in this window.
+              No prices are drawn where nothing was observed.
+            </EmptyState>
+          )}
           <SourceLine
             source={candles.data.provenance.source}
             retrievedAt={candles.data.provenance.retrievedAt}
             refreshMs={CANDLE_REFRESH_MS[interval]}
             refreshFailed={candles.isRefetchError}
-            detail={`${interval} OHLCV · UTC${candles.data.gaps ? ` · ${candles.data.gaps} interval${candles.data.gaps === 1 ? "" : "s"} without trades left empty` : ""}`}
+            detail={`${interval} OHLCV · UTC${series.gaps ? ` · ${series.gaps} interval${series.gaps === 1 ? "" : "s"} without trades left empty` : ""}${series.trimmed ? ` · ${series.trimmed} older candle${series.trimmed === 1 ? "" : "s"} not drawn` : ""}`}
           />
         </>
       ) : null}
@@ -758,6 +781,22 @@ function AboutPanel({
           <dt>Holders</dt>
           <dd>Not indexed</dd>
         </div>
+        {asset?.logo ? (
+          <div>
+            <dt>Logo</dt>
+            <dd>
+              <a
+                href={asset.logo.evidence}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-link"
+                title={`SHA-256 ${asset.logo.sha256}`}
+              >
+                As listed by {asset.logo.listedBy}
+              </a>
+            </dd>
+          </div>
+        ) : null}
       </dl>
       {facts ? (
         <p className="tiny about-note">

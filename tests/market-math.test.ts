@@ -14,7 +14,7 @@ import {
   valueUsd,
 } from "@/lib/market/metrics";
 import { normalizeCandles } from "@/lib/market/providers/geckoterminal";
-import { rowsWithGaps } from "@/components/market/candle-chart";
+import { chartSeries, initialBars, priceStep } from "@/lib/market/chart-series";
 import {
   quotePrice,
   tokenAmount as formatAmount,
@@ -147,18 +147,47 @@ describe("OHLCV normalization", () => {
     expect(dropped).toBe(7);
   });
 
-  it("keeps real gaps empty in the chart rows (no interpolation)", () => {
-    const candle = (time: number) => ({
-      time,
-      open: 1,
-      high: 2,
-      low: 0.5,
-      close: 1.5,
-      volumeUsd: 1,
-    });
-    const rows = rowsWithGaps([candle(T), candle(T + 3 * H)], H);
-    expect(rows.map((r) => r.time)).toEqual([T, T + H, T + 2 * H, T + 3 * H]);
-    expect(rows.filter((r) => r.candle === null)).toHaveLength(2);
-    expect(rows[1]).toMatchObject({ close: null, range: null, volume: null });
+  const candle = (time: number, low = 0.5) => ({
+    time,
+    open: 1,
+    high: 2,
+    low,
+    close: 1.5,
+    volumeUsd: 1,
+  });
+
+  it("keeps real gaps empty in the chart slots (no interpolation)", () => {
+    const series = chartSeries([candle(T), candle(T + 3 * H)], H);
+    expect(series.slots.map((s) => s.time)).toEqual([
+      T,
+      T + H,
+      T + 2 * H,
+      T + 3 * H,
+    ]);
+    expect(series.slots[1]).toEqual({ time: T + H, candle: null });
+    expect(series).toMatchObject({ gaps: 2, trimmed: 0 });
+  });
+
+  it("keeps the newest candles of a series too sparse to pad", () => {
+    // Three candles 30 hours apart, with room for 40 hourly slots.
+    const series = chartSeries(
+      [candle(T), candle(T + 30 * H), candle(T + 60 * H)],
+      H,
+      40,
+    );
+    expect(series.slots[0].time).toBe(T + 30 * H);
+    expect(series.slots).toHaveLength(31);
+    expect(series).toMatchObject({ gaps: 29, trimmed: 1 });
+    expect(chartSeries([], H)).toEqual({ slots: [], gaps: 0, trimmed: 0 });
+  });
+
+  it("opens the chart on the newest candles and sizes the price step", () => {
+    expect(initialBars(1000, 483)).toBe(143);
+    expect(initialBars(340, 483)).toBe(49);
+    expect(initialBars(100, 483)).toBe(24);
+    expect(initialBars(1000, 20)).toBe(20);
+    // Four significant digits of the lowest price, $0.00001063 here.
+    expect(priceStep([candle(T, 0.0000106), candle(T + H, 0.0012)])).toBe(1e-8);
+    expect(priceStep([])).toBe(0.01);
   });
 });

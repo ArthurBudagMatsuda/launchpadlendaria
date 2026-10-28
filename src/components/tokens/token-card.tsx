@@ -24,7 +24,12 @@ export function TrackedTokenCard({ asset }: { asset: TrackedAsset }) {
   return (
     <Link href={tokenHref(asset)} className="token-card">
       <div className="token-card-top">
-        <TokenMark symbol={symbol} address={asset.address} size={46} />
+        <TokenMark
+          symbol={symbol}
+          address={asset.address}
+          size={46}
+          logo={asset.logo}
+        />
         <div className="token-identity">
           <h3>
             {facts?.name ?? asset.verification.name}

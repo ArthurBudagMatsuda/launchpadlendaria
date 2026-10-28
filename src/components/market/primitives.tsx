@@ -1,8 +1,11 @@
 "use client";
+import Image from "next/image";
 import { useEffect, useState, type CSSProperties } from "react";
 import { CircleAlert, Copy, Database } from "lucide-react";
 import type { Address } from "viem";
 import { useApp } from "@/components/providers";
+import type { TrackedAsset } from "@/config/featured-assets";
+import { assetPath } from "@/lib/asset-path";
 import { freshness } from "@/lib/market/metrics";
 import type { DataSourceId } from "@/lib/market/types";
 import { ago, utcTime } from "@/lib/format";
@@ -14,33 +17,54 @@ export const SOURCE_NAMES: Record<DataSourceId, string> = {
 };
 
 /**
- * Placeholder artwork built from the verified symbol. External token logos
- * are not loaded: their provenance is unverified and fetching them would
- * leak visitors' IPs to third parties.
+ * A tracked token's reviewed logo, served from RETRY's own files (see
+ * `TrackedAsset.logo`), or a monogram built from the verified symbol.
+ * Third-party image URLs are never loaded: their provenance is unverified
+ * and fetching them would leak visitors' IPs.
  */
 export function TokenMark({
   symbol,
   address,
   size = 52,
+  logo,
 }: {
   symbol: string | null;
   address: Address;
   size?: number;
+  logo?: TrackedAsset["logo"];
 }) {
+  const [failed, setFailed] = useState(false);
   const hue = parseInt(address.slice(2, 8), 16) % 360;
   const letters = (symbol ?? "").replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2);
+  const image = logo && !failed;
   return (
     <span
-      className="token-mark"
+      className={image ? "token-mark has-logo" : "token-mark"}
       aria-hidden="true"
+      title={image ? `Logo as listed by ${logo.listedBy}` : undefined}
       style={
         {
           "--mark-size": `${size}px`,
-          background: `linear-gradient(135deg, hsl(${hue} 45% 32%), hsl(${(hue + 40) % 360} 40% 18%))`,
+          background: image
+            ? undefined
+            : `linear-gradient(135deg, hsl(${hue} 45% 32%), hsl(${(hue + 40) % 360} 40% 18%))`,
         } as CSSProperties
       }
     >
-      {letters ? letters.toUpperCase() : "?"}
+      {image ? (
+        <Image
+          src={assetPath(logo.src)}
+          alt=""
+          width={size}
+          height={size}
+          unoptimized
+          onError={() => setFailed(true)}
+        />
+      ) : letters ? (
+        letters.toUpperCase()
+      ) : (
+        "?"
+      )}
     </span>
   );
 }

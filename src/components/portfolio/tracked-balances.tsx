@@ -52,7 +52,12 @@ function BalanceRow({ asset, owner }: { asset: TrackedAsset; owner: Address }) {
     : null;
   return (
     <Link href={tokenHref(asset)} className="balance-row">
-      <TokenMark symbol={symbol} address={asset.address} size={36} />
+      <TokenMark
+        symbol={symbol}
+        address={asset.address}
+        size={36}
+        logo={asset.logo}
+      />
       <div>
         <strong>{facts?.name ?? asset.verification.name}</strong>
         <span>{symbol} · Base mainnet · tracked</span>

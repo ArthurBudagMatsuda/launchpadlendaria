@@ -6,7 +6,6 @@ name: Verify featured market data (live, read-only)
 # blocks a merge.
 on:
   push:
-    branches: [feat/retry-real-market-data]
     paths:
       - scripts/verify-market-data.mjs
       - src/config/featured-assets.ts
