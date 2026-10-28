@@ -1,7 +1,7 @@
 # Relatório da Etapa 4: dados reais de mercado na Base
 
 - **Branch:** `feat/retry-real-market-data` em `ArthurBudagMatsuda/launchpadlendaria`, criada a partir da ponta da PR #2 (`f18d017`)
-- **Pull request:** [#3 (Draft)](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/3), com base em `feat/retry-frontend-web3-integration`
+- **Pull request:** [#3 (Draft)](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/3), com base na `main` desde que a PR #2 entrou nela (28/10/2026, 12:37 UTC). Antes, a base era `feat/retry-frontend-web3-integration`
 - **Data:** 28/10/2026
 - **Escopo:** trocar os dados de mercado fictícios do RETRY por dados reais e somente leitura da Base, sem refazer o app, sem mexer na carteira e sem ligar nenhuma operação financeira.
 
@@ -22,7 +22,7 @@ O RETRY deixou de mostrar o catálogo fictício. Discover, página do token e Po
 - **Trading continua desligado:** não há cotação, rota, approve, assinatura nem envio de transação.
 - **Hospedagem:** o app continua funcionando como export estático no GitHub Pages. Não há API de servidor, segredo, dependência nova nem variável de ambiente nova.
 - **Testes:** 80 testes Vitest (56 novos), 34 testes Playwright (17 cenários × desktop e Pixel 7), `format:check`, `lint`, `typecheck`, `build` e `build:pages`. Tudo passa localmente com Node 24 e no GitHub Actions (seção 19).
-- **Preview:** o preview público **não** foi atualizado. Publicar a Etapa 4 lá depende da aprovação de Iam.
+- **Preview:** com a aprovação de Iam, a Etapa 4 foi publicada no preview em 28/10/2026 às 04:22 UTC. Às 12:39 UTC o site passou a sair da `main`, que ainda não tem a Etapa 4. Ela volta ao site quando esta PR entrar na `main`.
 
 ## 2. Estado Inicial
 
@@ -240,8 +240,8 @@ src/components/market/          token em destaque, página do token, gráfico, b
 - O `build:pages` gera `/`, `/create/`, `/portfolio/`, `/token/`, `/token/base/0xb200000000000000000000585fd80c20af698f01/`, `/404/` e `.nojekyll`, tudo sob `/launchpadlendaria`.
 - Os dados de mercado são buscados pelo navegador do visitante, então o HTML exportado não contém preço (verificado no `out/`).
 - Não há API routes, servidor nem segredo. Nenhuma variável `NEXT_PUBLIC_` nova foi criada.
-- O `pages.yml` não foi alterado. Ele só dispara em `main`, `feat/etapa-1-foundation` e `feat/etapa-2-web3`, então os pushes desta branch não publicam nada.
-- **O preview público não foi atualizado.** Republicar exige a aprovação de Iam, seguindo o fluxo da branch temporária descrito em `docs/integration/GITHUB_PAGES.md`.
+- Esta etapa não alterou o `pages.yml`. Desde o merge da PR #2 (28/10/2026, 12:37 UTC), ele publica o site só a partir da `main`. Os pushes desta branch não publicam nada, e o merge desta PR na `main` publica a Etapa 4 no site.
+- **Preview:** com a aprovação de Iam, a Etapa 4 foi juntada na branch temporária `feat/retry-integrated-preview` (`60d6bb6`, merge normal e sem conflitos) e publicada em 28/10/2026 às 04:22 UTC, depois de passar por lint, typecheck, testes, build e testes de navegador na combinação. Às 12:39 UTC, a publicação da `main` substituiu esse preview. A branch temporária não deve receber push nem disparo manual, porque isso sobrescreveria o site da `main`.
 - **Risco:** se um provedor mudar a política de CORS ou os limites, os números afetados passam a mostrar "Unavailable". Nesse caso seria preciso um cache próprio no servidor (seção 20).
 
 ## 14. Arquivos Criados e Modificados
@@ -384,7 +384,7 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
 
 ## 19. GitHub
 
-- **Branch:** `feat/retry-real-market-data`, a partir de `f18d017`. Nenhum push na PR #2, nenhum force push, nenhum merge e nada na `main`.
+- **Branch:** `feat/retry-real-market-data`, a partir de `f18d017`. Nenhum push na PR #2, nenhum force push e nada na `main`. Depois que a PR #2 entrou na `main`, a `main` foi trazida para esta branch com um merge normal, sem conflitos.
 - **Commits:**
   - `728fb88` ci(market-data): live read-only evidence for the featured Base token
   - `de71998` ci(market-data): probe OHLCV on an eligible pool and respect the rate limit
@@ -394,10 +394,12 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
   - `9bad240` refactor(demo): move the fictional catalogue into test fixtures
   - `5ffba2e` docs: describe the real market data flow and its hosting limits
   - `b1c6e95` docs(report): Stage 4 real market data report (pt-BR)
-  - um último commit com ajustes deste relatório (testes do módulo Web3, explorador e situação final)
+  - `8814e4b` docs(report): Web3 module results, explorer check and final status
+  - `5ef1e04` merge: main @ bff482a (PR #2 merged) into Stage 4
+  - um commit final que atualiza este relatório e o `docs/PREVIEW.md` para o fluxo novo do Pages
 - **Pull request:** [#3](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/3), em Draft, sem auto-merge, atribuída a CapotaVelha.
   - O pedido de revisão para CapotaVelha foi recusado pelo GitHub, porque a sessão publica como CapotaVelha, que é o autor da PR.
-  - A base é `feat/retry-frontend-web3-integration`, para o diff mostrar só a Etapa 4. Se a PR #2 entrar na `main` antes, esta PR deve ser redirecionada para a `main`.
+  - A base era `feat/retry-frontend-web3-integration`, para o diff mostrar só a Etapa 4. A PR #2 entrou na `main` em 28/10/2026 (`bff482a`), e esta PR passou a apontar para a `main`.
 - **GitHub Actions** (CI = `RETRY quality checks`: formatação, lint, typecheck, Vitest, builds e Playwright):
   - `728fb88`: CI e workflow de verificação passaram ([40623949696](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40623949696), [40623949754](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40623949754)).
   - `de71998`: os dois passaram ([40624224204](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40624224204), [40624224187](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40624224187)).
@@ -405,8 +407,8 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
     - CI no push ([40629723139](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40629723139)): os jobs `validate` e "Browser tests (static export, desktop and mobile)" passaram.
     - CI na PR ([40629769840](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40629769840)): passou.
     - Nova verificação ao vivo ([40629723131](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40629723131), de 03:59 a 04:01 UTC): passou. Os detalhes estão na seção 9.
-  - Os commits deste relatório só alteram documentação. O CI deles aparece na PR #3.
-- **GitHub Pages:** nada publicado.
+  - `b1c6e95` e `8814e4b`, só de documentação, também passaram no push e na PR. O CI do merge com a `main` aparece na PR #3.
+- **GitHub Pages:** o preview com a Etapa 4 saiu da branch temporária (`60d6bb6`, publicado em 28/10/2026 às 04:22 UTC) e foi substituído às 12:39 UTC pelo site da `main` (seção 13).
 
 ## 20. Pendências (Critical/High/Medium/Low)
 
@@ -417,7 +419,7 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
 **High**
 
 1. Revisar os termos dos provedores antes de produção. A cláusula do DEX Screener sobre disponibilizar a API "for third parties" é ambígua para um app web. A API do GeckoTerminal está em beta e nenhum dos dois tem SLA. Para tráfego real, avaliar um plano pago ou um cache próprio no servidor, o que exige autorização de infraestrutura e custo.
-2. Aprovação de Iam para publicar a Etapa 4 no preview.
+2. Merge desta PR na `main`, o que publica a Etapa 4 no site.
 3. Teste manual num navegador real, no desktop e no celular, contra as APIs ao vivo: CORS, limites e tempos reais.
 
 **Medium**
@@ -438,16 +440,16 @@ Os testes usam respostas gravadas dos provedores (`tests/fixtures/market-respons
 
 ## 21. Próximos Passos
 
-1. Iam decide se publica a Etapa 4 no preview, pelo mesmo fluxo da branch temporária.
-2. Com o preview publicado, conferir no desktop e no celular a página do token, o gráfico em cada intervalo, a busca por endereço e o saldo no Portfolio com uma carteira real.
+1. Iam revisa esta PR e faz o merge na `main`. O merge publica a Etapa 4 no site, porque o `pages.yml` da `main` publica a cada push.
+2. Com o site publicado, conferir no desktop e no celular a página do token, o gráfico em cada intervalo, a busca por endereço e o saldo no Portfolio com uma carteira real.
 3. Revisar os termos do GeckoTerminal e do DEX Screener e decidir entre manter as APIs públicas, contratar um plano ou criar um cache próprio.
-4. Ordem de merge: PR #2 primeiro, depois esta PR, redirecionada para a `main`.
+4. Depois do merge, apagar a branch temporária `feat/retry-integrated-preview`, com a aprovação de Iam, como prevê `docs/integration/GITHUB_PAGES.md`.
 5. Planejar um indexador (holders, supply circulante, eventos da futura fábrica RETRY) antes de mostrar market cap ou tokens lançados na RETRY.
 6. A Etapa 5 (contratos da fábrica, curva e graduação) continua separada, com especificação e auditoria próprias.
 7. Trading de verdade só depois dos contratos auditados e de uma rota verificada: cotação vinda da rota real, simulação antes do envio e confirmação explícita na carteira. Até lá, o painel continua sem execução.
 
 ## 22. Conclusão
 
-O RETRY agora mostra o mercado real de um token verificado na Base, com proveniência em cada número, uma política de pools que resiste ao token impostor, gráficos reais com lacunas preservadas e falhas de provedor visíveis, sem dado substituto. O catálogo fictício saiu do app e um teste impede que volte. Trading, carteira custodial e qualquer escrita on-chain continuam fora. A branch está publicada com a Draft PR #3; o preview público só muda com a aprovação de Iam.
+O RETRY agora mostra o mercado real de um token verificado na Base, com proveniência em cada número, uma política de pools que resiste ao token impostor, gráficos reais com lacunas preservadas e falhas de provedor visíveis, sem dado substituto. O catálogo fictício saiu do app e um teste impede que volte. Trading, carteira custodial e qualquer escrita on-chain continuam fora. A branch está publicada com a Draft PR #3, que aponta para a `main`; o merge dela publica a Etapa 4 no site.
 
-**Situação:** a Etapa 4 está concluída no escopo pedido. Os 27 critérios de aceite têm evidência e nenhum ficou bloqueado. Falta uma validação: ver a interface contra as APIs ao vivo num navegador real, o que depende do preview ou de uma execução local com rede.
+**Situação:** a Etapa 4 está concluída no escopo pedido. Os 27 critérios de aceite têm evidência e nenhum ficou bloqueado. Falta registrar uma validação: ver a interface contra as APIs ao vivo num navegador real, no site, depois do merge desta PR.
