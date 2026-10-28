@@ -208,6 +208,7 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       const { blockhash } = await connection.getLatestBlockhash("confirmed");
       tx.recentBlockhash = blockhash;
       tx.sign(partner, config);
+      const before = await connection.getBalance(partner.publicKey);
       const signature = await connection.sendRawTransaction(tx.serialize());
       const latest = await connection.getLatestBlockhash();
       await connection.confirmTransaction(
@@ -215,7 +216,11 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         "confirmed",
       );
       configKey = config.publicKey;
-      log("config created", { config: configKey.toBase58(), signature });
+      log("config created", {
+        config: configKey.toBase58(),
+        signature,
+        cost: before - (await connection.getBalance(partner.publicKey)),
+      });
       evidence.configSignature = signature;
     }
     evidence.config = configKey.toBase58();
@@ -478,8 +483,10 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       await connection.getBalance(DBC_POOL_AUTHORITY, "confirmed"),
     ).toBeGreaterThanOrEqual(float);
     // Both LP positions (partner's and creator's) are permanently locked:
-    // DAMM v2 Position.unlocked_liquidity (offset 152) and vested_liquidity
-    // (168) are zero and permanent_locked_liquidity (184) holds it all.
+    // DAMM v2 Position.vested_liquidity (offset 168) is zero and
+    // permanent_locked_liquidity (184) holds the liquidity. DBC rounds each
+    // 50% share down and leaves the remainder unlocked (offset 152) in the
+    // creator's position, so at most 1 unit of liquidity can stay unlocked.
     const u128 = (data: Buffer, offset: number) =>
       data.readBigUInt64LE(offset) + (data.readBigUInt64LE(offset + 8) << 64n);
     const owners: string[] = [];
@@ -498,14 +505,14 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         vested: u128(data, 168),
         permanent: u128(data, 184),
       };
-      expect(locked.unlocked).toBe(0n);
-      expect(locked.vested).toBe(0n);
-      expect(locked.permanent).toBeGreaterThan(0n);
       const holder = new PublicKey(
         (await connection.getAccountInfo(nftAccount))!.data.subarray(32, 64),
       ).toBase58();
-      owners.push(holder);
       log("locked position", { position, holder, ...locked });
+      expect(locked.unlocked).toBeLessThanOrEqual(1n);
+      expect(locked.vested).toBe(0n);
+      expect(locked.permanent).toBeGreaterThan(10n ** 12n);
+      owners.push(holder);
     }
     expect(owners.sort()).toEqual(
       [partner.publicKey.toBase58(), creator.publicKey.toBase58()].sort(),
