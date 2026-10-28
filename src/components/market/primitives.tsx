@@ -164,7 +164,7 @@ export function CopyAddress({ address }: { address: Address }) {
         try {
           await navigator.clipboard.writeText(address);
           setCopied(true);
-          notify("Contract address copied.");
+          notify("Mint address copied.");
           setTimeout(() => setCopied(false), 2500);
         } catch {
           notify("Clipboard unavailable. Copy the address manually.", true);

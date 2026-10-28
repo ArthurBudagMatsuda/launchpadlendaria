@@ -156,7 +156,9 @@ Verificações adicionais: `pnpm format:check` passou; `pnpm audit --prod` não 
 
 CI valida formatação, lint, tipos, testes, build Node, export estático e navegador. Permissões de conteúdo são somente leitura. Automação EVM e publicação Pages foram retiradas desta branch. `preview-validation.yml` permite gerar artefato manual de revisão, sem publicar.
 
-O site existente em `main` não foi atualizado. Status e links da execução remota serão registrados após o push do Draft PR; teste local não é apresentado como CI remoto concluído.
+O site existente em `main` não foi atualizado. No commit `c62d6ae`, os dois jobs remotos passaram: **validate** e **Browser tests (static export, desktop and mobile)**. A execução de pull request [40746102649](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40746102649) concluiu formatação, lint, tipos, testes, build Node, export, upload de artefato e testes de navegador com Chromium instalado no runner Linux. O problema de download local do navegador não se repetiu no CI.
+
+Os commits posteriores de acabamento e atualização documental têm verificações próprias exibidas no [Draft PR #6](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/6). A evidência acima identifica o commit e a execução validados, sem confundir teste local com execução remota.
 
 ## 23. Arquivos modificados
 
@@ -176,6 +178,8 @@ Principais alterações: `package.json`, lockfile e workspace; `.env.example`; `
 | `.github/workflows/ci.yml`, `playwright.config.ts`                              | CI Solana sem publicação e teste do export                             |
 
 Inventário completo de arquivos criados, modificados e retirados: [manifesto de arquivos](RETRY_SOLANA_FILE_MANIFEST.md).
+
+A entrega inicial registrou 189 arquivos: 35 criados, 37 modificados e 117 retirados da árvore atual. A maior parte das retiradas é o módulo EVM, seu playground e suas fixtures/testes específicos.
 
 ## 24. Arquivos criados e retirados
 
@@ -211,12 +215,15 @@ Não houve auditoria independente. Mints lidos, listas DEX e nomes de carteira n
 ## 28. Links GitHub
 
 - [Branch da migração](https://github.com/ArthurBudagMatsuda/launchpadlendaria/tree/migration/retry-solana).
+- [Draft PR #6](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/6): aberto como rascunho, base `main`; sem merge.
+- [Commit da migração](https://github.com/ArthurBudagMatsuda/launchpadlendaria/commit/c62d6ae73f5f6305a179d9a160cf6fa399cc6c7a): implementação, testes e documentação inicial.
 - [Comparação com main](https://github.com/ArthurBudagMatsuda/launchpadlendaria/compare/main...migration/retry-solana).
 - [Fonte integrada inicial](https://github.com/ArthurBudagMatsuda/launchpadlendaria/commit/b5a19d4986a22b02951ac7e702e4af04f76a3e31).
 - [Relatório nesta branch](https://github.com/ArthurBudagMatsuda/launchpadlendaria/blob/migration/retry-solana/docs/reports/RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md).
 - [Actions](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions).
+- [CI do PR no commit c62d6ae — validate e browser aprovados](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40746102649).
 
-Links do Draft PR e das execuções específicas serão adicionados após criação/publicação da branch.
+A branch foi enviada com push normal e o Draft PR foi anexado a esta tarefa. O checkout original continua na branch de fundação, com o Word do usuário preservado.
 
 ## 29. Conclusão
 

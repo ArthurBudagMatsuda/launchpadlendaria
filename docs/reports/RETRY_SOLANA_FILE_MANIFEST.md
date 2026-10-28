@@ -7,6 +7,7 @@ A lista cobre aplicação, dependências, automações, testes e documentos. Os 
 ```text
 A	.github/workflows/preview-validation.yml
 A	docs/reports/RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md
+A	docs/reports/RETRY_SOLANA_FILE_MANIFEST.md
 A	docs/SOLANA_ARCHITECTURE.md
 A	docs/SOLANA_DEX_RESEARCH.md
 A	docs/SOLANA_ECONOMIC_DECISIONS.md

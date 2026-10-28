@@ -1019,10 +1019,6 @@ select option {
   justify-content: center;
   border-radius: 8px;
 }
-.connector-icon.coinbase {
-  background: #315eff;
-  color: white;
-}
 .wallet-note {
   padding-top: 22px;
   margin-top: 22px;
