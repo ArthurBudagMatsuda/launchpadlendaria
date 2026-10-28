@@ -117,7 +117,12 @@ export function TokenTerminal({
         Back to Discover
       </Link>
       <div className="token-detail-heading">
-        <TokenMark symbol={symbol} address={token.address} size={60} />
+        <TokenMark
+          symbol={symbol}
+          address={token.address}
+          size={60}
+          logo={asset?.logo}
+        />
         <div>
           <h1>
             {facts?.name ??
@@ -776,6 +781,22 @@ function AboutPanel({
           <dt>Holders</dt>
           <dd>Not indexed</dd>
         </div>
+        {asset?.logo ? (
+          <div>
+            <dt>Logo</dt>
+            <dd>
+              <a
+                href={asset.logo.evidence}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-link"
+                title={`SHA-256 ${asset.logo.sha256}`}
+              >
+                As listed by {asset.logo.listedBy}
+              </a>
+            </dd>
+          </div>
+        ) : null}
       </dl>
       {facts ? (
         <p className="tiny about-note">

@@ -44,7 +44,12 @@ export function FeaturedToken({ asset }: { asset: TrackedAsset }) {
       </div>
       <div className="featured-token">
         <div className="featured-identity">
-          <TokenMark symbol={symbol} address={asset.address} size={48} />
+          <TokenMark
+            symbol={symbol}
+            address={asset.address}
+            size={48}
+            logo={asset.logo}
+          />
           <div>
             <h2>
               {facts?.name ?? asset.verification.name}

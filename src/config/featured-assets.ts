@@ -48,6 +48,20 @@ export interface TrackedAsset {
     decimals: number;
     totalSupplyRaw: string;
   };
+  /**
+   * Artwork stored under public/ after review, never hotlinked: visitors do
+   * not request third-party images. `sha256` matches the provider's file at
+   * `source`. Untracked lookups keep the generated monogram.
+   */
+  logo?: {
+    src: string;
+    source: string;
+    sha256: string;
+    checkedAt: string;
+    evidence: string;
+    /** Who lists this artwork for this exact contract address. */
+    listedBy: string;
+  };
 }
 
 const worth = getAddress("0xb200000000000000000000585fd80c20af698f01");
@@ -81,6 +95,17 @@ export const TRACKED_ASSETS: readonly TrackedAsset[] = [
       symbol: "worth",
       decimals: 18,
       totalSupplyRaw: "1000000000000000000000000000",
+    },
+    logo: {
+      src: "/tokens/base/0xb200000000000000000000585fd80c20af698f01.jpg",
+      source:
+        "https://coin-images.coingecko.com/coins/images/102179793/large/worth.jpg",
+      sha256:
+        "adfd334de565e5564aa431c9793b42168d976ee5ff5fe9a5604bdabdc544836d",
+      checkedAt: "2026-10-28T13:22:00Z",
+      evidence:
+        "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40695559970",
+      listedBy: "GeckoTerminal and DEX Screener",
     },
   },
 ];

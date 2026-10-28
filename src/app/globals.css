@@ -1729,6 +1729,15 @@ select option {
   text-shadow: 0 1px 6px #0007;
   user-select: none;
 }
+.token-mark.has-logo {
+  overflow: hidden;
+  background: #121826;
+}
+.token-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .source-line {
   display: flex;
   flex-wrap: wrap;

@@ -183,6 +183,20 @@ test.describe("RETRY app with a connected wallet", () => {
       page.getByText("Tracked on RETRY · External token"),
     ).toBeVisible();
     await expect(page.getByText("B20 · Asset")).toBeVisible();
+    // The reviewed logo comes from the app's own files, not a provider CDN.
+    const logo = page.locator(".token-detail-heading .token-mark img");
+    await expect(logo).toHaveAttribute(
+      "src",
+      new RegExp(
+        `^(http://127\\.0\\.0\\.1:\\d+)?${APP}/tokens/base/${WORTH.toLowerCase()}\\.jpg$`,
+      ),
+    );
+    await expect
+      .poll(() => logo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBe(250);
+    await expect(page.locator(".trade-info")).toContainText(
+      "LogoAs listed by GeckoTerminal and DEX Screener",
+    );
     await expect(page.getByRole("link", { name: /BaseScan/ })).toHaveAttribute(
       "href",
       `https://basescan.org/token/${WORTH}`,
