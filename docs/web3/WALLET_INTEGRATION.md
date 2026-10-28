@@ -1,5 +1,7 @@
 # Wallet integration
 
+> HISTÓRICO — matriz de carteiras EVM. Não comprova testes Solana; veja [matriz Solana](../SOLANA_WALLET_INTEGRATION.md).
+
 How `@retry/web3` connects EVM wallets, what it has been tested against, and what still needs a person with a real wallet.
 
 ## Supported wallets

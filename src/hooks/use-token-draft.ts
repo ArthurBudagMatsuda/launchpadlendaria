@@ -1,10 +1,15 @@
 "use client";
 import { useMemo, useSyncExternalStore } from "react";
 import { emptyDraft, restoreDraft, type TokenDraft } from "@/lib/validation";
-const KEY = "retry:token-draft:v1";
+import { DRAFT_KEY as KEY, migrateLegacyDraft } from "@/lib/draft-storage";
 const EVENT = "retry:draft-change";
 let memoryDraft: string | undefined;
 function subscribe(onChange: () => void) {
+  try {
+    migrateLegacyDraft(localStorage);
+  } catch {
+    /* Browser storage is optional. */
+  }
   const onStorage = (event: StorageEvent) => {
     if (event.key === KEY || event.key === null) {
       memoryDraft = undefined;

@@ -1,0 +1,41 @@
+.solana-cluster {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.solana-cluster select {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  font: inherit;
+  max-width: 110px;
+  cursor: pointer;
+}
+.solana-cluster option {
+  background: #171a20;
+  color: #eef1f7;
+}
+.solana-wallet-list,
+.solana-wallet-menu {
+  display: grid;
+  gap: 12px;
+}
+.solana-wallet-option {
+  justify-content: flex-start;
+}
+.solana-wallet-option small {
+  margin-left: auto;
+  color: #8ba4bc;
+  font-size: 11px;
+}
+.solana-mark {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9d78ff, #77d7b6);
+  flex-shrink: 0;
+}
+.solana-wallet-menu .address-full {
+  overflow-wrap: anywhere;
+}

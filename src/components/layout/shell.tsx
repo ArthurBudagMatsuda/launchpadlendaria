@@ -11,7 +11,6 @@ import {
 import { useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Header } from "./header";
-import { assetPath } from "@/lib/asset-path";
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/\/$/, "") || "/";
   const [help, setHelp] = useState(false);
@@ -54,20 +53,9 @@ export function Shell({ children }: { children: ReactNode }) {
       <footer className="footer">
         <span className="footer-status">
           <i />
-          Preview mode<span className="footer-divider">/</span>Built on Base
+          Preview mode<span className="footer-divider">/</span>Built on Solana
         </span>
-        {process.env.NEXT_PUBLIC_BASE_PATH ? (
-          <a
-            href={assetPath("/web3/")}
-            className="inline-flex items-center gap-1 text-blue-300"
-            title="Developer tool for testing wallets. Not needed to connect on RETRY."
-          >
-            Web3 test bench (dev tool)
-            <ChartNoAxesCombined size={13} />
-          </a>
-        ) : (
-          <span>Every new beginning starts with a retry.</span>
-        )}
+        <span>Every new beginning starts with a retry.</span>
         <button onClick={() => setHelp(true)}>
           About RETRY
           <ChartNoAxesCombined size={13} />
@@ -76,18 +64,18 @@ export function Shell({ children }: { children: ReactNode }) {
       <Modal
         open={help}
         onOpenChange={setHelp}
-        title="A new beginning on Base."
+        title="A new beginning on Solana."
         description="RETRY · Foundation preview"
       >
         <div className="info-box">
           <p>
-            Explore real tokens on Base, preview your next launch, and connect
-            an EVM wallet.
+            Discover tokens on Solana, preview your next launch, and connect a
+            Solana wallet.
           </p>
           <p>
             Prices, charts, pools and market activity come from public market
             data (GeckoTerminal, with DEX Screener as a fallback) and token
-            identities from Base RPC. Each figure shows its source and update
+            identities from Solana RPC. Each figure shows its source and update
             time. Tracked tokens are external: none was launched on RETRY.
           </p>
           <p>
@@ -95,9 +83,9 @@ export function Shell({ children }: { children: ReactNode }) {
             through this app.
           </p>
           <p>
-            Wallet addresses and native ETH balances are read from your
-            connected wallet and its active Base network. Connecting never asks
-            for a signature or a transaction.
+            Public keys and native SOL balances are read on the application’s
+            selected Solana cluster. Connecting never asks for a signature or a
+            transaction.
           </p>
         </div>
       </Modal>

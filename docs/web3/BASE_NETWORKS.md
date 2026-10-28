@@ -1,5 +1,7 @@
 # Base networks
 
+> HISTÓRICO — redes EVM retiradas da aplicação ativa. Consulte [redes Solana](../SOLANA_NETWORK_CONFIGURATION.md).
+
 RETRY supports exactly two networks. Chain objects come from `viem/chains`, so names, RPC defaults and explorers stay in sync with viem.
 
 | Key            | Chain ID | Name         | Role                              | Public RPC                 | Explorer                       |

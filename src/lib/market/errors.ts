@@ -18,10 +18,10 @@ const MESSAGES: Record<MarketDataErrorCode, string> = {
   TIMEOUT: "The market data provider did not answer in time.",
   NETWORK: "The market data provider could not be reached.",
   INVALID_RESPONSE: "The provider's response failed validation.",
-  UNSUPPORTED_CHAIN: "Market data is only supported on Base mainnet.",
+  UNSUPPORTED_CHAIN: "Public market data is supported on Solana Mainnet only.",
   INVALID_INPUT: "Invalid token or pool identifier.",
   NO_ELIGIBLE_POOL:
-    "No pool prices this token against ETH, WETH or USDC with enough liquidity.",
+    "No eligible Solana pool reports enough liquidity and recent trading.",
 };
 
 export class MarketDataError extends Error {

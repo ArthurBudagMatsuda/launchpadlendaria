@@ -2,9 +2,9 @@
 import Image from "next/image";
 import { useEffect, useState, type CSSProperties } from "react";
 import { CircleAlert, Copy, Database } from "lucide-react";
-import type { Address } from "viem";
+import type { SolanaAddress as Address } from "@/lib/solana/address";
 import { useApp } from "@/components/providers";
-import type { TrackedAsset } from "@/config/featured-assets";
+import type { TrackedAsset } from "@/config/tracked-mints";
 import { assetPath } from "@/lib/asset-path";
 import { freshness } from "@/lib/market/metrics";
 import type { DataSourceId } from "@/lib/market/types";
@@ -13,7 +13,7 @@ import { ago, utcTime } from "@/lib/format";
 export const SOURCE_NAMES: Record<DataSourceId, string> = {
   geckoterminal: "GeckoTerminal",
   dexscreener: "DEX Screener",
-  "base-rpc": "Base RPC",
+  "solana-rpc": "Solana RPC",
 };
 
 /**
@@ -34,7 +34,8 @@ export function TokenMark({
   logo?: TrackedAsset["logo"];
 }) {
   const [failed, setFailed] = useState(false);
-  const hue = parseInt(address.slice(2, 8), 16) % 360;
+  const hue =
+    [...address].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
   const letters = (symbol ?? "").replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2);
   const image = logo && !failed;
   return (
@@ -163,7 +164,7 @@ export function CopyAddress({ address }: { address: Address }) {
         try {
           await navigator.clipboard.writeText(address);
           setCopied(true);
-          notify("Contract address copied.");
+          notify("Mint address copied.");
           setTimeout(() => setCopied(false), 2500);
         } catch {
           notify("Clipboard unavailable. Copy the address manually.", true);

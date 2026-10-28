@@ -1,5 +1,7 @@
 # Relatório de integração: frontend RETRY (Etapa 1) + infraestrutura Web3 (Etapa 2)
 
+> HISTÓRICO — integração Base, anterior à migração. Consulte o [relatório Solana](RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md) para o estado atual.
+
 - **Branch:** `feat/retry-frontend-web3-integration` em `ArthurBudagMatsuda/launchpadlendaria`
 - **Data:** 27/10/2026
 - **Escopo:** juntar o app Next.js da Etapa 1 e o módulo `@retry/web3` da Etapa 2 num único app, com carteira EVM real no header e todas as operações financeiras desligadas.
