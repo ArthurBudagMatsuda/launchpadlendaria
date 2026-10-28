@@ -111,6 +111,24 @@ test.describe('RETRY Web3 playground', () => {
     await expect(page.getByTestId('balance-value')).toHaveText('Balance: 0.0234 ETH')
   })
 
+  test('explains a switch the wallet confirms and then undoes', async ({ page, wallet }) => {
+    await wallet({ chainId: 1, revertSwitch: true })
+    await page.goto('/')
+    await connectTestWallet(page)
+    await page.getByRole('banner').getByRole('button', { name: 'Wrong Network' }).click()
+    const menu = page.getByTestId('rw3-wallet-menu')
+    await menu.getByRole('button', { name: 'Switch to Base Sepolia' }).click()
+    await expect(menu.getByRole('alert').first()).toHaveText(
+      'Retry Test Wallet switched back to Ethereum. Open Retry Test Wallet, choose Base Sepolia there, and try again.',
+    )
+    await expect(page.getByTestId('network-wallet-chain')).toHaveText('Ethereum (1)')
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Wrong Network' })).toBeVisible()
+    const calls = await page.evaluate(
+      () => (window as never as { __retryMockWallet: { state: { calls: string[] } } }).__retryMockWallet.state.calls,
+    )
+    expect(calls.filter((method) => method === 'wallet_switchEthereumChain')).toHaveLength(1)
+  })
+
   test('reports a rejected network switch', async ({ page, wallet }) => {
     await wallet({ chainId: 42161, rejectSwitch: true })
     await page.goto('/')

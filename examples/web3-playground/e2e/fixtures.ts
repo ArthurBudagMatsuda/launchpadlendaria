@@ -19,6 +19,8 @@ export interface WalletSetup {
   rejectSwitch?: boolean
   /** Never answer the connection request, like Phantom on a Solana-only account. */
   ignoreConnect?: boolean
+  /** Confirm a network switch, then go back a few ms later, like Phantom with another network selected. */
+  revertSwitch?: boolean
 }
 
 /**
@@ -40,6 +42,7 @@ function installMockWallet(setup: Required<WalletSetup>) {
     rejectConnect: setup.rejectConnect,
     rejectSwitch: setup.rejectSwitch,
     ignoreConnect: setup.ignoreConnect,
+    revertSwitch: setup.revertSwitch,
     calls: [] as string[],
   }
   const persist = () =>
@@ -80,9 +83,17 @@ function installMockWallet(setup: Required<WalletSetup>) {
         case 'wallet_switchEthereumChain': {
           if (state.rejectSwitch) throw rpcError(4001, 'User rejected the request.')
           const target = Number((params?.[0] as { chainId: string }).chainId)
+          const previous = state.chainId
           state.chainId = target
           persist()
           emit('chainChanged', hex(target))
+          if (state.revertSwitch && previous !== target) {
+            setTimeout(() => {
+              state.chainId = previous
+              persist()
+              emit('chainChanged', hex(previous))
+            }, 10)
+          }
           return null
         }
         default:
@@ -220,6 +231,7 @@ export const test = base.extend<{
         rejectConnect: setup.rejectConnect ?? false,
         rejectSwitch: setup.rejectSwitch ?? false,
         ignoreConnect: setup.ignoreConnect ?? false,
+        revertSwitch: setup.revertSwitch ?? false,
       })
     })
   },
