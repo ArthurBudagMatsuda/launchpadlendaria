@@ -5,6 +5,7 @@
 // (GitHub runners can reach Base RPC and the providers) or locally:
 //   node scripts/verify-market-data.mjs [address]
 // Writes the evidence to market-data-verification.json and prints it.
+import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import {
   createPublicClient,
@@ -473,7 +474,114 @@ if (topPool?.attributes?.address) {
     oldest: list.at(-1)?.attributes?.block_timestamp,
     sample: list.slice(0, 3),
   };
+
+  // The series the token page draws (same limits as the app's GeckoTerminal
+  // adapter), checked against the pool's own price and price changes.
+  const price = Number(topPool.attributes.base_token_price_usd);
+  const changes = topPool.attributes.price_change_percentage ?? {};
+  const chart = {};
+  for (const [label, timeframe, aggregate, seconds, limit] of [
+    ["5m", "minute", 5, 300, 288],
+    ["15m", "minute", 15, 900, 288],
+    ["1h", "hour", 1, 3600, 168],
+    ["4h", "hour", 4, 14_400, 180],
+    ["1d", "day", 1, 86_400, 365],
+  ]) {
+    const r = await getGecko(
+      `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress}/ohlcv/${timeframe}?aggregate=${aggregate}&limit=${limit}&currency=usd&token=${lower}`,
+    );
+    const rows = r.body?.data?.attributes?.ohlcv_list;
+    if (!Array.isArray(rows) || !rows.length) {
+      chart[label] = { status: r.status, candles: 0 };
+      continue;
+    }
+    const candles = rows
+      .map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }))
+      .sort((a, b) => a.t - b.t);
+    const closes = candles.map((x) => x.c).sort((a, b) => a - b);
+    const median = closes[Math.floor(closes.length / 2)];
+    const last = candles.at(-1);
+    const closeAt = (secondsAgo) =>
+      [...candles].reverse().find((x) => x.t <= last.t - secondsAgo)?.c;
+    const iso = (t) => new Date(t * 1000).toISOString().slice(0, 16);
+    chart[label] = {
+      status: r.status,
+      candles: candles.length,
+      first: iso(candles[0].t),
+      last: iso(last.t),
+      slots: (last.t - candles[0].t) / seconds + 1,
+      gaps: (last.t - candles[0].t) / seconds + 1 - candles.length,
+      low: Math.min(...candles.map((x) => x.l)),
+      high: Math.max(...candles.map((x) => x.h)),
+      medianClose: median,
+      lastClose: last.c,
+      lastCloseVsPoolPrice: last.c / price,
+      // Wicks over 3x (or under a third of) the candle body, and candles
+      // whose low sits below a tenth of the median close.
+      bigWicks: candles.filter(
+        (x) => x.h > 3 * Math.max(x.o, x.c) || x.l < Math.min(x.o, x.c) / 3,
+      ).length,
+      nearZeroLows: candles.filter((x) => x.l < median / 10).length,
+      impliedChange: {
+        h1: closeAt(3600) ? (last.c / closeAt(3600) - 1) * 100 : null,
+        h6: closeAt(21_600) ? (last.c / closeAt(21_600) - 1) * 100 : null,
+        h24: closeAt(86_400) ? (last.c / closeAt(86_400) - 1) * 100 : null,
+      },
+    };
+  }
+  report.chartAudit = {
+    pool: poolAddress,
+    poolPriceUsd: price,
+    poolChanges: changes,
+    chart,
+  };
 }
+
+// Token artwork the providers list for this exact contract address. The
+// app does not load third-party images; this records what exists, its
+// hash and, for small files, the bytes, so a reviewed copy can be stored.
+const gtInfo = await getJson(
+  `https://api.geckoterminal.com/api/v2/networks/base/tokens/${lower}/info`,
+  gtHeaders,
+);
+const imageUrls = new Map();
+const addImage = (source, url) => {
+  if (typeof url === "string" && /^https:\/\//.test(url))
+    imageUrls.set(url, [...(imageUrls.get(url) ?? []), source]);
+};
+addImage("geckoterminal token", gtToken.body?.data?.attributes?.image_url);
+const infoAttributes = gtInfo.body?.data?.attributes ?? {};
+addImage("geckoterminal info", infoAttributes.image_url);
+for (const size of ["thumb", "small", "large"])
+  addImage(`geckoterminal info ${size}`, infoAttributes.image?.[size]);
+for (const p of dsPairs)
+  if (p.baseToken?.address?.toLowerCase() === lower)
+    addImage(`dexscreener ${p.dexId}`, p.info?.imageUrl);
+const images = [];
+for (const [url, sources] of imageUrls) {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    images.push({
+      url,
+      sources,
+      status: response.status,
+      contentType: response.headers.get("content-type"),
+      bytes: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      base64: bytes.length <= 48_000 ? bytes.toString("base64") : undefined,
+    });
+  } catch (error) {
+    images.push({ url, sources, error: String(error?.message ?? error) });
+  }
+}
+report.tokenArtwork = {
+  geckoterminalInfo: {
+    status: gtInfo.status,
+    attributes: { ...infoAttributes, description: undefined },
+  },
+  images,
+};
 
 // Blockscout: explorer metadata (verification, holders) without an API key.
 const bsToken = await getJson(
@@ -524,3 +632,7 @@ report.finishedAt = new Date().toISOString();
 const json = JSON.stringify(safe(report), null, 2);
 await writeFile("market-data-verification.json", json);
 console.log(json);
+// One-line summaries at the end, where a log tail finds them.
+console.log(`CHART_AUDIT ${JSON.stringify(safe(report.chartAudit ?? null))}`);
+for (const image of report.tokenArtwork.images)
+  console.log(`TOKEN_ARTWORK ${JSON.stringify(image)}`);
