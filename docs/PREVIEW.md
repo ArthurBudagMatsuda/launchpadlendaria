@@ -23,7 +23,7 @@ The initial workflow registration commits on `main` and the Web3 branch use `[sk
 
 `pnpm build:pages` uses `RETRY_STATIC_EXPORT=1`, sets a build-time `NEXT_PUBLIC_BASE_PATH` (default `/launchpadlendaria`), emits directory-style routes and writes `out/.nojekyll`. Assets use the same base path. Search query strings are read in a client component behind Suspense, so no request-time Next.js server is required.
 
-The finite demo token IDs are pre-generated. Browser drafts and wallet connectors run on the visitor’s device. There are no server APIs, contract deployments, financial signatures or swaps. The playground also remains read-only. GitHub Pages cannot apply the custom headers configured for the Node-hosted build.
+Pages for the tracked tokens are pre-generated; other Base addresses open at `/token/?address=0x…`. Market data is fetched in the visitor’s browser from the public GeckoTerminal and DEX Screener APIs. Browser drafts and wallet connectors run on the visitor’s device. There are no server APIs, contract deployments, financial signatures or swaps. The playground also remains read-only. GitHub Pages cannot apply the custom headers configured for the Node-hosted build.
 
 ## Checks performed before initial publication
 

@@ -87,5 +87,6 @@ These commands were run on the integration branch: `pnpm build:pages`, then the 
 ## Hosting limits that do not change
 
 - Static export: no server, so the custom security headers in `next.config.ts` do not apply on Pages, and the wallet session cannot be read server-side (the header shows `Connect Wallet` until the browser restores the session).
-- Token pages are generated at build time from the finite demo catalogue (`generateStaticParams`, `dynamicParams = false`). Real tokens created on-chain later cannot get a page on a static host without a rebuild. That needs either a server (Next.js on a Node host) or a client-side route such as `/token/?address=0x…` that reads the token from the chain or an indexer.
+- Token pages are generated at build time for the tracked tokens in `src/config/featured-assets.ts` (`generateStaticParams`, `dynamicParams = false`); adding a tracked token needs a rebuild. Any other Base address is inspected through the client-side route `/token/?address=0x…`, which reads the contract from Base RPC in the browser.
+- Market data (GeckoTerminal, DEX Screener) is fetched by the visitor's browser from public, keyless APIs that allow cross-origin requests. Nothing secret is in the bundle, and the exported HTML holds no prices. If a provider changes its CORS policy or rate limits, the affected figures show "Unavailable"; a small server-side cache would then be needed.
 - MetaMask flags the shared `*.github.io` domain (see `docs/web3/WALLET_INTEGRATION.md`). A public launch should use RETRY's own domain.

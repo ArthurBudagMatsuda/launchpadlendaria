@@ -4,18 +4,27 @@ Base-native memecoin discovery and launchpad foundation. Product name: **RETRY**
 
 ![RETRY Discover desktop preview](docs/images/retry-discover.jpg)
 
-This branch is the integrated app: the Stage 1 Next.js interface with the Stage 2 wallet module (`@retry/web3`) wired into its header and pages. How the two were combined, what was tested and what is still open is in the [integration report](docs/reports/RETRY_FRONTEND_WEB3_INTEGRATION_REPORT.md) (Portuguese).
+This branch is the integrated app: the Stage 1 Next.js interface with the Stage 2 wallet module (`@retry/web3`) wired into its header and pages. How the two were combined, what was tested and what is still open is in the [integration report](docs/reports/RETRY_FRONTEND_WEB3_INTEGRATION_REPORT.md) (Portuguese). Stage 4 replaced the fictional market data with real, read-only Base data: see the [market data report](docs/reports/RETRY_REAL_MARKET_DATA_INTEGRATION_REPORT.md) (Portuguese).
 
 ## What works
 
-- **Discover:** 15 original fictional tokens, three launch stages, search, category and minimum-progress filters, and recent/volume/market-cap sorting.
-- **`/token/[id]`:** consistent market fixtures, deterministic chart histories, intervals, area/line views, tooltips, demo activity, Buy/Sell previews and the connected wallet's state next to the trade panel.
+- **Discover:** a featured token tracked on Base (an external token, not a RETRY launch) with its real price, 24 h change, volume, liquidity and calculated FDV; search by name, ticker or contract address (full or prefix); sorting by liquidity or volume and a minimum-liquidity filter. RETRY's own "new" and "graduated" columns stay empty until the token factory exists.
+- **`/token/base/<address>/`:** the token's identity read from Base mainnet (name, symbol, decimals, supply, B20 standard), market stats with their source and update time, OHLCV candles for 5m, 15m, 1h, 4h and 1d (intervals without trades stay empty), market activity of all traders in the primary pool, the eligible pools and why one is primary, and a view-only Buy/Sell panel. `/token/?address=0x…` inspects any Base contract and explains when it is not a token.
 - **`/create`:** validated details, local image preview, live token preview, three steps and a versioned browser-local draft. The launch summary shows the connected wallet; launching stays disabled.
-- **`/portfolio`:** wallet prompt, connected account, wallet name, network, real native ETH balance and an explorer link, with explicit unindexed states for positions and history.
+- **`/portfolio`:** wallet prompt, connected account, wallet name, network, real native ETH balance, the tracked token's balance on Base mainnet (`balanceOf`) with a value labeled as derived from the pool price, and an explorer link. Other tokens and the wallet's history are not indexed and say so.
 - **Wallet:** one `Connect Wallet` button in the header for browser wallets announced through EIP-6963 (MetaMask, Phantom EVM, Rabby, Brave, …), the MetaMask SDK, Coinbase Wallet / Smart Wallet and, when configured, WalletConnect. The account menu has copy address, explorer link, balance, network switch between Base Sepolia and Base, and disconnect. Any other chain shows `Wrong Network` with a switch button. The session survives navigation and reloads.
-- Original SVG brand and token illustrations, keyboard-accessible dialogs, responsive layouts (the wallet menu is a bottom sheet on phones) and reduced-motion support.
+- Original SVG brand, monogram token marks (no unverified third-party logos), keyboard-accessible dialogs, responsive layouts (the wallet menu is a bottom sheet on phones) and reduced-motion support.
 
-**No contract, swap, approval, signature, launch, fee collection or transfer is implemented.** Connecting only asks the wallet for its accounts. All token markets, activities, prices and curve progress are labeled **Demo Data**. Demo tokens have a reference, not a fabricated contract address or explorer link. Native ETH balances are real RPC reads and are kept apart from the demo catalogue; when the read fails the UI says so and shows no number. The trading estimate uses a fixed **illustrative** ratio of 250,000 tokens/ETH, unrelated to any market quote or bonding curve. Economic terms remain undecided.
+**No contract, swap, approval, signature, launch, fee collection or transfer is implemented.** Connecting only asks the wallet for its accounts. Market data is real and read-only: every figure shows its source and update time, and anything a provider does not report reads **Unavailable**, never zero. Market cap is not shown because circulating supply is not verified; FDV is on-chain total supply × primary-pool price and is labeled as calculated. The trade panel shows no quote, route or fee and its execution is disabled. Balances are real RPC reads; when a read fails the UI says so and shows no number. Economic terms of RETRY's own launches remain undecided.
+
+## Market data
+
+Market data is fetched by the browser from two public, keyless APIs, so the static GitHub Pages export needs no server and holds no secret:
+
+- [GeckoTerminal API](https://www.geckoterminal.com/dex-api) (primary): pools, OHLCV candles and trades. About 30 requests a minute per visitor.
+- [DEX Screener API](https://docs.dexscreener.com/api/reference) (fallback): pools and statistics only. When it is used the source line says "(fallback)" and the chart and activity say they are unavailable instead of showing other data.
+
+Requests go only to those two hosts (`src/lib/market/http.ts`), time out after 10 s and refresh every 1 to 10 minutes. Responses are validated field by field and converted to exact decimals before display. The token's identity comes from Base mainnet RPC (one Multicall3 call). Tracked tokens, their verified identity and the configured primary pool live in [`src/config/featured-assets.ts`](src/config/featured-assets.ts); the read-only workflow `.github/workflows/market-data-verify.yml` re-checks a token on chain and against both providers. Neither API has an SLA; their terms of use must be reviewed before a production launch.
 
 ## Run locally
 
@@ -55,9 +64,9 @@ pnpm --filter @retry/web3 check       # module: types, lint, unit tests, build
 pnpm --filter retry-web3-playground exec playwright test   # test bench browser tests
 ```
 
-The integration and browser tests use a simulated wallet (an EIP-6963 mock provider) and a mocked Base RPC. They prove the app's behaviour, not compatibility with a particular wallet; real-wallet results are tracked in [docs/web3/WALLET_INTEGRATION.md](docs/web3/WALLET_INTEGRATION.md). The first `pnpm test:e2e` needs `pnpm exec playwright install chromium`.
+The integration and browser tests use a simulated wallet (an EIP-6963 mock provider), a mocked Base RPC and recorded GeckoTerminal and DEX Screener responses (`tests/fixtures/market-responses.ts`). They prove the app's behaviour, not compatibility with a particular wallet; real-wallet results are tracked in [docs/web3/WALLET_INTEGRATION.md](docs/web3/WALLET_INTEGRATION.md). The first `pnpm test:e2e` needs `pnpm exec playwright install chromium`.
 
-`pnpm format` formats source and documentation. `node scripts/generate-assets.mjs` regenerates the original SVG assets.
+`pnpm format` formats source and documentation. `node scripts/generate-assets.mjs` regenerates the original SVG assets (the demo token art in `public/tokens/` is no longer used by the app).
 
 ## Build
 
@@ -67,7 +76,7 @@ pnpm build:pages              # static export in out/ under /launchpadlendaria
 pnpm preview:pages            # serves out/ at http://127.0.0.1:4174/launchpadlendaria/
 ```
 
-`build:pages` sets `RETRY_STATIC_EXPORT=1` and the base path from `NEXT_PUBLIC_BASE_PATH` (default `/launchpadlendaria`). Assets, token images and routes include it. Token pages are generated from the finite demo catalogue.
+`build:pages` sets `RETRY_STATIC_EXPORT=1` and the base path from `NEXT_PUBLIC_BASE_PATH` (default `/launchpadlendaria`). Assets and routes include it. A page is generated for each tracked token in `src/config/featured-assets.ts`; market data is loaded in the browser, so the exported HTML contains no prices.
 
 ## Web3 test bench
 
@@ -86,18 +95,16 @@ GitHub Pages is static hosting: the security headers in `next.config.ts` apply o
 ```text
 src/app/                   Next.js App Router pages and global design tokens
 src/components/            UI primitives, layout, Discover, Trade, Create, Portfolio, wallet status
-src/config/                Web3 configuration (env → @retry/web3) and chain helpers
-src/data/                  Stable fictional catalogue
-src/hooks/                 Browser-local token draft
+src/config/                Web3 configuration (env → @retry/web3), chain helpers and tracked tokens
+src/hooks/                 Browser-local token draft and market data queries
 src/lib/                   Formatting, validation and class utilities
-src/services/              Typed replaceable token data provider
-src/types/                 Token, market, launch, curve, trade, portfolio types
+src/lib/market/            Market data: providers, validation, exact decimals, pool policy, on-chain reads
 packages/retry-web3/       @retry/web3: wagmi config, provider, hooks, wallet UI, test helpers
 examples/web3-playground/  Standalone Web3 test bench (Vite)
-tests/                     Vitest unit tests and tests/integration (jsdom wallet flow)
-e2e/                       Playwright tests of the static export with a mock wallet
+tests/                     Vitest unit tests, tests/integration (jsdom wallet flow) and tests/fixtures
+e2e/                       Playwright tests of the static export with a mock wallet, RPC and providers
 scripts/                   Asset generation, Pages build and local Pages server
-public/brand/, tokens/     Original RETRY vectors and token illustrations
+public/brand/, tokens/     Original RETRY vectors (tokens/ holds the unused demo art)
 docs/                      PRD, architecture, roadmap, decisions, Web3 docs, reports
 ```
 
@@ -109,7 +116,7 @@ Drafts use `retry:token-draft:v1` in localStorage. Browser storage is untrusted 
 
 ## Known boundaries and next stage
 
-No indexer, persistent backend, deployed contracts, financial operations, DEX integrations or real positions exist. The demo clock is fixed at 2026-10-26 15:00 UTC. Market cap and volume are USD fixtures. Public RPC endpoints throttle; production needs a dedicated provider. A configured connector is not evidence of a tested wallet: see [docs/VERIFICATION.md](docs/VERIFICATION.md) and the real-wallet matrix in [docs/web3/WALLET_INTEGRATION.md](docs/web3/WALLET_INTEGRATION.md).
+No indexer, persistent backend, deployed contracts, financial operations or swap integrations exist. Market data depends on the public GeckoTerminal and DEX Screener APIs (rate limited, no SLA); holders and circulating supply are not indexed. Public RPC endpoints throttle; production needs a dedicated provider. A configured connector is not evidence of a tested wallet: see [docs/VERIFICATION.md](docs/VERIFICATION.md) and the real-wallet matrix in [docs/web3/WALLET_INTEGRATION.md](docs/web3/WALLET_INTEGRATION.md).
 
 Next: confirm protocol parameters, then the token factory and ERC-20, bonding curve, graduation and liquidity lock, indexer, contract integration in this app, end-to-end tests on Base Sepolia and a security review before any mainnet use. See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/TOKENOMICS_DECISIONS.md](docs/TOKENOMICS_DECISIONS.md).
 
