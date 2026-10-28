@@ -189,3 +189,48 @@ test("mint lookup preserves terminal and disabled trade, rejects EVM address and
     ),
   ).toBe(true);
 });
+
+test("launching stays locked on Mainnet and without a metadata host, with nothing signed", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await solanaFixture(page, { restore: true });
+  await page.goto(`${root}/create/`);
+  await page.locator("#name").fill("Locked Cat");
+  await page.locator("#symbol").fill("LOCK");
+  await page
+    .locator("#description")
+    .fill("A launch that must stay locked here.");
+  await page.locator("#token-image").setInputFiles({
+    name: "cat.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await expect(page.getByText("Image added to your draft.")).toBeVisible();
+  await page.getByRole("button", { name: /Continue to Preview/ }).click();
+  await page.getByRole("button", { name: /Continue to Summary/ }).click();
+  await expect(
+    page.getByText("1,000,000,000 · fixed, 9 decimals"),
+  ).toBeVisible();
+  // This build has no metadata host (and, until deployed, no Devnet config).
+  await expect(
+    page.getByRole("button", { name: /Review launch cost/ }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /Sign & launch/ }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Application Solana cluster")
+    .selectOption("mainnet-beta");
+  await expect(
+    page.getByText(/Solana Mainnet are locked/).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Sign & launch/ }),
+  ).toBeDisabled();
+  expect(errors).toEqual([]);
+});
