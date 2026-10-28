@@ -36,7 +36,11 @@ import { Shell } from "@/components/layout/shell";
 import { DiscoverFromUrl } from "@/components/discover/discover-from-url";
 import { Portfolio } from "@/components/portfolio/portfolio";
 import { TradePanel } from "@/components/trade/trade-panel";
-import { tokens } from "@/data/tokens";
+import {
+  answerTokenCall,
+  marketFetch,
+  WORTH,
+} from "../fixtures/market-responses";
 
 const route = vi.hoisted(() => {
   let path = "/";
@@ -96,7 +100,10 @@ const balances: Record<number, Record<string, bigint>> = {
   8453: { [ALICE.toLowerCase()]: 5n * 10n ** 18n },
 };
 
-// wagmi reads native balances through Multicall3 (getEthBalance).
+const MULTICALL3 = "0xca11bde05977b3631167028862be2a173976ca11";
+
+// wagmi reads native balances through Multicall3 (getEthBalance); the token
+// identity reads (ERC-20 metadata, B20 factory) go through aggregate3 too.
 function answerMulticall(data: Hex, balanceOf: (a: Address) => bigint): Hex {
   const decoded = decodeFunctionData({ abi: multicall3Abi, data });
   if (decoded.functionName === "getEthBalance") {
@@ -107,18 +114,23 @@ function answerMulticall(data: Hex, balanceOf: (a: Address) => bigint): Hex {
       result: balanceOf(address),
     });
   }
-  const [calls] = decoded.args as readonly [readonly { callData: Hex }[]];
+  const [calls] = decoded.args as readonly [
+    readonly { target: Address; callData: Hex }[],
+  ];
   return encodeFunctionResult({
     abi: multicall3Abi,
     functionName: "aggregate3",
-    result: calls.map(({ callData }) => ({
-      success: true,
-      returnData: answerMulticall(callData, balanceOf),
-    })),
+    result: calls.map(({ target, callData }) =>
+      target.toLowerCase() === MULTICALL3
+        ? { success: true, returnData: answerMulticall(callData, balanceOf) }
+        : answerTokenCall(target, callData),
+    ),
   });
 }
 
 function setup() {
+  const market = marketFetch();
+  vi.stubGlobal("fetch", market.fetch);
   const wallet = createMockEip1193Provider();
   const rpcCalls: { chainId: number; method: string }[] = [];
   const transport = (chainId: number) =>
@@ -141,11 +153,20 @@ function setup() {
               return "0x10";
             case "eth_getBalance":
               return numberToHex(balanceOf((params as [Address])[0]));
-            case "eth_call":
-              return answerMulticall(
-                (params as [{ data: Hex }])[0].data,
-                balanceOf,
-              );
+            case "eth_getCode":
+              // Base B20 tokens are precompiles: a one-byte 0xef marker.
+              return chainId === 8453 &&
+                (params as [Address])[0].toLowerCase() === WORTH.toLowerCase()
+                ? "0xef"
+                : "0x";
+            case "eth_call": {
+              const [{ to, data }] = params as [{ to: Address; data: Hex }];
+              if (to.toLowerCase() === MULTICALL3)
+                return answerMulticall(data, balanceOf);
+              const answer = answerTokenCall(to, data);
+              if (!answer.success) throw new Error("execution reverted");
+              return answer.returnData;
+            }
             default:
               throw new Error(`unexpected RPC method ${method}`);
           }
@@ -168,8 +189,15 @@ function setup() {
   function Page() {
     const path = useSyncExternalStore(route.subscribe, route.get);
     if (path === "/portfolio") return <Portfolio />;
-    if (path === "/token/orbit") return <TradePanel token={tokens[0]} />;
-    return <DiscoverFromUrl initialTokens={tokens} />;
+    if (path === "/token/base/worth")
+      return (
+        <TradePanel
+          symbol="worth"
+          token={{ chainId: 8453, address: WORTH }}
+          decimals={18}
+        />
+      );
+    return <DiscoverFromUrl />;
   }
   route.go("/");
   render(
@@ -180,7 +208,7 @@ function setup() {
       </Shell>
     </Providers>,
   );
-  return { wallet, config, rpcCalls, clients };
+  return { wallet, config, rpcCalls, clients, market };
 }
 
 const banner = () => within(screen.getByRole("banner"));
@@ -193,11 +221,12 @@ const requests = (
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 describe("RETRY app wallet integration", () => {
   it("connects once in the header and keeps the wallet across pages, account and network changes", async () => {
-    const { wallet, config, rpcCalls, clients } = setup();
+    const { wallet, config, rpcCalls, clients, market } = setup();
 
     // 1. Disconnected app.
     expect(
@@ -206,8 +235,16 @@ describe("RETRY app wallet integration", () => {
     expect(screen.getByTestId("rw3-network-indicator").textContent).toContain(
       "Base Sepolia",
     );
-    // Discover's demo catalogue renders through the shared QueryClient.
-    expect(screen.getAllByText("Demo Data").length).toBeGreaterThan(0);
+    // Discover's featured token renders through the shared QueryClient, with
+    // its identity from Base RPC and its market from the provider.
+    await screen.findByText("Featured token");
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("one life, its worth an attempt").length,
+      ).toBeGreaterThan(0),
+    );
+    await screen.findAllByText("$0.001826");
+    expect(document.body.textContent).not.toMatch(/Demo Data|Orbit Cat/);
 
     // 2–3. Open the picker and connect with the mock EIP-1193 wallet.
     fireEvent.click(banner().getByRole("button", { name: "Connect Wallet" }));
@@ -251,7 +288,7 @@ describe("RETRY app wallet integration", () => {
     expect(banner().getByRole("button", { name: short(ALICE) })).toBeTruthy();
 
     // The trade panel reads the same wallet and balance.
-    act(() => route.go("/token/orbit"));
+    act(() => route.go("/token/base/worth"));
     const trade = await screen.findByRole("region", { name: "Trade preview" });
     await within(trade).findByText("Balance: 0.0234 ETH");
     expect(trade.querySelector(".wallet-status")?.textContent).toContain(
@@ -296,7 +333,9 @@ describe("RETRY app wallet integration", () => {
       trade.querySelector(".wallet-status")?.getAttribute("data-state"),
     ).toBe("disconnected");
 
-    // One QueryClient for the app and wagmi; balances read on Base Sepolia only.
+    // One QueryClient for the app and wagmi. Wallet balances were read on Base
+    // Sepolia (the wallet's network); Base mainnet was only used for the
+    // tracked token's identity and balance, never for the wallet's ETH.
     expect(clients.size).toBe(1);
     const [client] = [...clients] as {
       getQueryCache(): { findAll(): { queryKey: unknown[] }[] };
@@ -308,7 +347,26 @@ describe("RETRY app wallet integration", () => {
         .some((query) => query.queryKey[0] === "balance"),
     ).toBe(true);
     expect(config.settings.financialOperationsEnabled).toBe(false);
-    expect(rpcCalls.every((call) => call.chainId === 84532)).toBe(true);
+    expect(rpcCalls.filter((call) => call.method === "eth_getBalance")).toEqual(
+      rpcCalls
+        .filter((call) => call.method === "eth_getBalance")
+        .map(() => expect.objectContaining({ chainId: 84532 })),
+    );
+    expect(
+      rpcCalls
+        .filter((call) => call.chainId === 8453)
+        .every((call) =>
+          ["eth_chainId", "eth_getCode", "eth_call"].includes(call.method),
+        ),
+    ).toBe(true);
+    // Market data came only from the allowlisted providers.
+    expect(
+      market.calls.every((url) =>
+        ["api.geckoterminal.com", "api.dexscreener.com"].includes(
+          new URL(url).hostname,
+        ),
+      ),
+    ).toBe(true);
     // Read-only: nothing was signed, sent or approved.
     expect(requests(wallet, /sign|send|approve/i)).toEqual([]);
   });

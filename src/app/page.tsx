@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { DiscoverFromUrl } from "@/components/discover/discover-from-url";
 import { LoadingSkeleton } from "@/components/ui/feedback";
-import { tokenProvider } from "@/services/token-provider";
-export default async function Home() {
-  const tokens = await tokenProvider.list();
+// Market data is fetched in the browser (static hosting has no server), so
+// the exported HTML never carries a price that could be stale or invented.
+export default function Home() {
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <DiscoverFromUrl initialTokens={tokens} />
+      <DiscoverFromUrl />
     </Suspense>
   );
 }

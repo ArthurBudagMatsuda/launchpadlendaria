@@ -49,7 +49,7 @@ export function Header() {
           <Search size={16} />
           <input
             aria-label="Search tokens globally"
-            placeholder="Search tokens…"
+            placeholder="Name, ticker or 0x…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

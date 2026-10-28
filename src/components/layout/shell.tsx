@@ -81,13 +81,18 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         <div className="info-box">
           <p>
-            Explore fictional tokens, preview your next launch, and connect an
-            EVM wallet.
+            Explore real tokens on Base, preview your next launch, and connect
+            an EVM wallet.
           </p>
           <p>
-            All market data, charts, activity and graduation progress are
-            demonstrations. Trading and token launches are coming soon. No funds
-            can be moved through this app.
+            Prices, charts, pools and market activity come from public market
+            data (GeckoTerminal, with DEX Screener as a fallback) and token
+            identities from Base RPC. Each figure shows its source and update
+            time. Tracked tokens are external: none was launched on RETRY.
+          </p>
+          <p>
+            Trading and token launches are coming soon. No funds can be moved
+            through this app.
           </p>
           <p>
             Wallet addresses and native ETH balances are read from your

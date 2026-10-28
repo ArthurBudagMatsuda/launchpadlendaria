@@ -1,136 +1,101 @@
-import Image from "next/image";
+"use client";
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, Clock3, Users } from "lucide-react";
-import type { Token } from "@/types/token";
-import { age, number, percent, usd } from "@/lib/format";
-import { assetPath } from "@/lib/asset-path";
-export function TokenAvatar({
-  token,
-  size = 52,
-}: {
-  token: Token;
-  size?: number;
-}) {
+import { ArrowUpRight, Radar } from "lucide-react";
+import { tokenHref, type TrackedAsset } from "@/config/featured-assets";
+import { useOnchainToken, useTokenMarket } from "@/hooks/use-market";
+import { shorten, signedPercent, usdAmount, usdPrice } from "@/lib/format";
+import { TokenMark, Unavailable } from "@/components/market/primitives";
+
+/** Discover card for a tracked external token. Every figure is live or "Unavailable". */
+export function TrackedTokenCard({ asset }: { asset: TrackedAsset }) {
+  const token = { chainId: asset.chainId, address: asset.address };
+  const facts = useOnchainToken(token).data;
+  const market = useTokenMarket(token, asset.primaryPool?.id);
+  const primary = market.data?.selection.primary ?? null;
+  const change = primary?.priceChangePct.h24 ?? null;
+  const symbol = facts?.symbol ?? asset.verification.symbol;
+  const loading = market.isPending;
+  const value = (text: string | null, why: string) =>
+    loading ? (
+      <span className="skeleton-text" />
+    ) : (
+      (text ?? <Unavailable>{why}</Unavailable>)
+    );
   return (
-    <Image
-      className="token-avatar"
-      src={assetPath(token.metadata.image)}
-      width={size}
-      height={size}
-      alt={`${token.metadata.name} artwork`}
-      unoptimized
-    />
-  );
-}
-export function BondingProgress({
-  progress,
-  graduated = false,
-}: {
-  progress: number;
-  graduated?: boolean;
-}) {
-  return (
-    <div className={`bonding ${graduated ? "graduated" : ""}`}>
-      <div className="bonding-label">
-        <span>
-          {graduated ? (
-            <>
-              <BadgeCheck size={12} />
-              Graduated
-            </>
-          ) : (
-            "Bonding curve"
-          )}
-        </span>
-        <span>{progress}%</span>
-      </div>
-      <div
-        className="progress-track"
-        role="progressbar"
-        aria-label="Bonding curve progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-      >
-        <div style={{ width: `${progress}%` }} />
-      </div>
-    </div>
-  );
-}
-export function Sparkline({
-  positive,
-  seed,
-}: {
-  positive: boolean;
-  seed: number;
-}) {
-  const pts = Array.from(
-    { length: 24 },
-    (_, i) =>
-      `${i * 3},${(30 - (positive ? i * 0.8 : (24 - i) * 0.7) - Math.sin(i * 1.8 + seed) * 5).toFixed(2)}`,
-  ).join(" ");
-  return (
-    <svg
-      className={positive ? "sparkline positive" : "sparkline negative"}
-      viewBox="0 0 70 36"
-      fill="none"
-      aria-hidden="true"
-    >
-      <polyline points={pts} stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  );
-}
-export function TokenCard({ token }: { token: Token }) {
-  const { metadata: m, market: v, launch: l } = token;
-  return (
-    <Link href={`/token/${token.id}`} className="token-card">
+    <Link href={tokenHref(asset)} className="token-card">
       <div className="token-card-top">
-        <TokenAvatar token={token} />
+        <TokenMark symbol={symbol} address={asset.address} size={46} />
         <div className="token-identity">
           <h3>
-            {m.name}
+            {facts?.name ?? asset.verification.name}
             <ArrowUpRight size={14} />
           </h3>
           <div className="token-meta">
-            <span>{m.symbol}</span>
+            <span>{symbol}</span>
             <span className="token-age">
-              <Clock3 size={10} />
-              {age(l.createdAt)}
+              <Radar size={10} />
+              Tracked
             </span>
           </div>
         </div>
-        <span className="token-base" title="Base demo token">
+        <span className="token-base" title="Base mainnet">
           <span className="base-mark" />
         </span>
       </div>
-      <p className="token-description">{m.description}</p>
+      <p className="token-description">
+        External token on Base. Not launched on RETRY.
+      </p>
       <div className="token-values">
         <div>
-          <span>Market cap</span>
-          <strong>{usd(v.marketCap)}</strong>
+          <span>Price</span>
+          <strong>
+            {value(
+              primary?.priceUsd ? usdPrice(primary.priceUsd) : null,
+              "No eligible pool",
+            )}
+          </strong>
         </div>
         <div>
-          <span>Volume</span>
-          <strong>{usd(v.volume24h)}</strong>
+          <span>Volume 24h</span>
+          <strong>
+            {value(
+              primary?.volumeUsd.h24 != null
+                ? usdAmount(primary.volumeUsd.h24)
+                : null,
+              "Not reported",
+            )}
+          </strong>
         </div>
         <div className="token-change">
-          <Sparkline positive={v.change24h >= 0} seed={v.holders} />
-          <strong className={v.change24h >= 0 ? "positive" : "negative"}>
-            {percent(v.change24h)}
+          <span>24h</span>
+          <strong
+            className={
+              change === null ? "muted" : change >= 0 ? "positive" : "negative"
+            }
+          >
+            {loading ? (
+              <span className="skeleton-text" />
+            ) : (
+              signedPercent(change)
+            )}
           </strong>
         </div>
       </div>
-      <BondingProgress
-        progress={l.curve.progress}
-        graduated={l.stage === "graduated"}
-      />
+      <div className="token-liquidity">
+        <span>Liquidity · primary pool</span>
+        <strong>
+          {value(
+            primary?.liquidityUsd ? usdAmount(primary.liquidityUsd) : null,
+            "Not reported",
+          )}
+        </strong>
+      </div>
       <div className="token-card-footer">
-        <span>
-          <Users size={11} />
-          {number(v.holders)}
+        <span title={asset.address}>{shorten(asset.address)}</span>
+        <span>Base · {asset.chainId}</span>
+        <span className="tiny">
+          {market.isError && !market.data ? "Data unavailable" : "Live market"}
         </span>
-        <span>{token.demoReference}</span>
-        <span className="tiny">Demo</span>
       </div>
     </Link>
   );
