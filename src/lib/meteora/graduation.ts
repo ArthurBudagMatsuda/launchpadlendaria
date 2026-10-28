@@ -3,7 +3,12 @@ import { deriveDammV2PoolAddress } from "./sdk";
 import { assertCluster, assertWritable, type MeteoraContext } from "./client";
 import { RETRY_LAUNCH } from "./curve";
 import { MIGRATION_PROGRESS, readRetryPool, type RetryPool } from "./pools";
-import { DAMM_V2_PROGRAM, dammV2ConfigFor, WSOL_MINT } from "./programs";
+import {
+  DAMM_V2_PROGRAM,
+  dammV2ConfigFor,
+  DBC_POOL_AUTHORITY,
+  WSOL_MINT,
+} from "./programs";
 import type { TxExpectation } from "./transactions";
 
 /** What the graduation panel shows. Every figure comes from pool state. */
@@ -78,6 +83,12 @@ export async function prepareMigration(
   );
   if (!configInfo?.owner.equals(DAMM_V2_PROGRAM))
     throw new Error("The DAMM v2 migration config is missing on this cluster.");
+  // The pool authority lends the new accounts' rent during the instruction.
+  // Without SOL there the program fails, whatever the payer holds.
+  if (!(await context.connection.getBalance(DBC_POOL_AUTHORITY, "confirmed")))
+    throw new Error(
+      "Meteora's migration rent float is empty on this cluster, so graduation cannot run right now.",
+    );
   const { transaction, firstPositionNftKeypair, secondPositionNftKeypair } =
     await context.client.migration.migrateToDammV2({
       payer: input.payer,
@@ -97,6 +108,7 @@ export async function prepareMigration(
       accounts: {
         virtual_pool: input.pool,
         config: read.raw.poolState.config,
+        pool_authority: DBC_POOL_AUTHORITY,
         pool: dammV2Pool,
         amm_program: DAMM_V2_PROGRAM,
         base_mint: mint,

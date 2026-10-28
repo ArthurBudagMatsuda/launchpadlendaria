@@ -2,8 +2,9 @@ name: RETRY Meteora on-chain tests
 # Real transactions against Meteora's deployed programs, with test keys only:
 #  - validator: a local validator running the exact DBC, DAMM v2, Locker and
 #    Metaplex programs cloned from Devnet, and again from Mainnet (read-only
-#    copies of the binaries), plus the public DAMM v2 migration config, so
-#    the full flow including graduation runs for free.
+#    copies of the binaries), plus the public DAMM v2 migration config and
+#    the DBC pool authority (its SOL is the rent float the migration borrows
+#    and repays), so the full flow including graduation runs for free.
 #  - devnet: the same flow on Solana Devnet. The public RPC faucet is closed
 #    on Devnet, so it needs the RETRY_DEVNET_FUNDER secret: a throwaway test
 #    wallet funded at faucet.solana.com. It runs on manual dispatch, or on a
@@ -69,6 +70,7 @@ jobs:
             --clone-upgradeable-program LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn \
             --clone-upgradeable-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s \
             --clone Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp \
+            --maybe-clone FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM \
             $CLONE_CONFIG > "$RUNNER_TEMP/validator.log" 2>&1 &
           for i in $(seq 1 90); do
             if solana -u localhost cluster-version >/dev/null 2>&1; then break; fi
@@ -86,6 +88,11 @@ jobs:
               solana -u "https://api.$cluster.solana.com" program dump "$program" "$RUNNER_TEMP/$program.$cluster.so" >/dev/null || true
             done
             echo "PROGRAM_HASH $program under-test(${{ matrix.programs }})=$(digest "$RUNNER_TEMP/$program.local.so") devnet=$( [ -f "$RUNNER_TEMP/$program.devnet.so" ] && digest "$RUNNER_TEMP/$program.devnet.so" || echo unavailable) mainnet=$( [ -f "$RUNNER_TEMP/$program.mainnet-beta.so" ] && digest "$RUNNER_TEMP/$program.mainnet-beta.so" || echo unavailable)" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          # The DBC pool authority lends the rent for the DAMM v2 accounts at
+          # graduation and is repaid in the same instruction (flash rent).
+          for cluster in localhost https://api.devnet.solana.com https://api.mainnet-beta.solana.com; do
+            echo "POOL_AUTHORITY_SOL $cluster $(solana -u "$cluster" balance FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM 2>&1)" | tee -a "$GITHUB_STEP_SUMMARY"
           done
       - name: Chain flow (config, launch, trades, graduation, claim)
         run: pnpm test:chain

@@ -2,6 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import {
   DAMM_V2_MIGRATION_FEE_ADDRESS,
   DAMM_V2_PROGRAM_ID,
+  deriveDbcPoolAuthority,
   DYNAMIC_BONDING_CURVE_PROGRAM_ID,
   METAPLEX_PROGRAM_ID,
   MigrationFeeOption,
@@ -32,6 +33,14 @@ export const ASSOCIATED_TOKEN_PROGRAM = new PublicKey(
 export const COMPUTE_BUDGET_PROGRAM = new PublicKey(
   "ComputeBudget111111111111111111111111111111",
 );
+/**
+ * DBC's pool authority PDA. At graduation it lends the rent for the DAMM v2
+ * accounts and is repaid in the same instruction, so it must hold SOL on the
+ * cluster (Meteora funds it).
+ */
+export const DBC_POOL_AUTHORITY = new PublicKey(
+  "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM",
+);
 /** Phantom adds Lighthouse assertions to transactions it signs. */
 export const LIGHTHOUSE_PROGRAM = new PublicKey(
   "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95",
@@ -41,7 +50,8 @@ export function assertSdkProgramIds() {
   if (
     !DYNAMIC_BONDING_CURVE_PROGRAM_ID.equals(DBC_PROGRAM) ||
     !DAMM_V2_PROGRAM_ID.equals(DAMM_V2_PROGRAM) ||
-    !METAPLEX_PROGRAM_ID.equals(METAPLEX_PROGRAM)
+    !METAPLEX_PROGRAM_ID.equals(METAPLEX_PROGRAM) ||
+    !deriveDbcPoolAuthority().equals(DBC_POOL_AUTHORITY)
   )
     throw new Error("Meteora SDK program IDs changed. Review before use.");
 }

@@ -27,6 +27,7 @@ import {
 } from "@/lib/meteora/pools";
 import {
   DAMM_V2_PROGRAM,
+  DBC_POOL_AUTHORITY,
   SYSTEM_PROGRAM,
   WSOL_MINT,
 } from "@/lib/meteora/programs";
@@ -439,6 +440,19 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         "skipped: DAMM v2 config not present on this validator";
       return;
     }
+    const float = await connection.getBalance(DBC_POOL_AUTHORITY, "confirmed");
+    log("pool authority rent float", { lamports: float });
+    if (!float) {
+      // Mirrors the cluster: without Meteora's float the program cannot migrate.
+      await expect(
+        prepareMigration(context, { payer: trader.publicKey, pool }),
+      ).rejects.toThrow(/migration rent float is empty/);
+      evidence.migration = "blocked: DBC pool authority holds no SOL here";
+      return;
+    }
+    const before = BigInt(
+      await connection.getBalance(trader.publicKey, "confirmed"),
+    );
     const prepared = await prepareMigration(context, {
       payer: trader.publicKey,
       pool,
@@ -455,6 +469,47 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     const damm = await connection.getAccountInfo(prepared.dammV2Pool);
     expect(damm?.owner.equals(DAMM_V2_PROGRAM)).toBe(true);
     evidence.dammV2Pool = prepared.dammV2Pool.toBase58();
+    // The payer repays the borrowed rent: that is the cost of graduating.
+    const paid =
+      before -
+      BigInt(await connection.getBalance(trader.publicKey, "confirmed"));
+    log("migration cost", { lamports: paid });
+    expect(
+      await connection.getBalance(DBC_POOL_AUTHORITY, "confirmed"),
+    ).toBeGreaterThanOrEqual(float);
+    // Both LP positions (partner's and creator's) are permanently locked:
+    // DAMM v2 Position.unlocked_liquidity (offset 152) and vested_liquidity
+    // (168) are zero and permanent_locked_liquidity (184) holds it all.
+    const u128 = (data: Buffer, offset: number) =>
+      data.readBigUInt64LE(offset) + (data.readBigUInt64LE(offset + 8) << 64n);
+    const owners: string[] = [];
+    for (const nft of prepared.signers) {
+      const [position] = PublicKey.findProgramAddressSync(
+        [Buffer.from("position"), nft.publicKey.toBuffer()],
+        DAMM_V2_PROGRAM,
+      );
+      const [nftAccount] = PublicKey.findProgramAddressSync(
+        [Buffer.from("position_nft_account"), nft.publicKey.toBuffer()],
+        DAMM_V2_PROGRAM,
+      );
+      const data = (await connection.getAccountInfo(position))!.data;
+      const locked = {
+        unlocked: u128(data, 152),
+        vested: u128(data, 168),
+        permanent: u128(data, 184),
+      };
+      expect(locked.unlocked).toBe(0n);
+      expect(locked.vested).toBe(0n);
+      expect(locked.permanent).toBeGreaterThan(0n);
+      const holder = new PublicKey(
+        (await connection.getAccountInfo(nftAccount))!.data.subarray(32, 64),
+      ).toBase58();
+      owners.push(holder);
+      log("locked position", { position, holder, ...locked });
+    }
+    expect(owners.sort()).toEqual(
+      [partner.publicKey.toBase58(), creator.publicKey.toBase58()].sort(),
+    );
     log("graduated", { dammV2Pool: prepared.dammV2Pool, pool: after.pool });
   });
 
