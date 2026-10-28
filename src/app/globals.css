@@ -3068,3 +3068,163 @@ select option {
     animation: none;
   }
 }
+
+/* RETRY launches (Meteora DBC) */
+.curve-progress {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.curve-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9px;
+  color: #798197;
+}
+.curve-progress-row strong {
+  color: var(--color-foreground);
+  font-size: 11px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.curve-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #ffffff0d;
+  overflow: hidden;
+}
+.curve-progress-track span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--lime));
+}
+.launch-status.near-graduation,
+.launch-status.graduation-ready,
+.launch-status.migrating {
+  color: var(--lime);
+  border-color: #d1ef8a33;
+  background: #d1ef8a0d;
+}
+.launch-status.graduated {
+  color: #bda6ee;
+  border-color: #bda6ee30;
+  background: #bda6ee09;
+}
+.launch-status.needs-attention {
+  color: var(--red);
+  border-color: #f0778733;
+  background: #f077870d;
+}
+.launch-card .token-card-top .launch-status {
+  align-self: flex-start;
+  white-space: nowrap;
+}
+.amount-shortcuts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.amount-shortcuts button {
+  border: 1px solid #323e55;
+  border-radius: 4px;
+  background: #1b2232;
+  color: #bdc9e1;
+  padding: 4px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.amount-shortcuts button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.operation-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #a9b2c7;
+}
+.operation-state.done {
+  color: var(--green);
+}
+.operation-state.error {
+  color: var(--red);
+}
+.operation-state .reference-button {
+  margin-left: auto;
+}
+.spin {
+  animation: retry-spin 1s linear infinite;
+}
+@keyframes retry-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.trade-info h3,
+.cost-review h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.graduation-panel .status-label {
+  margin-bottom: 4px;
+}
+.graduation-panel .button,
+.trade-info .button {
+  width: 100%;
+  margin-top: 14px;
+}
+.cost-review {
+  border: 1px solid #344268;
+  border-radius: 7px;
+  padding: 14px 16px;
+  margin-top: 16px;
+  background: #477bff09;
+}
+.cost-review h3 {
+  font-size: 12px;
+  font-weight: 550;
+}
+.cost-review .detail-list {
+  margin-top: 12px;
+}
+.cost-review .total {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-weight: 600;
+}
+.cost-review .tiny {
+  margin-top: 10px;
+  line-height: 1.7;
+  word-break: break-all;
+}
+.launch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.launch-locked {
+  margin-top: 12px;
+}
+.token-links {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+}
+.token-links a {
+  color: #afc7ff;
+}
+.accounts-list {
+  padding: 4px 0 8px;
+}
+.portfolio-created {
+  margin-top: 16px;
+}

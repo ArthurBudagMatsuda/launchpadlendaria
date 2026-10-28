@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Plus,
   Radar,
+  Rocket,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -31,18 +32,19 @@ import {
   type TokenSort,
 } from "@/lib/market/solana-token-search";
 import { TrackedTokenCard } from "@/components/tokens/token-card";
+import { LaunchCard } from "@/components/launch/launch-card";
+import {
+  useMeteora,
+  useRetryLaunches,
+  type RetryLaunch,
+} from "@/hooks/use-retry";
+import type { LaunchStatus } from "@/lib/meteora/pools";
+import { POLICY_MESSAGES } from "@/config/retry-protocol";
 import { EmptyState } from "@/components/ui/feedback";
 import { Modal } from "@/components/ui/modal";
 import { assetPath } from "@/lib/asset-path";
 import { shorten } from "@/lib/format";
 const categories = [
-  {
-    id: "tracked",
-    title: "Tracked on Solana",
-    subtitle: "External tokens with live markets",
-    icon: Radar,
-    color: "blue",
-  },
   {
     id: "new",
     title: "New on RETRY",
@@ -51,13 +53,55 @@ const categories = [
     color: "lime",
   },
   {
+    id: "graduating",
+    title: "Graduating",
+    subtitle: "Close to completing the curve",
+    icon: Rocket,
+    color: "blue",
+  },
+  {
     id: "graduated",
     title: "Graduated",
     subtitle: "Completed a RETRY curve",
     icon: GraduationCap,
     color: "purple",
   },
+  {
+    id: "tracked",
+    title: "Tracked on Solana",
+    subtitle: "External tokens with live markets",
+    icon: Radar,
+    color: "blue",
+  },
 ] as const;
+type LaunchSort = "newest" | "progress" | "fdv";
+const LAUNCH_COLUMN: Record<LaunchStatus, "new" | "graduating" | "graduated"> =
+  {
+    active: "new",
+    "near-graduation": "graduating",
+    "graduation-ready": "graduating",
+    migrating: "graduating",
+    graduated: "graduated",
+    "needs-attention": "graduating",
+  };
+function matchesLaunch(launch: RetryLaunch, term: string) {
+  const query = term.trim().toLowerCase();
+  if (!query) return true;
+  return (
+    launch.pool.baseMint === term.trim() ||
+    Boolean(launch.metadata?.name.toLowerCase().includes(query)) ||
+    Boolean(launch.metadata?.symbol.toLowerCase().includes(query))
+  );
+}
+function sortLaunches(launches: RetryLaunch[], sort: LaunchSort) {
+  return [...launches].sort((a, b) =>
+    sort === "progress"
+      ? b.pool.progressBps - a.pool.progressBps
+      : sort === "fdv"
+        ? Number(b.pool.fdvSol) - Number(a.pool.fdvSol)
+        : Number(b.pool.activationPoint - a.pool.activationPoint),
+  );
+}
 type Category = (typeof categories)[number]["id"];
 const LIQUIDITY_STEPS = [0, 10_000, 50_000, 100_000, 500_000];
 
@@ -65,6 +109,17 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
   const [search, setSearch] = useState(initialSearch);
   const [stage, setStage] = useState<Category | "all">("all");
   const [sort, setSort] = useState<TokenSort>("liquidity");
+  const [launchSort, setLaunchSort] = useState<LaunchSort>("newest");
+  const { policy } = useMeteora();
+  const launches = useRetryLaunches();
+  const visibleLaunches = sortLaunches(
+    (launches.data ?? []).filter((launch) => matchesLaunch(launch, search)),
+    launchSort,
+  );
+  const launchesIn = (column: "new" | "graduating" | "graduated") =>
+    visibleLaunches.filter(
+      (launch) => LAUNCH_COLUMN[launch.pool.status] === column,
+    );
   const [filters, setFilters] = useState(false);
   const [minLiquidity, setMinLiquidity] = useState(0);
   const { config: client } = useSolanaWallet();
@@ -117,7 +172,9 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
         </span>
         <span className="data-label">
           <span />
-          Solana · Read-only
+          {policy?.enabled
+            ? `Solana ${client?.cluster} · Live`
+            : "Solana · Read-only"}
         </span>
       </div>
       <section className="discovery-hero">
@@ -209,14 +266,26 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
             </label>
             <label className="sort-select">
               <ArrowDownUp size={14} />
-              <select
-                aria-label="Sort tokens"
-                value={sort}
-                onChange={(e) => setSort(e.target.value as TokenSort)}
-              >
-                <option value="liquidity">Liquidity</option>
-                <option value="volume">Volume 24h</option>
-              </select>
+              {stage === "tracked" ? (
+                <select
+                  aria-label="Sort tokens"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as TokenSort)}
+                >
+                  <option value="liquidity">Liquidity</option>
+                  <option value="volume">Volume 24h</option>
+                </select>
+              ) : (
+                <select
+                  aria-label="Sort launches"
+                  value={launchSort}
+                  onChange={(e) => setLaunchSort(e.target.value as LaunchSort)}
+                >
+                  <option value="newest">Newest</option>
+                  <option value="progress">Curve progress</option>
+                  <option value="fdv">FDV</option>
+                </select>
+              )}
               <ChevronDown size={12} />
             </label>
             <button
@@ -234,6 +303,10 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
         >
           {categories
             .filter((c) => stage === "all" || c.id === stage)
+            .filter(
+              (c) =>
+                c.id !== "tracked" || active.length > 0 || stage === "tracked",
+            )
             .map((category) => (
               <section
                 className={`launch-column ${category.color}`}
@@ -247,7 +320,9 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                     <h3>
                       {category.title}
                       <span className="count-badge">
-                        {category.id === "tracked" ? filtered.length : 0}
+                        {category.id === "tracked"
+                          ? filtered.length
+                          : launchesIn(category.id).length}
                       </span>
                     </h3>
                     <p>{category.subtitle}</p>
@@ -286,16 +361,53 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                         </EmptyState>
                       ) : null}
                     </>
-                  ) : category.id === "new" ? (
-                    <EmptyState title="No RETRY launches yet">
-                      The RETRY launch program is not deployed. New launches
-                      will appear here once it is.
-                    </EmptyState>
                   ) : (
-                    <EmptyState title="Nothing has graduated yet">
-                      Tokens that complete a RETRY bonding curve will be listed
-                      here.
-                    </EmptyState>
+                    <>
+                      {category.id === "new" && lookup && !active.length ? (
+                        <Link
+                          href={`/token/?cluster=${client?.cluster}&mint=${lookup}`}
+                          className="token-card lookup-card"
+                        >
+                          <strong>Look up this mint</strong>
+                          <span>
+                            Open {shorten(lookup)}: a RETRY launch shows its
+                            curve; any other mint shows a read-only lookup.
+                          </span>
+                          <span className="lookup-cta">
+                            Inspect address
+                            <ArrowUpRight size={13} />
+                          </span>
+                        </Link>
+                      ) : null}
+                      {launchesIn(category.id).map((launch) => (
+                        <LaunchCard key={launch.pool.address} launch={launch} />
+                      ))}
+                      {launches.isPending && launches.fetchStatus !== "idle" ? (
+                        <div className="skeleton" />
+                      ) : !launchesIn(category.id).length ? (
+                        <EmptyState
+                          title={
+                            launches.isError
+                              ? "Launches unavailable"
+                              : category.id === "new"
+                                ? "No RETRY launches yet"
+                                : category.id === "graduating"
+                                  ? "Nothing close to graduating"
+                                  : "Nothing has graduated yet"
+                          }
+                        >
+                          {launches.isError
+                            ? "Solana RPC did not answer. Nothing is shown rather than guessed."
+                            : policy && !policy.enabled
+                              ? POLICY_MESSAGES[policy.reason]
+                              : category.id === "new"
+                                ? "Launch the first token on this cluster."
+                                : category.id === "graduating"
+                                  ? "Tokens above 80% of the graduation threshold appear here."
+                                  : "Tokens that complete their curve and move to Meteora DAMM v2 appear here."}
+                        </EmptyState>
+                      ) : null}
+                    </>
                   )}
                 </div>
                 <div className="column-end">
@@ -310,8 +422,9 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
         <div className="board-bottom">
           <span>
             <span className="live-dot" />
-            {filtered.length} tracked token{filtered.length === 1 ? "" : "s"} on
-            Solana · Market data: GeckoTerminal, DEX Screener fallback
+            {launches.data?.length ?? 0} RETRY launch
+            {launches.data?.length === 1 ? "" : "es"} on{" "}
+            {client?.cluster ?? "Solana"} · read from the Meteora DBC program
           </span>
           <Link href="/create">
             Got an idea? Bring it to life
