@@ -1,4 +1,5 @@
 import type { Hex } from "viem";
+import { countGaps } from "../chart-series";
 import { MarketDataError } from "../errors";
 import { getProviderJson, type MarketFetchOptions } from "../http";
 import { marketNetwork, quoteKind } from "../networks";
@@ -52,10 +53,10 @@ export const GECKOTERMINAL_INTERVALS: Record<
   "1d": { timeframe: "day", aggregate: 1, seconds: 86_400 },
 };
 /**
- * GeckoTerminal's largest OHLCV page, so the chart zooms out over as much
- * history as one request returns. Intervals without trades are not counted:
- * a busy pool gets about 3.5 days of 5m candles, a young or quiet one its
- * whole history at 1h and above.
+ * GeckoTerminal's largest OHLCV page. Intervals without trades are not
+ * counted, and the provider also caps how far back one page reaches: on the
+ * live pool a page held about 3.5 days of 5m candles and eight weeks of 1h
+ * ones. Older pages are asked for with `before`.
  */
 const CANDLE_LIMIT = 1000;
 
@@ -227,26 +228,31 @@ export function normalizeCandles(rows: unknown[], intervalSeconds: number) {
     else dropped += 1;
   }
   const candles = [...byTime.values()].sort((a, b) => a.time - b.time);
-  let gaps = 0;
-  for (let i = 1; i < candles.length; i += 1)
-    gaps += (candles[i].time - candles[i - 1].time) / intervalSeconds - 1;
-  return { candles, gaps, dropped };
+  return { candles, gaps: countGaps(candles, intervalSeconds), dropped };
 }
 
+/**
+ * The newest page of candles, oldest first. With `before` (UTC seconds), the
+ * page that ends at that time; GeckoTerminal includes the boundary candle.
+ */
 export async function fetchGeckoCandles(
   token: TokenRef,
   poolId: Hex,
   interval: CandleInterval,
   options?: MarketFetchOptions,
+  before?: number,
 ): Promise<CandleSeries> {
   const pool = asPoolId(poolId);
   if (!pool) throw new MarketDataError("INVALID_INPUT", { source: SOURCE });
+  if (before !== undefined && !(Number.isSafeInteger(before) && before > 0))
+    throw new MarketDataError("INVALID_INPUT", { source: SOURCE });
   const spec = GECKOTERMINAL_INTERVALS[interval];
   const address = token.address.toLowerCase();
+  const page = before === undefined ? "" : `&before_timestamp=${before}`;
   const body = asObject(
     await getProviderJson(
       SOURCE,
-      `${networkPath(token)}/pools/${pool}/ohlcv/${spec.timeframe}?aggregate=${spec.aggregate}&limit=${CANDLE_LIMIT}&currency=usd&token=${address}`,
+      `${networkPath(token)}/pools/${pool}/ohlcv/${spec.timeframe}?aggregate=${spec.aggregate}&limit=${CANDLE_LIMIT}&currency=usd&token=${address}${page}`,
       HEADERS,
       options,
     ),

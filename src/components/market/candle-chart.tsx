@@ -30,6 +30,8 @@ const DOWN_VOLUME = "rgba(240, 119, 135, 0.32)";
 const ATH = "#f0b45b";
 /** Empty bars kept right of the newest candle. */
 const RIGHT_OFFSET = 4;
+/** Older history is asked for once the view is this many bars from its start. */
+const START_MARGIN = 10;
 
 interface ChartApi {
   chart: IChartApi;
@@ -95,7 +97,8 @@ const priceMargins = (width: number) => ({
  * wheel or pinch to zoom, axes in UTC with dates. Like TradingView and GMGN,
  * candles sit side by side: an interval without trades is skipped, never
  * filled with a made-up price, and the dates on the axis show the jump. It
- * opens on the newest candles; older history is one drag or zoom away.
+ * opens on the newest candles; older history is one drag or zoom away, and
+ * `onReachStart` asks for the page before the oldest candle.
  */
 export default function CandleChart({
   candles,
@@ -103,6 +106,7 @@ export default function CandleChart({
   mode,
   pairLabel,
   ath,
+  onReachStart,
 }: {
   /** Oldest first, one per interval with trades. */
   candles: readonly Candle[];
@@ -110,6 +114,7 @@ export default function CandleChart({
   mode: "candles" | "line";
   pairLabel: string;
   ath: PriceHigh | null;
+  onReachStart?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<ChartApi | null>(null);
@@ -118,6 +123,10 @@ export default function CandleChart({
   const [hovered, setHovered] = useState<Candle | null>(null);
   const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [logScale, setLogScale] = useState(false);
+  const reachStart = useRef(onReachStart);
+  useEffect(() => {
+    reachStart.current = onReachStart;
+  });
 
   const resetView = useCallback(() => {
     const current = api.current;
@@ -217,11 +226,10 @@ export default function CandleChart({
           : null,
       ),
     );
-    chart
-      .timeScale()
-      .subscribeVisibleLogicalRangeChange((visible) =>
-        setRange(visible ? { from: visible.from, to: visible.to } : null),
-      );
+    chart.timeScale().subscribeVisibleLogicalRangeChange((visible) => {
+      setRange(visible ? { from: visible.from, to: visible.to } : null);
+      if (visible && visible.from < START_MARGIN) reachStart.current?.();
+    });
     chart
       .timeScale()
       .subscribeSizeChange((width) =>

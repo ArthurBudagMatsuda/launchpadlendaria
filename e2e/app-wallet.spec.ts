@@ -25,6 +25,17 @@ type MockWindow = {
   };
 };
 
+/** A candle's time as the chart's summary writes it: "Oct 13, 18:00 UTC". */
+const utcHour = (seconds: number) =>
+  `${new Date(seconds * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "UTC",
+  })} UTC`;
+
 // 1×1 PNG, enough for the Create Token validation to accept a stored draft.
 const PIXEL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -296,9 +307,11 @@ test.describe("RETRY app with a connected wallet", () => {
   test("the price chart opens on the newest candles and zooms and pans with mouse or touch", async ({
     page,
   }, testInfo) => {
-    // 200 hourly candles (newest first, like GeckoTerminal), so there is
-    // older history to scroll to. Registered last, so it wins for /ohlcv/.
-    const rows = Array.from({ length: 200 }, (_, i) => {
+    // 350 hourly candles (newest first), served 200 to a page the way
+    // GeckoTerminal pages them: `before_timestamp` returns the page that
+    // ends at that candle. The test decides when the older page answers.
+    // Registered last, so it wins for /ohlcv/.
+    const rows = Array.from({ length: 350 }, (_, i) => {
       const open = 0.0015 + 0.0002 * Math.sin(i / 7);
       const close = 0.0015 + 0.0002 * Math.sin((i + 1) / 7);
       return [
@@ -310,19 +323,35 @@ test.describe("RETRY app with a connected wallet", () => {
         1000 + i,
       ];
     });
+    const olderPages: string[] = [];
+    let releaseOlder = () => {};
+    const olderReleased = new Promise<void>((resolve) => {
+      releaseOlder = resolve;
+    });
     await page.route(
       /^https:\/\/api\.geckoterminal\.com\/.*\/ohlcv\//,
-      (route) =>
-        route.fulfill({
+      async (route) => {
+        const url = new URL(route.request().url());
+        const before = url.searchParams.get("before_timestamp");
+        if (before) {
+          olderPages.push(before);
+          await olderReleased;
+        }
+        await route.fulfill({
           status: 200,
           headers: { "access-control-allow-origin": "*" },
           contentType: "application/json",
           body: JSON.stringify(
-            route.request().url().includes("/ohlcv/day")
+            url.pathname.endsWith("/ohlcv/day")
               ? geckoDailyOhlcvResponse()
-              : geckoOhlcvResponse(rows),
+              : geckoOhlcvResponse(
+                  rows
+                    .filter(([time]) => !before || time <= Number(before))
+                    .slice(0, 200),
+                ),
           ),
-        }),
+        });
+      },
     );
     const errors = collectPageErrors(page);
     await page.goto(TOKEN_PAGE);
@@ -408,30 +437,52 @@ test.describe("RETRY app with a connected wallet", () => {
       await expect
         .poll(async () => (await range()).from)
         .toBeLessThan(zoomed.from - 5);
-      // Nothing pins the oldest candle to the left edge: the chart keeps
-      // moving past it, as on TradingView.
-      for (let drag = 0; drag < 4; drag += 1) {
+      const dragRight = async () => {
         await page.mouse.move(box.x + box.width * 0.1, y);
         await page.mouse.down();
         await page.mouse.move(box.x + box.width * 0.9, y, { steps: 20 });
         await page.mouse.up();
-      }
+      };
+      // Reaching the oldest candle asks for the page before it, as on
+      // TradingView. When it lands the chart starts 150 candles earlier and
+      // the view stays on the same candles.
+      for (let drag = 0; drag < 4; drag += 1) await dragRight();
+      await expect.poll(() => olderPages).toEqual([String(rows[199][0])]);
+      const waiting = await range();
+      releaseOlder();
+      await expect(page.locator(".price-chart-canvas")).toHaveAttribute(
+        "aria-label",
+        new RegExp(`from ${utcHour(rows[349][0])} to`),
+      );
+      const grown = await range();
+      expect(grown.from - waiting.from).toBeCloseTo(150, 0);
+      expect(grown.width).toBeCloseTo(waiting.width, 0);
+      // The page before the first candle holds nothing older: the history
+      // is complete, and the chart keeps moving past its start.
+      for (let drag = 0; drag < 8 && (await range()).from > -20; drag += 1)
+        await dragRight();
       await expect.poll(async () => (await range()).from).toBeLessThan(-20);
-      // Zooming out does not stop once all 200 candles fit: as on GMGN, it
+      await expect
+        .poll(() => olderPages)
+        .toEqual([String(rows[199][0]), String(rows[349][0])]);
+      // Zooming out does not stop once all 350 candles fit: as on GMGN, it
       // goes on past the whole history.
       for (let notch = 0; notch < 30; notch += 1)
         await page.mouse.wheel(0, 100);
-      await expect.poll(async () => (await range()).width).toBeGreaterThan(300);
+      await expect.poll(async () => (await range()).width).toBeGreaterThan(500);
       // The log scale toggles.
       const log = page.getByRole("button", { name: "Log" });
       await log.click();
       await expect(log).toHaveAttribute("aria-pressed", "true");
     }
-    // Reset view goes back to the newest candles.
+    releaseOlder();
+    // Reset view goes back to the newest candles, which sit 150 places
+    // further along once the older page has loaded.
+    const added = olderPages.length ? 150 : 0;
     await page.getByRole("button", { name: "Reset view" }).click();
     await expect
       .poll(async () => (await range()).from)
-      .toBeCloseTo(initial.from, 0);
+      .toBeCloseTo(initial.from + added, 0);
     expect(errors).toEqual([]);
   });
 

@@ -1,7 +1,17 @@
 "use client";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import {
+  queryOptions,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import { erc20Abi, type Address, type Hex } from "viem";
 import { usePublicClient, useReadContract } from "wagmi";
+import {
+  countGaps,
+  INTERVAL_SECONDS,
+  mergeCandles,
+} from "@/lib/market/chart-series";
 import { shouldRetryMarketQuery } from "@/lib/market/errors";
 import {
   loadCandles,
@@ -12,7 +22,7 @@ import {
   readOnchainTokenFacts,
   type OnchainReader,
 } from "@/lib/market/onchain";
-import type { CandleInterval, TokenRef } from "@/lib/market/types";
+import type { Candle, CandleInterval, TokenRef } from "@/lib/market/types";
 
 /**
  * TanStack Query hooks for market data. They share the app's single
@@ -92,6 +102,81 @@ export function useCandles(
     refetchInterval: CANDLE_REFRESH_MS[interval],
     retry: shouldRetryMarketQuery,
   });
+}
+
+/** A failed older page waits this long before the view asks again. */
+const OLDER_RETRY_MS = 30_000;
+
+/**
+ * The chart's candles: the newest page, refreshed, plus older pages that
+ * `loadOlder` fetches when the view reaches the oldest candle, as on
+ * TradingView and GMGN. Older pages never refresh. They chain back from the
+ * newest page as it was when older history was first asked for; that copy
+ * stays in the series, so no candle goes missing when later refreshes slide
+ * the newest page forward.
+ */
+export function useCandleHistory(
+  token: TokenRef,
+  pool: Hex | undefined,
+  interval: CandleInterval,
+) {
+  const newest = useCandles(token, pool, interval);
+  const [bases, setBases] = useState<Record<string, readonly Candle[]>>({});
+  const key = `${pool}:${interval}`;
+  const base = bases[key];
+  const before = base?.[0]?.time ?? 0;
+  const older = useInfiniteQuery({
+    queryKey: [
+      ...marketKeys.candles(token, pool ?? "0x", interval),
+      "older",
+      before,
+    ],
+    queryFn: ({ pageParam, signal }) =>
+      loadCandles(token, pool!, interval, { signal }, pageParam),
+    initialPageParam: before,
+    // A page holding nothing older than its boundary is the pool's first.
+    getNextPageParam: (last, _pages, param) => {
+      const oldest = last.candles[0]?.time;
+      return oldest !== undefined && oldest < param ? oldest : undefined;
+    },
+    enabled: Boolean(pool && before),
+    staleTime: Infinity,
+    retry: shouldRetryMarketQuery,
+  });
+  const newestCandles = newest.data?.candles;
+  const loadOlder = useCallback(() => {
+    if (!newestCandles?.length) return;
+    if (!base) {
+      setBases((all) => (all[key] ? all : { ...all, [key]: newestCandles }));
+      return;
+    }
+    if (older.isFetching) return;
+    if (older.isError && Date.now() - older.errorUpdatedAt < OLDER_RETRY_MS)
+      return;
+    if (!older.data) void older.refetch();
+    else if (older.hasNextPage) void older.fetchNextPage();
+  }, [newestCandles, base, key, older]);
+  const data = useMemo(() => {
+    if (!newest.data) return undefined;
+    const pages = (older.data?.pages ?? []).map((page) => page.candles);
+    const candles = mergeCandles(
+      ...pages.reverse(),
+      base ?? [],
+      newest.data.candles,
+    );
+    return {
+      ...newest.data,
+      candles,
+      gaps: countGaps(candles, INTERVAL_SECONDS[interval]),
+    };
+  }, [newest.data, older.data, base, interval]);
+  return {
+    newest,
+    data,
+    loadOlder,
+    loadingOlder: older.isFetching,
+    olderFailed: older.isError,
+  };
 }
 
 export function useMarketTrades(token: TokenRef, pool: Hex | undefined) {

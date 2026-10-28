@@ -99,6 +99,21 @@ describe("GeckoTerminal adapter", () => {
     expect(series.provenance.observedAt).toBe(1793156400 * 1000);
   });
 
+  it("asks for the older page that ends at a given candle", async () => {
+    const { fetch, calls } = marketFetch();
+    await fetchGeckoCandles(token, pinned, "1h", { fetch }, 1793145600);
+    expect(new URL(calls[0]).searchParams.get("before_timestamp")).toBe(
+      "1793145600",
+    );
+    for (const before of [0, -3600, 1.5, Number.NaN]) {
+      const error = await rejection(
+        fetchGeckoCandles(token, pinned, "1h", { fetch }, before),
+      );
+      expect(error.code).toBe("INVALID_INPUT");
+    }
+    expect(calls).toHaveLength(1);
+  });
+
   it("refuses a series priced for the other side of the pair", async () => {
     const other = geckoOhlcvResponse();
     other.meta.base.address = IMPOSTOR.toLowerCase();
