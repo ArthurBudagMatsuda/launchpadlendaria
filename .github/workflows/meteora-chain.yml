@@ -87,12 +87,13 @@ jobs:
             for cluster in devnet mainnet-beta; do
               solana -u "https://api.$cluster.solana.com" program dump "$program" "$RUNNER_TEMP/$program.$cluster.so" >/dev/null || true
             done
-            echo "PROGRAM_HASH $program under-test(${{ matrix.programs }})=$(digest "$RUNNER_TEMP/$program.local.so") devnet=$( [ -f "$RUNNER_TEMP/$program.devnet.so" ] && digest "$RUNNER_TEMP/$program.devnet.so" || echo unavailable) mainnet=$( [ -f "$RUNNER_TEMP/$program.mainnet-beta.so" ] && digest "$RUNNER_TEMP/$program.mainnet-beta.so" || echo unavailable)" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "PROGRAM_HASH $program under-test(${{ matrix.programs }})=$(digest "$RUNNER_TEMP/$program.local.so") devnet=$( [ -f "$RUNNER_TEMP/$program.devnet.so" ] && digest "$RUNNER_TEMP/$program.devnet.so" || echo unavailable) mainnet=$( [ -f "$RUNNER_TEMP/$program.mainnet-beta.so" ] && digest "$RUNNER_TEMP/$program.mainnet-beta.so" || echo unavailable)" | tee -a "$GITHUB_STEP_SUMMARY" | sed 's/^/::notice title=Program binary::/'
           done
           # The DBC pool authority lends the rent for the DAMM v2 accounts at
           # graduation and is repaid in the same instruction (flash rent).
           for cluster in localhost https://api.devnet.solana.com https://api.mainnet-beta.solana.com; do
-            echo "POOL_AUTHORITY_SOL $cluster $(solana -u "$cluster" balance FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM 2>&1)" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "POOL_AUTHORITY_SOL $cluster $(solana -u "$cluster" balance FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM 2>&1)" | tee -a "$GITHUB_STEP_SUMMARY" | sed 's/^/::notice title=DBC pool authority::/'
+
           done
       - name: Chain flow (config, launch, trades, graduation, claim)
         run: pnpm test:chain
@@ -101,6 +102,9 @@ jobs:
           RETRY_CHAIN_USE_APP_CONFIG: ${{ env.APP_CONFIG != '' && '1' || '' }}
           RETRY_CHAIN_EVIDENCE: evidence-validator.json
           RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
+      - name: Summarize the chain evidence
+        if: always()
+        run: node tests/chain/summarize-evidence.mjs evidence-validator.json "${{ matrix.programs }} programs"
       - name: Point the test build at the validator's RETRY config
         if: env.APP_CONFIG == ''
         run: node tests/chain/use-validator-config.mjs evidence-validator.json
@@ -147,7 +151,9 @@ jobs:
           RETRY_DEVNET_FUNDER: ${{ secrets.RETRY_DEVNET_FUNDER }}
           RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
       - if: always()
-        run: cat evidence-devnet.json || true
+        run: |
+          cat evidence-devnet.json || true
+          node tests/chain/summarize-evidence.mjs evidence-devnet.json "Devnet"
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
