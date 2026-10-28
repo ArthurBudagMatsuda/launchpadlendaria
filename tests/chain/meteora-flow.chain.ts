@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import BN from "bn.js";
 import {
   Keypair,
@@ -45,20 +45,23 @@ import {
 import {
   connect,
   DEVNET_GENESIS,
+  devnetFunder,
   env,
   fund,
   keypairSigner,
   log,
+  refund,
   transferSol,
   writeEvidence,
 } from "./harness";
 
 const SOL = BigInt(LAMPORTS_PER_SOL);
 const store = memoryStore();
-/** False when the Devnet faucet refused: the chain steps are skipped, not faked. */
+/** False when Devnet had no test SOL: the chain steps are skipped, not faked. */
 let funded = true;
 
 let connection: Connection;
+let funder: Keypair | null = null;
 let context: MeteoraContext;
 let configKey: PublicKey;
 let pool: PublicKey;
@@ -134,17 +137,31 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     connection = connect();
     const genesis = await connection.getGenesisHash();
     if (env.mode === "devnet") expect(genesis).toBe(DEVNET_GENESIS);
-    const need = env.mode === "local" ? 40 : 2;
-    for (const key of [creator, trader]) {
-      const balance = await fund(connection, key.publicKey, need);
+    funder = devnetFunder(genesis);
+    if (funder) evidence.funder = funder.publicKey.toBase58();
+    // Devnet: enough for config, launch, trades and claim. Graduation needs
+    // ~10 SOL more and is topped up only when the test wallet has it.
+    const need =
+      env.mode === "local"
+        ? { creator: 40, trader: 40 }
+        : { creator: 0.4, trader: 1 };
+    for (const [role, key] of [
+      ["creator", creator],
+      ["trader", trader],
+    ] as const) {
+      const balance = await fund(connection, key.publicKey, need[role], funder);
       log("funded", { key: key.publicKey.toBase58(), lamports: balance });
-      if (balance < 1.2 * LAMPORTS_PER_SOL) funded = false;
+      if (balance < need[role] * LAMPORTS_PER_SOL * 0.99) funded = false;
     }
     if (!funded) {
-      log("faucet refused", {
-        reason: "not enough test SOL; chain steps skipped",
+      log("no test SOL", {
+        reason: funder
+          ? "the Devnet test wallet is too low; chain steps skipped"
+          : "the public RPC faucet refused and RETRY_DEVNET_FUNDER is not set; chain steps skipped",
       });
-      evidence.skipped = "Devnet faucet refused the airdrops";
+      evidence.skipped = funder
+        ? "Devnet test wallet too low"
+        : "Devnet RPC faucet refused and no funded test wallet was given";
       writeEvidence(evidence);
       return;
     }
@@ -160,6 +177,13 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
 
   beforeEach((test) => {
     if (!funded) test.skip();
+  });
+
+  afterAll(async () => {
+    // Devnet: hand the leftover test SOL back so the test wallet lasts.
+    if (!funder) return;
+    for (const key of [partner, creator, trader])
+      await refund(connection, key, funder.publicKey);
   });
 
   it("creates the RETRY config with createConfig2 (or reuses it) and it matches the reviewed parameters", async () => {
@@ -350,10 +374,22 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     const balance = BigInt(
       await connection.getBalance(trader.publicKey, "confirmed"),
     );
-    if (balance < missing + SOL / 2n) {
+    if (balance < missing + SOL / 2n && funder) {
+      const topUp = Number(missing + SOL / 2n - balance);
+      await fund(
+        connection,
+        trader.publicKey,
+        topUp / LAMPORTS_PER_SOL,
+        funder,
+      );
+    }
+    const ready = BigInt(
+      await connection.getBalance(trader.publicKey, "confirmed"),
+    );
+    if (ready < missing + SOL / 2n) {
       log("graduation skipped", {
         reason: "not enough test SOL",
-        balance,
+        balance: ready,
         missing,
       });
       evidence.graduation = "skipped: not enough test SOL from the faucet";

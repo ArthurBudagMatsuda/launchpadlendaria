@@ -8,6 +8,7 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import { getBase58Encoder } from "@solana/kit";
 import type { TransactionSigner } from "@/lib/meteora/transactions";
 
 /**
@@ -21,6 +22,9 @@ import type { TransactionSigner } from "@/lib/meteora/transactions";
  *   RETRY_DEVNET_CONFIG   existing RETRY config to reuse (optional)
  *   RETRY_CHAIN_USE_APP_CONFIG=1  reuse the app's Devnet config (Devnet, or
  *                         a validator that cloned it)
+ *   RETRY_DEVNET_FUNDER   Devnet only: secret key (JSON array or base58) of a
+ *                         throwaway test wallet funded by hand at
+ *                         faucet.solana.com. A CI secret, never in the repo.
  */
 export const env = {
   rpc: process.env.RETRY_CHAIN_RPC ?? "http://127.0.0.1:8899",
@@ -31,6 +35,7 @@ export const env = {
     "https://raw.githubusercontent.com/ArthurBudagMatsuda/launchpadlendaria/feat/retry-meteora-dbc-mvp/docs/meteora/devnet-metadata/retry-devnet-test.json",
   devnetConfig: process.env.RETRY_DEVNET_CONFIG || null,
   useAppConfig: process.env.RETRY_CHAIN_USE_APP_CONFIG === "1",
+  funder: process.env.RETRY_DEVNET_FUNDER?.trim() || null,
 };
 
 export const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
@@ -56,15 +61,46 @@ export function keypairSigner(keypair: Keypair): TransactionSigner {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Fund a fresh test key. Locally the validator mints SOL freely; on Devnet
- * the public faucet is rate limited, so this asks in 1 SOL steps and stops
- * at the first refusal. Returns the balance reached.
+ * The Devnet test wallet that pays for a Devnet run. The public RPC faucet
+ * is closed on Devnet (410), so SOL comes from faucet.solana.com by hand.
+ * Only used once the RPC has answered with the Devnet genesis hash.
+ */
+export function devnetFunder(genesis: string) {
+  if (env.mode !== "devnet" || !env.funder) return null;
+  if (genesis !== DEVNET_GENESIS)
+    throw new Error("The funder key is only ever used on Devnet.");
+  const secret = env.funder.startsWith("[")
+    ? Uint8Array.from(JSON.parse(env.funder) as number[])
+    : Uint8Array.from(getBase58Encoder().encode(env.funder));
+  return Keypair.fromSecretKey(secret);
+}
+
+/**
+ * Fund a fresh test key. Locally the validator mints SOL freely. On Devnet
+ * the funder pays when it is set; otherwise the public faucet is asked in
+ * 1 SOL steps, stopping at the first refusal. Returns the balance reached.
  */
 export async function fund(
   connection: Connection,
   key: PublicKey,
   sol: number,
+  funder: Keypair | null = null,
 ) {
+  if (funder) {
+    const available = await connection.getBalance(funder.publicKey);
+    const lamports = Math.round(sol * LAMPORTS_PER_SOL);
+    if (available >= lamports + 10_000) {
+      const signature = await transferSol(connection, funder, key, lamports);
+      log("funded by test wallet", { key: key.toBase58(), sol, signature });
+    } else {
+      log("test wallet too low", {
+        funder: funder.publicKey.toBase58(),
+        available,
+        needed: lamports,
+      });
+    }
+    return connection.getBalance(key, "confirmed");
+  }
   const step = env.mode === "local" ? sol : 1;
   let asked = 0;
   while (asked < sol) {
@@ -90,6 +126,19 @@ export async function fund(
     if (env.mode === "devnet") await sleep(1_500);
   }
   return connection.getBalance(key, "confirmed");
+}
+
+/** Send what is left on a test key back to the Devnet test wallet. */
+export async function refund(
+  connection: Connection,
+  from: Keypair,
+  to: PublicKey,
+) {
+  const balance = await connection.getBalance(from.publicKey, "confirmed");
+  if (balance <= 5_000) return null;
+  return transferSol(connection, from, to, balance - 5_000).catch(
+    (cause) => (log("refund failed", { error: String(cause) }), null),
+  );
 }
 
 export async function transferSol(

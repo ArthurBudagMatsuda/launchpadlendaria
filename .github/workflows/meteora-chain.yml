@@ -1,11 +1,15 @@
 name: RETRY Meteora on-chain tests
 # Real transactions against Meteora's deployed programs, with test keys only:
 #  - validator: a local validator running the exact DBC, DAMM v2, Locker and
-#    Metaplex programs cloned from Devnet (plus the public DAMM v2 migration
-#    config), so the full flow including graduation runs for free.
-#  - devnet: the same flow on Solana Devnet with faucet SOL. It runs on
-#    manual dispatch, or on a push whose commit message contains [devnet].
-# Nothing here touches Mainnet, GitHub Pages, or holds a secret.
+#    Metaplex programs cloned from Devnet, and again from Mainnet (read-only
+#    copies of the binaries), plus the public DAMM v2 migration config, so
+#    the full flow including graduation runs for free.
+#  - devnet: the same flow on Solana Devnet. The public RPC faucet is closed
+#    on Devnet, so it needs the RETRY_DEVNET_FUNDER secret: a throwaway test
+#    wallet funded at faucet.solana.com. It runs on manual dispatch, or on a
+#    push whose commit message contains [devnet].
+# Nothing here sends a transaction to Mainnet, touches GitHub Pages, or
+# prints a secret.
 on:
   push:
     paths:
@@ -29,9 +33,15 @@ env:
   DEVNET_RPC: https://api.devnet.solana.com
 jobs:
   validator:
-    name: Local validator with Devnet programs (full flow + browser)
+    name: Local validator with ${{ matrix.programs }} programs (full flow + browser)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        programs: [devnet, mainnet]
+    env:
+      CLONE_RPC: ${{ matrix.programs == 'mainnet' && 'https://api.mainnet-beta.solana.com' || 'https://api.devnet.solana.com' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
@@ -44,13 +54,16 @@ jobs:
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${AGAVE_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar -xj -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/solana-release/bin" >> "$GITHUB_PATH"
-      - name: Start validator with programs cloned from Devnet
+      - name: Start validator with programs cloned from ${{ matrix.programs }}
         run: |
-          APP_CONFIG=$(node -e "const s=require('fs').readFileSync('src/config/retry-protocol.ts','utf8');const m=/devnet:\s*\{\s*address:\s*\"(\w+)\"/.exec(s);process.stdout.write(m?m[1]:'')")
+          APP_CONFIG=""
+          if [ "${{ matrix.programs }}" = devnet ]; then
+            APP_CONFIG=$(node -e "const s=require('fs').readFileSync('src/config/retry-protocol.ts','utf8');const m=/devnet:\s*\{\s*address:\s*\"(\w+)\"/.exec(s);process.stdout.write(m?m[1]:'')")
+          fi
           echo "APP_CONFIG=$APP_CONFIG" >> "$GITHUB_ENV"
           CLONE_CONFIG=""
           if [ -n "$APP_CONFIG" ]; then CLONE_CONFIG="--clone $APP_CONFIG"; fi
-          solana-test-validator --reset --quiet --ledger "$RUNNER_TEMP/ledger" --url "$DEVNET_RPC" \
+          solana-test-validator --reset --quiet --ledger "$RUNNER_TEMP/ledger" --url "$CLONE_RPC" \
             --clone-upgradeable-program dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN \
             --clone-upgradeable-program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG \
             --clone-upgradeable-program LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn \
@@ -62,29 +75,36 @@ jobs:
             sleep 2
           done
           solana -u localhost cluster-version
-      - name: Record the program binaries under test
+      - name: Record the program binaries under test (Devnet vs Mainnet)
         run: |
-          for program in dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG; do
+          # Program accounts can be allocated larger than the binary, so
+          # trailing zero bytes are dropped before hashing.
+          digest() { python3 -c "import sys,hashlib;b=open(sys.argv[1],'rb').read().rstrip(b'\0');print(hashlib.sha256(b).hexdigest()+'/'+str(len(b)))" "$1"; }
+          for program in dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn; do
             solana -u localhost program dump "$program" "$RUNNER_TEMP/$program.local.so" >/dev/null
-            solana -u https://api.mainnet-beta.solana.com program dump "$program" "$RUNNER_TEMP/$program.mainnet.so" >/dev/null || true
-            echo "PROGRAM_HASH $program devnet-clone=$(sha256sum "$RUNNER_TEMP/$program.local.so" | cut -c1-64) mainnet=$( [ -f "$RUNNER_TEMP/$program.mainnet.so" ] && sha256sum "$RUNNER_TEMP/$program.mainnet.so" | cut -c1-64 || echo unavailable)"
+            for cluster in devnet mainnet-beta; do
+              solana -u "https://api.$cluster.solana.com" program dump "$program" "$RUNNER_TEMP/$program.$cluster.so" >/dev/null || true
+            done
+            echo "PROGRAM_HASH $program under-test(${{ matrix.programs }})=$(digest "$RUNNER_TEMP/$program.local.so") devnet=$( [ -f "$RUNNER_TEMP/$program.devnet.so" ] && digest "$RUNNER_TEMP/$program.devnet.so" || echo unavailable) mainnet=$( [ -f "$RUNNER_TEMP/$program.mainnet-beta.so" ] && digest "$RUNNER_TEMP/$program.mainnet-beta.so" || echo unavailable)" | tee -a "$GITHUB_STEP_SUMMARY"
           done
-          solana -u localhost program show dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN
       - name: Chain flow (config, launch, trades, graduation, claim)
         run: pnpm test:chain
         env:
           RETRY_CHAIN_MODE: local
+          RETRY_CHAIN_USE_APP_CONFIG: ${{ env.APP_CONFIG != '' && '1' || '' }}
           RETRY_CHAIN_EVIDENCE: evidence-validator.json
           RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
-      - name: Browser flow on the cloned RETRY Devnet config
-        if: env.APP_CONFIG != ''
+      - name: Point the test build at the validator's RETRY config
+        if: env.APP_CONFIG == ''
+        run: node tests/chain/use-validator-config.mjs evidence-validator.json
+      - name: Browser flow (launch, buy, sell, portfolio) on the validator
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm exec playwright test --config playwright.chain.config.ts
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: meteora-validator-evidence
+          name: meteora-validator-${{ matrix.programs }}-evidence
           path: |
             evidence-validator.json
             test-results
@@ -102,6 +122,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check for the Devnet test wallet
+        env:
+          HAS_FUNDER: ${{ secrets.RETRY_DEVNET_FUNDER != '' }}
+        run: |
+          if [ "$HAS_FUNDER" != true ]; then
+            echo "::warning::RETRY_DEVNET_FUNDER is not set. The public Devnet RPC faucet is closed (410), so the Devnet steps will be skipped, not faked."
+            echo "Devnet steps skipped: add the RETRY_DEVNET_FUNDER secret (see docs/meteora/OPERATIONAL_RUNBOOK.md)." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Chain flow on Devnet (reuses the app's Devnet config when set)
         run: pnpm test:chain
         env:
@@ -109,6 +137,7 @@ jobs:
           RETRY_CHAIN_RPC: ${{ env.DEVNET_RPC }}
           RETRY_CHAIN_USE_APP_CONFIG: "1"
           RETRY_CHAIN_EVIDENCE: evidence-devnet.json
+          RETRY_DEVNET_FUNDER: ${{ secrets.RETRY_DEVNET_FUNDER }}
           RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
       - if: always()
         run: cat evidence-devnet.json || true
