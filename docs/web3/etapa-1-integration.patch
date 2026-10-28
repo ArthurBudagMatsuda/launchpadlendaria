@@ -1,0 +1,778 @@
+diff --git a/.prettierignore b/.prettierignore
+index 5865a8a..ad533ea 100644
+--- a/.prettierignore
++++ b/.prettierignore
+@@ -3,3 +3,5 @@ node_modules
+ pnpm-lock.yaml
+ .qa
+ next-env.d.ts
++packages/retry-web3
++examples
+diff --git a/eslint.config.mjs b/eslint.config.mjs
+index c22a638..14c56e1 100644
+--- a/eslint.config.mjs
++++ b/eslint.config.mjs
+@@ -4,5 +4,11 @@ import nextTs from "eslint-config-next/typescript";
+ export default defineConfig([
+   ...nextVitals,
+   ...nextTs,
+-  globalIgnores([".next/**", "next-env.d.ts", ".qa/**"]),
++  globalIgnores([
++    ".next/**",
++    "next-env.d.ts",
++    ".qa/**",
++    "packages/**",
++    "examples/**",
++  ]),
+ ]);
+diff --git a/package.json b/package.json
+index eea3961..ad17f91 100644
+--- a/package.json
++++ b/package.json
+@@ -8,19 +8,22 @@
+     "node": ">=24.0.0"
+   },
+   "scripts": {
+-    "dev": "next dev --hostname 127.0.0.1",
+-    "build": "next build",
+-    "build:pages": "node scripts/build-pages.mjs",
++    "dev": "pnpm web3:build && next dev --hostname 127.0.0.1",
++    "build": "pnpm web3:build && next build",
++    "build:pages": "pnpm web3:build && node scripts/build-pages.mjs",
+     "start": "next start --hostname 127.0.0.1",
+     "lint": "eslint . --max-warnings 0",
+-    "typecheck": "next typegen && tsc --noEmit",
++    "typecheck": "pnpm web3:build && next typegen && tsc --noEmit",
+     "test": "vitest run",
+     "format": "prettier --write .",
+-    "format:check": "prettier --check ."
++    "format:check": "prettier --check .",
++    "web3:build": "pnpm --filter @retry/web3 build"
+   },
+   "dependencies": {
+     "@coinbase/wallet-sdk": "4.3.6",
++    "@metamask/connect-evm": "^2.1.0",
+     "@radix-ui/react-dialog": "^1.3.1",
++    "@retry/web3": "workspace:*",
+     "@tanstack/react-query": "^5.104.5",
+     "@walletconnect/ethereum-provider": "^2.26.0",
+     "clsx": "^2.1.1",
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+index ceb24c6..4054760 100644
+--- a/pnpm-workspace.yaml
++++ b/pnpm-workspace.yaml
+@@ -1,8 +1,11 @@
+ packages:
+   - .
++  - packages/retry-web3
+ allowBuilds:
+   esbuild: true
+   sharp: true
+   "@tailwindcss/oxide": true
+   unrs-resolver: true
+   "@reown/appkit": false
++  # Pulled in by the MetaMask SDK (@metamask/connect-evm); its postinstall is not needed.
++  protobufjs: false
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index a4ac061..a3b4817 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -2,6 +2,7 @@ import type { Metadata } from "next";
+ import { assetPath } from "@/lib/asset-path";
+ import { Providers } from "@/components/providers";
+ import { Shell } from "@/components/layout/shell";
++import "@retry/web3/styles.css";
+ import "./globals.css";
+ export const metadata: Metadata = {
+   title: { default: "RETRY — A new beginning on Base", template: "%s | RETRY" },
+diff --git a/src/components/layout/header.tsx b/src/components/layout/header.tsx
+index 1b24bf0..5b83be5 100644
+--- a/src/components/layout/header.tsx
++++ b/src/components/layout/header.tsx
+@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
+ import { useState } from "react";
+ import {
+   ArrowUpRight,
+-  ChevronDown,
+   Compass,
+   Menu,
+   Plus,
+@@ -12,11 +11,8 @@ import {
+   Wallet,
+   X,
+ } from "lucide-react";
+-import { useConnection } from "wagmi";
++import { ConnectWalletButton, NetworkIndicator } from "@retry/web3";
+ import { Brand } from "./brand";
+-import { WalletButton, WalletMenu } from "@/components/wallet/wallet-button";
+-import { useApp } from "@/components/providers";
+-import { useMounted } from "@/hooks/use-mounted";
+ const links = [
+   { href: "/", label: "Discover", icon: Compass },
+   { href: "/create", label: "Create", icon: Plus },
+@@ -27,10 +23,6 @@ export function Header() {
+   const router = useRouter();
+   const [menu, setMenu] = useState(false);
+   const [search, setSearch] = useState("");
+-  const { setWalletOpen, selectedChainId } = useApp();
+-  const { chainId, isConnected } = useConnection();
+-  const mounted = useMounted();
+-  const networkId = mounted && isConnected ? chainId : selectedChainId;
+   return (
+     <>
+       <header className="header">
+@@ -63,22 +55,8 @@ export function Header() {
+           />
+           <kbd>↵</kbd>
+         </form>
+-        <button
+-          className="network-button"
+-          aria-label={`Network: ${networkId === 8453 ? "Base" : networkId === 84532 ? "Base Sepolia" : "Unsupported network"}. Open wallet menu`}
+-          onClick={() => setWalletOpen(true)}
+-        >
+-          <span className="base-mark" />
+-          <span>
+-            {networkId === 8453
+-              ? "Base"
+-              : networkId === 84532
+-                ? "Base Sepolia"
+-                : "Wrong network"}
+-          </span>
+-          <ChevronDown size={13} />
+-        </button>
+-        <WalletButton />
++        <NetworkIndicator className="network-button" />
++        <ConnectWalletButton className="wallet-button" />
+         <button
+           className="icon-button mobile-toggle"
+           aria-label={menu ? "Close navigation" : "Open navigation"}
+@@ -104,7 +82,6 @@ export function Header() {
+           </nav>
+         ) : null}
+       </header>
+-      <WalletMenu />
+     </>
+   );
+ }
+diff --git a/src/components/portfolio/portfolio.tsx b/src/components/portfolio/portfolio.tsx
+index 6ab0ee3..0b65434 100644
+--- a/src/components/portfolio/portfolio.tsx
++++ b/src/components/portfolio/portfolio.tsx
+@@ -1,7 +1,10 @@
+ "use client";
+ import { useState } from "react";
+-import { useConnection } from "wagmi";
+-import { formatEther } from "viem";
++import {
++  ConnectWalletButton,
++  SwitchNetworkButton,
++  useRetryWallet,
++} from "@retry/web3";
+ import {
+   ArrowUpRight,
+   Copy,
+@@ -11,18 +14,13 @@ import {
+   Wallet,
+ } from "lucide-react";
+ import { useApp } from "@/components/providers";
+-import { useWalletBalance } from "@/hooks/use-wallet-balance";
+-import { useMounted } from "@/hooks/use-mounted";
+-import { isSupportedChain } from "@/config/networks";
+-import { WalletButton } from "@/components/wallet/wallet-button";
+ import { EmptyState } from "@/components/ui/feedback";
+ import { shorten } from "@/lib/format";
+ import Link from "next/link";
+ export function Portfolio() {
+-  const { address, isConnected, chain, chainId } = useConnection();
+-  const balance = useWalletBalance();
+-  const { setWalletOpen, notify } = useApp();
+-  const mounted = useMounted();
++  const wallet = useRetryWallet();
++  const { address, isConnected, chainId, balance, network } = wallet;
++  const { notify } = useApp();
+   const [tab, setTab] = useState("holdings");
+   return (
+     <div className="portfolio-page">
+@@ -35,7 +33,7 @@ export function Portfolio() {
+         </div>
+         <span className="status-label">Portfolio</span>
+       </div>
+-      {!mounted || !isConnected || !address ? (
++      {!isConnected || !address ? (
+         <section className="panel portfolio-connect">
+           <div className="portfolio-art">
+             <Wallet size={41} />
+@@ -46,7 +44,7 @@ export function Portfolio() {
+             Connect your wallet to see your Base network and ETH balance. Token
+             positions and activity will arrive in a future stage.
+           </p>
+-          <WalletButton />
++          <ConnectWalletButton align="start" />
+           <div className="portfolio-features">
+             <span>
+               <LockKeyhole size={12} />
+@@ -86,35 +84,32 @@ export function Portfolio() {
+             </section>
+             <section className="panel">
+               <h2>Connected network</h2>
+-              <strong>{chain?.name ?? "Unsupported network"}</strong>
+-              <button
+-                className="reference-button"
+-                onClick={() => setWalletOpen(true)}
+-              >
+-                Change network
+-                <ArrowUpRight size={12} />
+-              </button>
++              <strong>
++                {network.isWrongNetwork
++                  ? `Wrong network (${wallet.networkName ?? chainId})`
++                  : wallet.networkName}
++              </strong>
++              {network.isWrongNetwork ? <SwitchNetworkButton /> : null}
+               <p className="mt-3">Chain ID: {chainId}</p>
+             </section>
+             <section className="panel">
+               <h2>Native ETH balance · Live RPC</h2>
+-              <strong>
+-                {!isSupportedChain(chainId)
+-                  ? "Unsupported network"
+-                  : balance.isPending
++              <strong title={balance.exact && `${balance.exact} ETH`}>
++                {balance.status === "success"
++                  ? balance.display
++                  : balance.status === "loading"
+                     ? "Loading…"
+-                    : balance.isError
+-                      ? "Unavailable"
+-                      : balance.data
+-                        ? `${Number(formatEther(balance.data.value)).toFixed(5)} ETH`
+-                        : "Unavailable"}
++                    : balance.status === "wrong-network"
++                      ? "Unsupported network"
++                      : "Unavailable"}
+               </strong>
+               <p>
+-                {balance.isError
+-                  ? "RPC request failed. No estimated balance is shown."
++                {balance.status === "error"
++                  ? (balance.error?.message ??
++                    "RPC request failed. No estimated balance is shown.")
+                   : "Read from your wallet’s connected Base network."}
+               </p>
+-              {balance.isError ? (
++              {balance.status === "error" ? (
+                 <button
+                   className="reference-button mt-3"
+                   onClick={() => balance.refetch()}
+@@ -124,10 +119,10 @@ export function Portfolio() {
+               ) : null}
+             </section>
+           </div>
+-          {!isSupportedChain(chainId) ? (
++          {network.isWrongNetwork ? (
+             <div className="notice-strip mb-5">
+-              Switch to Base Sepolia or Base in the wallet menu to read your
+-              native ETH balance.
++              {network.notice?.message ??
++                "Switch to a Base network to read your native ETH balance."}
+             </div>
+           ) : null}
+           <section className="panel">
+diff --git a/src/components/providers.tsx b/src/components/providers.tsx
+index 4b7417b..5d31ba3 100644
+--- a/src/components/providers.tsx
++++ b/src/components/providers.tsx
+@@ -6,81 +6,54 @@ import {
+   useState,
+   type ReactNode,
+ } from "react";
+-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+-import { WagmiProvider } from "wagmi";
++import { RetryWeb3Provider, type RetryWeb3ProviderProps } from "@retry/web3";
+ import { CheckCircle2, CircleAlert, X } from "lucide-react";
+-import { makeWagmiConfig } from "@/config/wagmi";
+-import { defaultChain } from "@/config/networks";
++import { makeRetryWeb3Config } from "@/config/web3";
+ type Notice = { id: number; message: string; error: boolean };
+ const AppContext = createContext<{
+   notify: (message: string, error?: boolean) => void;
+-  walletOpen: boolean;
+-  setWalletOpen: (open: boolean) => void;
+-  selectedChainId: number;
+-  setSelectedChainId: (id: number) => void;
+ } | null>(null);
+ export function useApp() {
+   const app = useContext(AppContext);
+   if (!app) throw new Error("AppProvider missing");
+   return app;
+ }
+-export function Providers({ children }: { children: ReactNode }) {
+-  const [config] = useState(makeWagmiConfig);
+-  const [queryClient] = useState(
+-    () =>
+-      new QueryClient({
+-        defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+-      }),
+-  );
++export function Providers({
++  children,
++  initialState,
++}: {
++  children: ReactNode;
++  initialState?: RetryWeb3ProviderProps["initialState"];
++}) {
++  const [config] = useState(makeRetryWeb3Config);
+   const [notices, setNotices] = useState<Notice[]>([]);
+-  const [walletOpen, setWalletOpen] = useState(false);
+-  const [selectedChainId, setSelectedChainId] = useState<number>(
+-    defaultChain.id,
+-  );
+   const notify = useCallback((message: string, error = false) => {
+     const id = Date.now() + Math.random();
+     setNotices((n) => [...n.slice(-2), { id, message, error }]);
+     setTimeout(() => setNotices((n) => n.filter((t) => t.id !== id)), 5500);
+   }, []);
+   return (
+-    <WagmiProvider config={config}>
+-      <QueryClientProvider client={queryClient}>
+-        <AppContext.Provider
+-          value={{
+-            notify,
+-            walletOpen,
+-            setWalletOpen,
+-            selectedChainId,
+-            setSelectedChainId,
+-          }}
+-        >
+-          {children}
+-          <div className="toasts" aria-live="polite" aria-atomic="false">
+-            {notices.map((n) => (
+-              <div
+-                className={`toast ${n.error ? "toast-error" : ""}`}
+-                key={n.id}
++    <RetryWeb3Provider config={config} initialState={initialState}>
++      <AppContext.Provider value={{ notify }}>
++        {children}
++        <div className="toasts" aria-live="polite" aria-atomic="false">
++          {notices.map((n) => (
++            <div className={`toast ${n.error ? "toast-error" : ""}`} key={n.id}>
++              {n.error ? <CircleAlert size={19} /> : <CheckCircle2 size={19} />}
++              <span>{n.message}</span>
++              <button
++                className="icon-button"
++                onClick={() =>
++                  setNotices((t) => t.filter((i) => i.id !== n.id))
++                }
++                aria-label="Dismiss notification"
+               >
+-                {n.error ? (
+-                  <CircleAlert size={19} />
+-                ) : (
+-                  <CheckCircle2 size={19} />
+-                )}
+-                <span>{n.message}</span>
+-                <button
+-                  className="icon-button"
+-                  onClick={() =>
+-                    setNotices((t) => t.filter((i) => i.id !== n.id))
+-                  }
+-                  aria-label="Dismiss notification"
+-                >
+-                  <X size={16} />
+-                </button>
+-              </div>
+-            ))}
+-          </div>
+-        </AppContext.Provider>
+-      </QueryClientProvider>
+-    </WagmiProvider>
++                <X size={16} />
++              </button>
++            </div>
++          ))}
++        </div>
++      </AppContext.Provider>
++    </RetryWeb3Provider>
+   );
+ }
+diff --git a/src/components/trade/trade-panel.tsx b/src/components/trade/trade-panel.tsx
+index c96fe15..bc52ed3 100644
+--- a/src/components/trade/trade-panel.tsx
++++ b/src/components/trade/trade-panel.tsx
+@@ -1,21 +1,17 @@
+ "use client";
+ import { useState } from "react";
+-import { formatEther } from "viem";
+ import { LockKeyhole, Settings2 } from "lucide-react";
+-import { useConnection } from "wagmi";
++import { useRetryBalance } from "@retry/web3";
+ import type { Token } from "@/types/token";
+-import { useWalletBalance } from "@/hooks/use-wallet-balance";
+ import { number } from "@/lib/format";
+ import { useApp } from "@/components/providers";
+ import { Button } from "@/components/ui/button";
+-import { isSupportedChain } from "@/config/networks";
+ export function TradePanel({ token }: { token: Token }) {
+   const [side, setSide] = useState<"buy" | "sell">("buy");
+   const [amount, setAmount] = useState("");
+   const [slippage, setSlippage] = useState("1");
+   const { notify } = useApp();
+-  const { isConnected, chainId } = useConnection();
+-  const balance = useWalletBalance();
++  const balance = useRetryBalance();
+   const quantity = Number(amount);
+   const valid = Number.isFinite(quantity) && quantity > 0 && quantity <= 1e12;
+   // This is a UI fixture ratio, unrelated to token prices, reserves or any live quote.
+@@ -46,15 +42,17 @@ export function TradePanel({ token }: { token: Token }) {
+         <label className="field-label" htmlFor="trade-amount">
+           You {side === "buy" ? "pay" : "sell"}
+           <span>
+-            {side === "buy" && isConnected && isSupportedChain(chainId)
+-              ? balance.data
+-                ? `Balance: ${Number(formatEther(balance.data.value)).toFixed(4)} ETH`
+-                : balance.isError
+-                  ? "Balance unavailable"
+-                  : "Reading balance…"
+-              : side === "sell"
+-                ? "Token balance: not indexed"
+-                : "Wallet not connected"}
++            {side === "sell"
++              ? "Token balance: not indexed"
++              : balance.status === "success"
++                ? `Balance: ${balance.display}`
++                : balance.status === "loading"
++                  ? "Reading balance…"
++                  : balance.status === "disconnected"
++                    ? "Wallet not connected"
++                    : balance.status === "wrong-network"
++                      ? "Wrong network"
++                      : "Balance unavailable"}
+           </span>
+         </label>
+         <div className="amount-box">
+diff --git a/src/components/wallet/wallet-button.tsx b/src/components/wallet/wallet-button.tsx
+deleted file mode 100644
+index d4b222f..0000000
+--- a/src/components/wallet/wallet-button.tsx
++++ /dev/null
+@@ -1,212 +0,0 @@
+-"use client";
+-import {
+-  useConnect,
+-  useConnection,
+-  useConnectors,
+-  useDisconnect,
+-  useSwitchChain,
+-} from "wagmi";
+-import { formatEther } from "viem";
+-import { ArrowUpRight, Check, Copy, LogOut, Wallet } from "lucide-react";
+-import { useApp } from "@/components/providers";
+-import { useMounted } from "@/hooks/use-mounted";
+-import { useWalletBalance } from "@/hooks/use-wallet-balance";
+-import { isSupportedChain, supportedChains } from "@/config/networks";
+-import { shorten } from "@/lib/format";
+-import { Button } from "@/components/ui/button";
+-import { Modal } from "@/components/ui/modal";
+-export function WalletButton() {
+-  const { setWalletOpen } = useApp();
+-  const { address, isConnected } = useConnection();
+-  const mounted = useMounted();
+-  return (
+-    <Button className="wallet-button" onClick={() => setWalletOpen(true)}>
+-      <Wallet size={16} />
+-      <span>
+-        {mounted && isConnected && address
+-          ? shorten(address)
+-          : "Connect Wallet"}
+-      </span>
+-    </Button>
+-  );
+-}
+-export function WalletMenu() {
+-  const {
+-    walletOpen,
+-    setWalletOpen,
+-    selectedChainId,
+-    setSelectedChainId,
+-    notify,
+-  } = useApp();
+-  const { address, isConnected, chain, chainId } = useConnection();
+-  const connectors = useConnectors();
+-  const connect = useConnect();
+-  const disconnect = useDisconnect();
+-  const switchChain = useSwitchChain();
+-  const balance = useWalletBalance();
+-  async function chooseNetwork(id: number) {
+-    if (isConnected) {
+-      try {
+-        await switchChain.mutateAsync({ chainId: id });
+-        setSelectedChainId(id);
+-        notify("Network updated.");
+-      } catch {
+-        notify(
+-          "Network switch was declined or unavailable. Try switching in your wallet.",
+-          true,
+-        );
+-      }
+-    } else setSelectedChainId(id);
+-  }
+-  async function copy() {
+-    if (!address) return;
+-    try {
+-      await navigator.clipboard.writeText(address);
+-      notify("Wallet address copied.");
+-    } catch {
+-      notify(
+-        "Clipboard unavailable. Select and copy your address manually.",
+-        true,
+-      );
+-    }
+-  }
+-  return (
+-    <Modal
+-      open={walletOpen}
+-      onOpenChange={setWalletOpen}
+-      title={isConnected ? "Your wallet" : "Connect your wallet"}
+-      description="Your wallet, your keys. RETRY only requests a connection in this preview."
+-    >
+-      <div className="label-row">
+-        <span className="eyebrow">NETWORK</span>
+-        <span className="tiny muted">ETH · Base only</span>
+-      </div>
+-      <div className="segmented">
+-        {supportedChains.map((c) => (
+-          <button
+-            key={c.id}
+-            disabled={switchChain.isPending}
+-            aria-pressed={(isConnected ? chainId : selectedChainId) === c.id}
+-            className={
+-              (isConnected ? chainId : selectedChainId) === c.id ? "active" : ""
+-            }
+-            onClick={() => chooseNetwork(c.id)}
+-          >
+-            {c.name}
+-            {c.testnet ? " · Testnet" : ""}
+-          </button>
+-        ))}
+-      </div>
+-      {isConnected && address ? (
+-        <>
+-          <div className="wallet-details">
+-            <div className="wallet-orb">
+-              <Wallet size={30} />
+-            </div>
+-            <h3>{shorten(address)}</h3>
+-            <p className="address-full">{address}</p>
+-            <p className="muted">
+-              {chain?.name ?? `Unsupported network (${chainId})`}
+-            </p>
+-            <strong>
+-              {!isSupportedChain(chainId)
+-                ? "Switch to a Base network"
+-                : balance.isPending
+-                  ? "Reading balance…"
+-                  : balance.isError
+-                    ? "Balance unavailable — RPC error"
+-                    : balance.data
+-                      ? `${Number(formatEther(balance.data.value)).toFixed(5)} ETH`
+-                      : "Balance unavailable"}
+-            </strong>
+-          </div>
+-          {!isSupportedChain(chainId) ? (
+-            <p className="form-error" role="alert">
+-              This network is unsupported. Select Base Sepolia or Base above.
+-            </p>
+-          ) : null}
+-          <div className="two-buttons">
+-            <Button variant="secondary" onClick={copy}>
+-              <Copy size={15} />
+-              Copy address
+-            </Button>
+-            <Button
+-              variant="secondary"
+-              onClick={() => {
+-                disconnect.mutate({});
+-                setWalletOpen(false);
+-                notify("Wallet disconnected.");
+-              }}
+-            >
+-              <LogOut size={15} />
+-              Disconnect
+-            </Button>
+-          </div>
+-        </>
+-      ) : (
+-        <div className="connector-list">
+-          {connectors.map((c) => (
+-            <button
+-              key={c.uid}
+-              disabled={connect.isPending}
+-              onClick={async () => {
+-                try {
+-                  const provider = await c.getProvider();
+-                  if (c.type === "injected" && !provider) {
+-                    notify(
+-                      "No browser wallet found. Install an EVM wallet such as MetaMask, then refresh.",
+-                      true,
+-                    );
+-                    return;
+-                  }
+-                  await connect.mutateAsync({
+-                    connector: c,
+-                    chainId: selectedChainId,
+-                  });
+-                  notify("Wallet connected.");
+-                } catch {
+-                  notify(
+-                    "Connection declined or unavailable. Unlock your wallet and try again.",
+-                    true,
+-                  );
+-                }
+-              }}
+-            >
+-              <span
+-                className={`connector-icon ${c.id === "coinbaseWalletSDK" ? "coinbase" : ""}`}
+-              >
+-                <Wallet size={21} />
+-              </span>
+-              <span>
+-                <strong>
+-                  {c.type === "injected" ? "Browser wallet" : c.name}
+-                </strong>
+-                <small>
+-                  {c.type === "injected"
+-                    ? "MetaMask, Rabby & other EVM wallets"
+-                    : c.name === "WalletConnect"
+-                      ? "Connect with a QR code"
+-                      : "Connect your Coinbase Wallet"}
+-                </small>
+-              </span>
+-              {connect.isPending ? (
+-                <span className="tiny">Waiting…</span>
+-              ) : (
+-                <ArrowUpRight size={18} />
+-              )}
+-            </button>
+-          ))}
+-          {!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ? (
+-            <p className="tiny muted">
+-              WalletConnect is available after a project ID is configured.
+-            </p>
+-          ) : null}
+-        </div>
+-      )}
+-      <p className="wallet-note">
+-        <Check size={14} />
+-        No transaction or signature requested.
+-      </p>
+-    </Modal>
+-  );
+-}
+diff --git a/src/config/wagmi.ts b/src/config/wagmi.ts
+deleted file mode 100644
+index 2dbc965..0000000
+--- a/src/config/wagmi.ts
++++ /dev/null
+@@ -1,26 +0,0 @@
+-import { createConfig, http } from "wagmi";
+-import { injected, coinbaseWallet, walletConnect } from "wagmi/connectors";
+-import { base, baseSepolia } from "wagmi/chains";
+-import { supportedChains } from "./networks";
+-export function makeWagmiConfig() {
+-  const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+-  return createConfig({
+-    chains: supportedChains,
+-    ssr: true,
+-    connectors: [
+-      injected(),
+-      coinbaseWallet({ appName: "RETRY", preference: { options: "all" } }),
+-      ...(projectId ? [walletConnect({ projectId, showQrModal: true })] : []),
+-    ],
+-    transports: {
+-      [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined, {
+-        retryCount: 1,
+-        timeout: 10_000,
+-      }),
+-      [baseSepolia.id]: http(
+-        process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || undefined,
+-        { retryCount: 1, timeout: 10_000 },
+-      ),
+-    },
+-  });
+-}
+diff --git a/src/config/web3.ts b/src/config/web3.ts
+new file mode 100644
+index 0000000..25f8ce0
+--- /dev/null
++++ b/src/config/web3.ts
+@@ -0,0 +1,22 @@
++import { createRetryWeb3Config, parseRetryWeb3Env } from "@retry/web3/config";
++
++// Next.js only inlines NEXT_PUBLIC_* variables read by their full literal name.
++export const retryWeb3Env = parseRetryWeb3Env({
++  defaultChain: process.env.NEXT_PUBLIC_DEFAULT_NETWORK,
++  baseMainnetRpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL,
++  baseSepoliaRpcUrl: process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL,
++  walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
++});
++
++/** Same config on the server (cookie → initial state) and in the browser. */
++export function makeRetryWeb3Config() {
++  return createRetryWeb3Config({
++    env: retryWeb3Env,
++    app: {
++      name: "RETRY",
++      description: "A new beginning on Base.",
++    },
++    ssr: true,
++    storage: "cookie",
++  });
++}
+diff --git a/src/hooks/use-mounted.ts b/src/hooks/use-mounted.ts
+deleted file mode 100644
+index 68a8688..0000000
+--- a/src/hooks/use-mounted.ts
++++ /dev/null
+@@ -1,10 +0,0 @@
+-"use client";
+-import { useSyncExternalStore } from "react";
+-const subscribe = () => () => {};
+-export function useMounted() {
+-  return useSyncExternalStore(
+-    subscribe,
+-    () => true,
+-    () => false,
+-  );
+-}
+diff --git a/src/hooks/use-wallet-balance.ts b/src/hooks/use-wallet-balance.ts
+deleted file mode 100644
+index b0b92be..0000000
+--- a/src/hooks/use-wallet-balance.ts
++++ /dev/null
+@@ -1,15 +0,0 @@
+-"use client";
+-import { useBalance, useConnection } from "wagmi";
+-import { isSupportedChain } from "@/config/networks";
+-export function useWalletBalance() {
+-  const connection = useConnection();
+-  return useBalance({
+-    address: connection.address,
+-    chainId: connection.chainId,
+-    query: {
+-      enabled: connection.isConnected && isSupportedChain(connection.chainId),
+-      retry: 1,
+-      staleTime: 30_000,
+-    },
+-  });
+-}
+diff --git a/tsconfig.json b/tsconfig.json
+index d3ab866..4841a31 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -23,5 +23,5 @@
+     ".next/types/**/*.ts",
+     ".next/dev/types/**/*.ts"
+   ],
+-  "exclude": ["node_modules"]
++  "exclude": ["node_modules", "packages", "examples"]
+ }

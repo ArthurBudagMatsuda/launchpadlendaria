@@ -1,7 +1,10 @@
 name: Publish RETRY test preview
+# Publishes the integrated app (Stage 1 + @retry/web3) from main, with the
+# Web3 test bench at /web3/. The stage branches keep an older copy of this
+# file that publishes the split preview; stop pushing to them once merged.
 on:
   push:
-    branches: [main, feat/etapa-1-foundation, feat/etapa-2-web3]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,52 +20,35 @@ jobs:
       contents: read
       pages: read
     steps:
-      - name: Checkout RETRY application
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: feat/etapa-1-foundation
-      - name: Checkout Web3 test bench
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: feat/etapa-2-web3
-          path: .qa/web3-source
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: pnpm
-      - name: Install application
+      - name: Install workspace
         run: pnpm install --frozen-lockfile
-      - name: Check application
+      - name: Check application and Web3 module
         run: |
           pnpm format:check
           pnpm lint
           pnpm typecheck
           pnpm test
+          pnpm --filter @retry/web3 check
       - name: Build RETRY for Pages
         run: pnpm build:pages
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
           NEXT_PUBLIC_DEFAULT_NETWORK: base-sepolia
-      - name: Install Web3 package
-        working-directory: .qa/web3-source/packages/retry-web3
-        run: npm ci
-      - name: Check Web3 package
-        working-directory: .qa/web3-source/packages/retry-web3
-        run: npm run check
-      - name: Install Web3 playground
-        working-directory: .qa/web3-source/examples/web3-playground
-        run: npm ci
-      - name: Build Web3 playground
-        working-directory: .qa/web3-source/examples/web3-playground
-        run: npm run build -- --base=/${{ github.event.repository.name }}/web3/
+      - name: Build Web3 test bench (developer tool)
+        run: pnpm --filter retry-web3-playground build --base=/${{ github.event.repository.name }}/web3/
         env:
-          VITE_DEFAULT_CHAIN: base-sepolia
-      - name: Combine previews and record source commits
+          VITE_DEFAULT_NETWORK: base-sepolia
+      - name: Combine and record the source commit
         run: |
           mkdir -p out/web3
-          cp -R .qa/web3-source/examples/web3-playground/dist/. out/web3/
-          printf 'Application: %s\nWeb3 test bench: %s\n' "$(git rev-parse HEAD)" "$(git -C .qa/web3-source rev-parse HEAD)" > out/preview-version.txt
+          cp -R examples/web3-playground/dist/. out/web3/
+          printf 'Application and Web3 test bench: %s\n' "$(git rev-parse HEAD)" > out/preview-version.txt
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - name: Upload Pages bundle
