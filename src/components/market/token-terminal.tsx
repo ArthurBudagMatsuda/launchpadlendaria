@@ -23,7 +23,7 @@ import {
   useOnchainToken,
   useTokenMarket,
 } from "@/hooks/use-market";
-import { chartSeries, INTERVAL_SECONDS } from "@/lib/market/chart-series";
+import { highestHigh, type PriceHigh } from "@/lib/market/chart-series";
 import { errorMessage } from "@/lib/market/errors";
 import {
   computeFdvUsd,
@@ -50,6 +50,7 @@ import {
   tokenSupply,
   usdAmount,
   usdPrice,
+  utcDay,
 } from "@/lib/format";
 import { EmptyState, LoadingSkeleton } from "@/components/ui/feedback";
 import { TradePanel } from "@/components/trade/trade-panel";
@@ -91,6 +92,50 @@ function Change({ value }: { value: number | null }) {
       }
     >
       {signedPercent(value)}
+    </span>
+  );
+}
+
+/**
+ * The primary pool's all-time high from its daily candles, and how far the
+ * live price is below it. The live price can pass it before the next daily
+ * refresh; then the live price is the high.
+ */
+function AthReadout({
+  ath,
+  priceUsd,
+  failed,
+}: {
+  ath: PriceHigh | null;
+  priceUsd: string | null;
+  failed: boolean;
+}) {
+  if (!ath)
+    return (
+      <span>
+        ATH{" "}
+        {failed ? (
+          <Unavailable>
+            GeckoTerminal has no daily price history for this pool
+          </Unavailable>
+        ) : (
+          "…"
+        )}
+      </span>
+    );
+  const live = priceUsd ? Number(priceUsd) : null;
+  const newHigh = live !== null && live > ath.price;
+  return (
+    <span
+      title={`Highest price in the primary pool's daily candles since ${utcDay(ath.since)} (GeckoTerminal)`}
+    >
+      ATH {usdPrice(newHigh ? priceUsd! : String(ath.price))} ·{" "}
+      {newHigh ? "now" : utcDay(ath.time)}{" "}
+      <Change
+        value={
+          live === null ? null : newHigh ? 0 : (live / ath.price - 1) * 100
+        }
+      />
     </span>
   );
 }
@@ -250,6 +295,8 @@ function MarketSections({
   const market = useTokenMarket(token, asset?.primaryPool?.id);
   const data = market.data;
   const primary = data?.selection.primary ?? null;
+  // Shared with the chart, which draws the same high as a line.
+  const daily = useCandles(token, primary?.pool.id, "1d");
   const symbol = facts?.symbol ?? asset?.verification.symbol ?? "Token";
   const fdv = computeFdvUsd(
     facts?.totalSupply ?? null,
@@ -345,6 +392,11 @@ function MarketSections({
                   <Change value={primary.priceChangePct[w]} />
                 </span>
               ))}
+              <AthReadout
+                ath={daily.data ? highestHigh(daily.data.candles) : null}
+                priceUsd={primary.priceUsd}
+                failed={daily.isError && !daily.data}
+              />
               <span>
                 Trades 24h{" "}
                 {primary.txns.h24
@@ -417,15 +469,15 @@ function ChartPanel({
   const [interval, setInterval] = useState<CandleInterval>("1h");
   const [mode, setMode] = useState<"candles" | "line">("candles");
   const candles = useCandles(token, primary?.pool.id, interval);
-  const series = useMemo(
+  // The daily history (the 1d view's own query) holds the all-time high;
+  // the candles on screen can be newer than its last refresh.
+  const daily = useCandles(token, primary?.pool.id, "1d");
+  const ath = useMemo(
     () =>
-      candles.data
-        ? chartSeries(
-            candles.data.candles,
-            INTERVAL_SECONDS[candles.data.interval],
-          )
+      daily.data
+        ? highestHigh(daily.data.candles, candles.data?.candles ?? [])
         : null,
-    [candles.data],
+    [daily.data, candles.data],
   );
   return (
     <section className="panel chart-panel">
@@ -481,14 +533,15 @@ function ChartPanel({
           message={`Price history is unavailable: ${errorMessage(candles.error)}`}
           onRetry={() => candles.refetch()}
         />
-      ) : candles.data && series ? (
+      ) : candles.data ? (
         <>
-          {series.slots.length ? (
+          {candles.data.candles.length ? (
             <CandleChart
-              series={series}
+              candles={candles.data.candles}
               interval={candles.data.interval}
               mode={mode}
               pairLabel={pair?.pair ?? symbol}
+              ath={ath}
             />
           ) : (
             <EmptyState title="No candles for this interval">
@@ -501,7 +554,7 @@ function ChartPanel({
             retrievedAt={candles.data.provenance.retrievedAt}
             refreshMs={CANDLE_REFRESH_MS[interval]}
             refreshFailed={candles.isRefetchError}
-            detail={`${interval} OHLCV · UTC${series.gaps ? ` · ${series.gaps} interval${series.gaps === 1 ? "" : "s"} without trades left empty` : ""}${series.trimmed ? ` · ${series.trimmed} older candle${series.trimmed === 1 ? "" : "s"} not drawn` : ""}`}
+            detail={`${interval} OHLCV · UTC${candles.data.gaps ? ` · ${candles.data.gaps} interval${candles.data.gaps === 1 ? "" : "s"} without trades skipped, nothing filled in` : ""}`}
           />
         </>
       ) : null}

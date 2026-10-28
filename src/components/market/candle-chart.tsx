@@ -18,16 +18,16 @@ import { RotateCcw } from "lucide-react";
 import {
   initialBars,
   priceStep,
-  type ChartSeries,
-  type ChartSlot,
+  type PriceHigh,
 } from "@/lib/market/chart-series";
-import type { CandleInterval } from "@/lib/market/types";
+import type { Candle, CandleInterval } from "@/lib/market/types";
 import { usdAmount, usdPrice } from "@/lib/format";
 
 const UP = "#5bd5a3";
 const DOWN = "#f07787";
 const UP_VOLUME = "rgba(91, 213, 163, 0.32)";
 const DOWN_VOLUME = "rgba(240, 119, 135, 0.32)";
+const ATH = "#f0b45b";
 /** Empty bars kept right of the newest candle. */
 const RIGHT_OFFSET = 4;
 
@@ -75,43 +75,57 @@ function tickLabel(seconds: number, type: TickMarkType) {
 }
 
 const price = (value: number) => usdPrice(String(value));
-/** The axis pads below the lowest candle; a price is never negative. */
-const axisPrice = (value: number) => (value < 0 ? "" : price(value));
+/**
+ * Axis labels for a series whose smallest price step is `step`. The axis pads
+ * below the lowest candle, down to zero and below, or to a float a hair above
+ * zero such as 1.7e-21. A traded price is at least a thousand steps, so ticks
+ * under half a step stay unlabeled: a "$0" tick beside $0.00001 candles read
+ * as if the token had been worth nothing.
+ */
+const axisPrice = (step: number) => (value: number) =>
+  value < step / 2 ? "" : price(value);
 /** Room above the candles for the legend, which wraps on phones. */
 const priceMargins = (width: number) => ({
   top: width < 560 ? 0.2 : 0.1,
   bottom: 0.24,
 });
+/** Zooming out stops once every candle fits; dragging stays free. */
+const fitSpacing = (width: number, total: number) =>
+  Math.max(0.5, width / (total + RIGHT_OFFSET));
 
 /**
  * OHLCV chart on TradingView's open-source Lightweight Charts: drag to move,
- * wheel or pinch to zoom, axes in UTC with dates. Empty buckets stay empty
- * slots on the time axis; nothing is interpolated. It opens on the newest
- * candles, and older history is one drag or zoom away.
+ * wheel or pinch to zoom, axes in UTC with dates. Like TradingView and GMGN,
+ * candles sit side by side: an interval without trades is skipped, never
+ * filled with a made-up price, and the dates on the axis show the jump. It
+ * opens on the newest candles; older history is one drag or zoom away.
  */
 export default function CandleChart({
-  series,
+  candles,
   interval,
   mode,
   pairLabel,
+  ath,
 }: {
-  series: ChartSeries;
+  /** Oldest first, one per interval with trades. */
+  candles: readonly Candle[];
   interval: CandleInterval;
   mode: "candles" | "line";
   pairLabel: string;
+  ath: PriceHigh | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<ChartApi | null>(null);
-  const slots = useRef<ChartSlot[]>(series.slots);
+  const drawn = useRef<readonly Candle[]>(candles);
   const placed = useRef(false);
-  const [hovered, setHovered] = useState<ChartSlot | null>(null);
+  const [hovered, setHovered] = useState<Candle | null>(null);
   const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [logScale, setLogScale] = useState(false);
 
   const resetView = useCallback(() => {
     const current = api.current;
     if (!current) return;
-    const total = slots.current.length;
+    const total = drawn.current.length;
     const bars = initialBars(host.current?.clientWidth ?? 600, total);
     current.chart.priceScale("right").applyOptions({ autoScale: true });
     if (bars >= total) current.chart.timeScale().fitContent();
@@ -144,12 +158,13 @@ export default function CandleChart({
         borderVisible: false,
         scaleMargins: priceMargins(element.clientWidth),
       },
+      // Either end can be dragged off screen, as on TradingView; the chart
+      // only keeps two bars in view.
       timeScale: {
         borderVisible: false,
         rightOffset: RIGHT_OFFSET,
         barSpacing: 7,
         minBarSpacing: 0.5,
-        fixLeftEdge: true,
         lockVisibleTimeRangeOnResize: true,
         timeVisible: interval !== "1d",
         secondsVisible: false,
@@ -171,7 +186,7 @@ export default function CandleChart({
       },
       localization: {
         locale: "en-US",
-        priceFormatter: axisPrice,
+        priceFormatter: axisPrice(priceStep(drawn.current)),
         timeFormatter: (time: unknown) => slotTime(Number(time), interval),
       },
     });
@@ -196,11 +211,11 @@ export default function CandleChart({
     chart.priceScale("volume").applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
     });
-    // Every slot, empty or not, is one logical index on the time axis.
+    // Candles sit side by side, so a logical index is a candle's index.
     chart.subscribeCrosshairMove(({ time, logical }) =>
       setHovered(
         time !== undefined && logical !== undefined
-          ? (slots.current[Math.round(logical)] ?? null)
+          ? (drawn.current[Math.round(logical)] ?? null)
           : null,
       ),
     );
@@ -209,13 +224,17 @@ export default function CandleChart({
       .subscribeVisibleLogicalRangeChange((visible) =>
         setRange(visible ? { from: visible.from, to: visible.to } : null),
       );
-    chart
-      .timeScale()
-      .subscribeSizeChange((width) =>
-        chart
-          .priceScale("right")
-          .applyOptions({ scaleMargins: priceMargins(width) }),
-      );
+    chart.timeScale().subscribeSizeChange((width) => {
+      chart
+        .priceScale("right")
+        .applyOptions({ scaleMargins: priceMargins(width) });
+      chart.timeScale().applyOptions({
+        minBarSpacing: fitSpacing(
+          chart.timeScale().width(),
+          drawn.current.length,
+        ),
+      });
+    });
     api.current = { chart, candles, line, volume };
     placed.current = false;
     return () => {
@@ -227,56 +246,46 @@ export default function CandleChart({
   useEffect(() => {
     const current = api.current;
     if (!current) return;
-    slots.current = series.slots;
-    const time = (slot: ChartSlot) => slot.time as UTCTimestamp;
+    drawn.current = candles;
+    const time = (candle: Candle) => candle.time as UTCTimestamp;
     current.candles.setData(
-      series.slots.map((slot) =>
-        slot.candle
-          ? {
-              time: time(slot),
-              open: slot.candle.open,
-              high: slot.candle.high,
-              low: slot.candle.low,
-              close: slot.candle.close,
-            }
-          : { time: time(slot) },
-      ),
+      candles.map((candle) => ({
+        time: time(candle),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      })),
     );
     current.line.setData(
-      series.slots.map((slot) =>
-        slot.candle
-          ? { time: time(slot), value: slot.candle.close }
-          : { time: time(slot) },
-      ),
+      candles.map((candle) => ({ time: time(candle), value: candle.close })),
     );
     current.volume.setData(
-      series.slots.map((slot) =>
-        slot.candle
-          ? {
-              time: time(slot),
-              value: slot.candle.volumeUsd,
-              color:
-                slot.candle.close >= slot.candle.open ? UP_VOLUME : DOWN_VOLUME,
-            }
-          : { time: time(slot) },
-      ),
+      candles.map((candle) => ({
+        time: time(candle),
+        value: candle.volumeUsd,
+        color: candle.close >= candle.open ? UP_VOLUME : DOWN_VOLUME,
+      })),
     );
-    const priceFormat = {
-      type: "custom" as const,
-      formatter: axisPrice,
-      minMove: priceStep(
-        series.slots.flatMap((slot) => (slot.candle ? [slot.candle] : [])),
-      ),
-    };
+    const step = priceStep(candles);
+    const formatter = axisPrice(step);
+    current.chart.applyOptions({ localization: { priceFormatter: formatter } });
+    const priceFormat = { type: "custom" as const, formatter, minMove: step };
     current.candles.applyOptions({ priceFormat });
     current.line.applyOptions({ priceFormat });
+    current.chart.timeScale().applyOptions({
+      minBarSpacing: fitSpacing(
+        current.chart.timeScale().width(),
+        candles.length,
+      ),
+    });
     // Refreshes keep the reader's zoom; only a new chart's first data sets
     // the view.
     if (!placed.current) {
       placed.current = true;
       resetView();
     }
-  }, [series, interval, resetView]);
+  }, [candles, interval, resetView]);
 
   // Also re-applied to the new chart when the interval changes.
   useEffect(() => {
@@ -290,15 +299,35 @@ export default function CandleChart({
     });
   }, [logScale, interval]);
 
-  const candles = series.slots.flatMap((slot) =>
-    slot.candle ? [slot.candle] : [],
-  );
+  // The all-time high as a dashed line, on whichever series is showing. It
+  // does not stretch the scale: it shows when the view reaches its price.
+  useEffect(() => {
+    const current = api.current;
+    if (!current || !ath) return;
+    const options = {
+      price: ath.price,
+      color: ATH,
+      lineStyle: LineStyle.Dashed,
+      lineWidth: 1 as const,
+      axisLabelVisible: true,
+      title: "ATH",
+    };
+    const onCandles = current.candles.createPriceLine(options);
+    const onLine = current.line.createPriceLine(options);
+    return () => {
+      // A new interval has already removed the old chart with its lines.
+      if (api.current !== current) return;
+      current.candles.removePriceLine(onCandles);
+      current.line.removePriceLine(onLine);
+    };
+  }, [ath, interval]);
+
   const first = candles[0];
   const last = candles.at(-1);
-  const shown = hovered ?? series.slots.at(-1) ?? null;
+  const shown = hovered ?? last ?? null;
   const summary =
     first && last
-      ? `${pairLabel} ${interval} candles in USD from ${slotTime(first.time, interval)} to ${slotTime(last.time, interval)}. Low ${price(Math.min(...candles.map((c) => c.low)))}, high ${price(Math.max(...candles.map((c) => c.high)))}, last close ${price(last.close)}.`
+      ? `${pairLabel} ${interval} candles in USD from ${slotTime(first.time, interval)} to ${slotTime(last.time, interval)}. Low ${price(Math.min(...candles.map((c) => c.low)))}, high ${price(Math.max(...candles.map((c) => c.high)))}, last close ${price(last.close)}.${ath ? ` All-time high ${price(ath.price)} on ${slotTime(ath.time, "1d")}.` : ""}`
       : `${pairLabel} ${interval} chart with no candles.`;
   return (
     <>
@@ -316,28 +345,18 @@ export default function CandleChart({
         {shown ? (
           <div className="chart-legend" aria-hidden="true">
             <span className="muted">{slotTime(shown.time, interval)}</span>
-            {shown.candle ? (
-              <dl
-                className={
-                  shown.candle.close >= shown.candle.open
-                    ? "positive"
-                    : "negative"
-                }
-              >
-                <dt>O</dt>
-                <dd>{price(shown.candle.open)}</dd>
-                <dt>H</dt>
-                <dd>{price(shown.candle.high)}</dd>
-                <dt>L</dt>
-                <dd>{price(shown.candle.low)}</dd>
-                <dt>C</dt>
-                <dd>{price(shown.candle.close)}</dd>
-                <dt>Vol</dt>
-                <dd>{usdAmount(String(shown.candle.volumeUsd))}</dd>
-              </dl>
-            ) : (
-              <span>No trades in this interval</span>
-            )}
+            <dl className={shown.close >= shown.open ? "positive" : "negative"}>
+              <dt>O</dt>
+              <dd>{price(shown.open)}</dd>
+              <dt>H</dt>
+              <dd>{price(shown.high)}</dd>
+              <dt>L</dt>
+              <dd>{price(shown.low)}</dd>
+              <dt>C</dt>
+              <dd>{price(shown.close)}</dd>
+              <dt>Vol</dt>
+              <dd>{usdAmount(String(shown.volumeUsd))}</dd>
+            </dl>
           </div>
         ) : null}
       </div>

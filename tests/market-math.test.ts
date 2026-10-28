@@ -14,12 +14,13 @@ import {
   valueUsd,
 } from "@/lib/market/metrics";
 import { normalizeCandles } from "@/lib/market/providers/geckoterminal";
-import { chartSeries, initialBars, priceStep } from "@/lib/market/chart-series";
+import { highestHigh, initialBars, priceStep } from "@/lib/market/chart-series";
 import {
   quotePrice,
   tokenAmount as formatAmount,
   usdAmount,
   usdPrice,
+  utcDay,
 } from "@/lib/format";
 
 describe("exact decimals", () => {
@@ -108,6 +109,15 @@ describe("price formatting", () => {
     expect(usdAmount("190930.2863")).toBe("$190.93K");
     expect(formatAmount("18985.365382667")).toBe("18.99K");
   });
+
+  it("names a UTC day, with the year only when it is not this one", () => {
+    const now = Date.UTC(2026, 9, 28, 16);
+    expect(utcDay(1_793_059_200, now)).toBe("Oct 27"); // 2026-10-27T00:00Z
+    // 23:30 UTC on Dec 31 is still Dec 31, whatever the reader's zone.
+    expect(utcDay(Date.UTC(2025, 11, 31, 23, 30) / 1000, now)).toBe(
+      "Dec 31, 2025",
+    );
+  });
 });
 
 describe("OHLCV normalization", () => {
@@ -147,38 +157,35 @@ describe("OHLCV normalization", () => {
     expect(dropped).toBe(7);
   });
 
-  const candle = (time: number, low = 0.5) => ({
+  const candle = (time: number, low = 0.5, high = 2) => ({
     time,
     open: 1,
-    high: 2,
+    high,
     low,
     close: 1.5,
     volumeUsd: 1,
   });
 
-  it("keeps real gaps empty in the chart slots (no interpolation)", () => {
-    const series = chartSeries([candle(T), candle(T + 3 * H)], H);
-    expect(series.slots.map((s) => s.time)).toEqual([
-      T,
-      T + H,
-      T + 2 * H,
-      T + 3 * H,
-    ]);
-    expect(series.slots[1]).toEqual({ time: T + H, candle: null });
-    expect(series).toMatchObject({ gaps: 2, trimmed: 0 });
-  });
-
-  it("keeps the newest candles of a series too sparse to pad", () => {
-    // Three candles 30 hours apart, with room for 40 hourly slots.
-    const series = chartSeries(
-      [candle(T), candle(T + 30 * H), candle(T + 60 * H)],
-      H,
-      40,
+  it("finds the all-time high across daily and newer intraday candles", () => {
+    const D = 24 * H;
+    const daily = [candle(T - 2 * D, 0.5, 2), candle(T - D, 0.5, 2.44)];
+    // The daily candle holds the high: its day is reported.
+    expect(highestHigh(daily)).toEqual({
+      price: 2.44,
+      time: T - D,
+      since: T - 2 * D,
+    });
+    // A newer intraday candle above it, not yet in the daily refresh, wins.
+    expect(highestHigh(daily, [candle(T + 5 * H, 0.5, 2.5)])).toEqual({
+      price: 2.5,
+      time: T + 5 * H,
+      since: T - 2 * D,
+    });
+    // On a tie the daily candle (searched first) keeps it.
+    expect(highestHigh(daily, [candle(T + 5 * H, 0.5, 2.44)])?.time).toBe(
+      T - D,
     );
-    expect(series.slots[0].time).toBe(T + 30 * H);
-    expect(series.slots).toHaveLength(31);
-    expect(series).toMatchObject({ gaps: 29, trimmed: 1 });
-    expect(chartSeries([], H)).toEqual({ slots: [], gaps: 0, trimmed: 0 });
+    expect(highestHigh([], [])).toBeNull();
   });
 
   it("opens the chart on the newest candles and sizes the price step", () => {
