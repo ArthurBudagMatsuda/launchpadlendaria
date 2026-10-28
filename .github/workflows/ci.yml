@@ -21,7 +21,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
-      # typecheck, test and the builds compile @retry/web3 first.
       - run: pnpm typecheck
       # Unit tests and the React integration test of the wallet flow.
       - run: pnpm test
@@ -31,7 +30,7 @@ jobs:
       - run: pnpm build:pages
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          NEXT_PUBLIC_DEFAULT_NETWORK: base-sepolia
+          NEXT_PUBLIC_SOLANA_CLUSTER: devnet
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: retry-pages-export
@@ -51,7 +50,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       # Builds the export and serves it under /launchpadlendaria (see
-      # playwright.config.ts). Wallet and Base RPC are simulated.
+      # playwright.config.ts). Wallet Standard and Solana RPC are simulated.
       - run: pnpm test:e2e
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -1,5 +1,7 @@
 # Web3 security
 
+> HISTÓRICO — avaliação da integração Base. A migração atual usa [Wallet Standard Solana](../SOLANA_WALLET_INTEGRATION.md) sem assinatura nem envio.
+
 Stage 2 connects wallets and reads public chain data. It cannot move funds. This page lists the rules the module follows, how they are enforced, and what to keep in mind when later stages add transactions.
 
 ## Rules for this stage

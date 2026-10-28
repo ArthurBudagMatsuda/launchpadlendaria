@@ -11,7 +11,10 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { ConnectWalletButton, NetworkIndicator } from "@retry/web3";
+import {
+  ConnectWalletButton,
+  NetworkIndicator,
+} from "@/components/wallet/solana-wallet";
 import { Brand } from "./brand";
 const links = [
   { href: "/", label: "Discover", icon: Compass },
@@ -49,7 +52,7 @@ export function Header() {
           <Search size={16} />
           <input
             aria-label="Search tokens globally"
-            placeholder="Name, ticker or 0x…"
+            placeholder="Name, ticker or mint…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

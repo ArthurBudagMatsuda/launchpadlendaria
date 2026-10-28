@@ -1,22 +1,19 @@
 "use client";
 import { useState } from "react";
 import { LockKeyhole, Settings2 } from "lucide-react";
-import { useRetryBalance, useRetryWallet } from "@retry/web3";
-import { useTokenBalance } from "@/hooks/use-market";
-import { tokenAmount as rawToAmount } from "@/lib/market/metrics";
+import {
+  useSolBalance,
+  useSolanaWallet,
+} from "@/components/wallet/solana-provider";
 import type { TokenRef } from "@/lib/market/types";
-import { number, tokenAmount } from "@/lib/format";
-import { useApp } from "@/components/providers";
 import { Button } from "@/components/ui/button";
-import { WalletStatus } from "@/components/wallet/wallet-status";
+import { WalletStatus } from "@/components/wallet/solana-status";
 
 // View-only. Market data on the page is real, but RETRY has no verified swap
 // route yet, so this panel shows no quote, builds no transaction and never
 // asks the wallet for an approval or signature.
 export function TradePanel({
   symbol,
-  token,
-  decimals = null,
 }: {
   symbol: string;
   token?: TokenRef;
@@ -24,25 +21,14 @@ export function TradePanel({
 }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
-  const [slippage, setSlippage] = useState("1");
-  const { notify } = useApp();
-  const balance = useRetryBalance();
-  const wallet = useRetryWallet();
-  const owner = wallet.isConnected ? wallet.address : undefined;
-  const tokenBalance = useTokenBalance(token, owner);
+  const balance = useSolBalance();
+  const wallet = useSolanaWallet();
+  const owner = wallet.status === "connected" ? wallet.address : undefined;
   const quantity = Number(amount);
   const valid = Number.isFinite(quantity) && quantity > 0 && quantity <= 1e12;
-  const sellBalance = !token
-    ? "Token balance: not indexed"
-    : !owner
-      ? "Wallet not connected"
-      : tokenBalance.isPending
-        ? "Reading balance…"
-        : tokenBalance.isError ||
-            decimals === null ||
-            tokenBalance.data === undefined
-          ? "Balance unavailable"
-          : `Balance: ${tokenAmount(rawToAmount(tokenBalance.data, decimals))} ${symbol}`;
+  const sellBalance = owner
+    ? "SPL token accounts: not indexed"
+    : "Wallet not connected";
   return (
     <section className="panel trade-panel" aria-label="Trade preview">
       <h2>Trade {symbol}</h2>
@@ -68,14 +54,14 @@ export function TradePanel({
           <span>
             {side === "sell"
               ? sellBalance
-              : balance.status === "success"
+              : balance.available
                 ? `Balance: ${balance.display}`
-                : balance.status === "loading"
+                : balance.isFetching
                   ? "Reading balance…"
-                  : balance.status === "disconnected"
+                  : !owner
                     ? "Wallet not connected"
-                    : balance.status === "wrong-network"
-                      ? "Wrong network"
+                    : !wallet.config
+                      ? "Configuration unavailable"
                       : "Balance unavailable"}
           </span>
         </label>
@@ -92,7 +78,7 @@ export function TradePanel({
             onChange={(e) => setAmount(e.target.value)}
             aria-invalid={amount !== "" && !valid}
           />
-          <span>{side === "buy" ? "ETH" : symbol}</span>
+          <span>{side === "buy" ? "SOL" : symbol}</span>
         </div>
         {amount && !valid ? (
           <p className="form-error">
@@ -100,34 +86,13 @@ export function TradePanel({
           </p>
         ) : null}
       </div>
-      <div className="quick-amounts">
-        {(side === "buy"
-          ? [0.01, 0.05, 0.1, 0.5]
-          : [1000, 10000, 50000, 100000]
-        ).map((v) => (
-          <button
-            className={quantity === v ? "active" : ""}
-            key={v}
-            onClick={() => setAmount(String(v))}
-          >
-            {side === "buy" ? v : number(v)}
-          </button>
-        ))}
-      </div>
       <label className="slippage-control">
         <span className="inline-flex items-center gap-1.5">
           <Settings2 size={12} />
           Slippage tolerance
         </span>
-        <select
-          aria-label="Slippage tolerance"
-          value={slippage}
-          onChange={(e) => setSlippage(e.target.value)}
-        >
-          <option value="0.5">0.5%</option>
-          <option value="1">1%</option>
-          <option value="3">3%</option>
-          <option value="5">5%</option>
+        <select aria-label="Slippage tolerance" disabled value="pending">
+          <option value="pending">Pending execution design</option>
         </select>
       </label>
       <div className="trade-summary">
@@ -148,13 +113,7 @@ export function TradePanel({
           <strong>Disabled</strong>
         </div>
       </div>
-      <Button
-        onClick={() =>
-          notify(
-            "Trading is coming in a future stage. This preview cannot send transactions.",
-          )
-        }
-      >
+      <Button disabled>
         <LockKeyhole size={14} />
         Trading Coming Soon
       </Button>

@@ -1,20 +1,27 @@
 "use client";
 import Link from "next/link";
 import { ArrowUpRight, Radar } from "lucide-react";
-import { tokenHref, type TrackedAsset } from "@/config/featured-assets";
-import { useOnchainToken, useTokenMarket } from "@/hooks/use-market";
+import { tokenHref, type TrackedAsset } from "@/config/tracked-mints";
+import { useOnchainToken, useTokenMarket } from "@/hooks/use-solana-market";
 import { shorten, signedPercent, usdAmount, usdPrice } from "@/lib/format";
 import { TokenMark, Unavailable } from "@/components/market/primitives";
 
 /** Discover card for a tracked external token. Every figure is live or "Unavailable". */
 export function TrackedTokenCard({ asset }: { asset: TrackedAsset }) {
-  const token = { chainId: asset.chainId, address: asset.address };
+  const token = { cluster: asset.cluster, address: asset.address };
   const facts = useOnchainToken(token).data;
-  const market = useTokenMarket(token, asset.primaryPool?.id);
+  const market = useTokenMarket(
+    token,
+    asset.primaryPool?.id,
+    facts?.verdict === "token",
+  );
   const primary = market.data?.selection.primary ?? null;
   const change = primary?.priceChangePct.h24 ?? null;
   const symbol = facts?.symbol ?? asset.verification.symbol;
-  const loading = market.isPending;
+  const loading =
+    asset.cluster === "mainnet-beta" &&
+    facts?.verdict === "token" &&
+    market.isPending;
   const value = (text: string | null, why: string) =>
     loading ? (
       <span className="skeleton-text" />
@@ -43,12 +50,12 @@ export function TrackedTokenCard({ asset }: { asset: TrackedAsset }) {
             </span>
           </div>
         </div>
-        <span className="token-base" title="Base mainnet">
-          <span className="base-mark" />
+        <span className="token-base" title="Solana">
+          <span className="solana-mark" />
         </span>
       </div>
       <p className="token-description">
-        External token on Base. Not launched on RETRY.
+        External Solana token. Not launched on RETRY.
       </p>
       <div className="token-values">
         <div>
@@ -97,7 +104,7 @@ export function TrackedTokenCard({ asset }: { asset: TrackedAsset }) {
       </div>
       <div className="token-card-footer">
         <span title={asset.address}>{shorten(asset.address)}</span>
-        <span>Base · {asset.chainId}</span>
+        <span>Solana · {asset.cluster}</span>
         <span className="tiny">
           {market.isError && !market.data ? "Data unavailable" : "Live market"}
         </span>

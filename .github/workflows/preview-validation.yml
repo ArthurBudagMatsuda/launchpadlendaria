@@ -1,0 +1,25 @@
+name: Validate Solana preview (no publication)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:pages
+        env:
+          NEXT_PUBLIC_BASE_PATH: /launchpadlendaria
+          NEXT_PUBLIC_SOLANA_CLUSTER: devnet
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: retry-solana-preview
+          path: out
+          retention-days: 7

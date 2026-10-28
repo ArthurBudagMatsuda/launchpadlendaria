@@ -8,35 +8,32 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "dev": "pnpm web3:build && next dev --hostname 127.0.0.1",
-    "build": "pnpm web3:build && next build",
-    "build:pages": "pnpm web3:build && node scripts/build-pages.mjs",
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "build:pages": "node scripts/build-pages.mjs",
     "preview:pages": "node scripts/serve-pages.mjs",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "pnpm web3:build && next typegen && tsc --noEmit",
-    "test": "pnpm web3:build && vitest run",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "web3:build": "pnpm --filter @retry/web3 build"
+    "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@coinbase/wallet-sdk": "4.3.6",
-    "@metamask/connect-evm": "^2.1.0",
     "@radix-ui/react-dialog": "^1.3.1",
-    "@retry/web3": "workspace:*",
+    "@solana/kit": "8.5.0",
     "@tanstack/react-query": "^5.104.5",
-    "@walletconnect/ethereum-provider": "^2.26.0",
+    "@wallet-standard/app": "1.1.1",
+    "@wallet-standard/base": "1.1.1",
+    "@wallet-standard/features": "1.1.1",
     "clsx": "^2.1.1",
     "lightweight-charts": "^5.2.1",
     "lucide-react": "^1.61.0",
     "next": "^16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "tailwind-merge": "^3.7.0",
-    "viem": "^2.57.11",
-    "wagmi": "^3.7.9"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

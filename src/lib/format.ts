@@ -50,7 +50,7 @@ const significant = (value: string, options: Intl.NumberFormatOptions = {}) =>
 export const usdPrice = (value: string) =>
   significant(value, { style: "currency", currency: "USD" });
 
-/** Quote-asset prices (ETH per token, etc.): "0.000000775 ETH". */
+/** Display-only quote-asset prices, such as "0.000000775 SOL". */
 export const quotePrice = (value: string, symbol: string) =>
   `${significant(value)} ${symbol}`;
 

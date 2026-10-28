@@ -23,7 +23,7 @@ import {
 import { useTokenDraft } from "@/hooks/use-token-draft";
 import { useApp } from "@/components/providers";
 import { Button } from "@/components/ui/button";
-import { WalletStatus } from "@/components/wallet/wallet-status";
+import { WalletStatus } from "@/components/wallet/solana-status";
 type Errors = Partial<Record<keyof TokenDraft, string>>;
 export function CreateFlow() {
   const { draft, saveDraft } = useTokenDraft();
@@ -175,7 +175,7 @@ export function CreateFlow() {
           <h1>
             Create your next beginning<span className="heading-dot">.</span>
           </h1>
-          <p>A little idea. A new community. Your token on Base.</p>
+          <p>A little idea. A new community. Your token on Solana.</p>
         </div>
         <span className="status-label">
           <LockKeyhole size={11} />
@@ -319,7 +319,7 @@ export function CreateFlow() {
                 <p className="preview-description">{draft.description}</p>
                 <dl className="summary-list">
                   {[
-                    ["Network", "Base"],
+                    ["Network", "Solana"],
                     ["Website", draft.website || "Not provided"],
                     ["X / Twitter", draft.twitter || "Not provided"],
                     ["Telegram", draft.telegram || "Not provided"],
@@ -349,7 +349,7 @@ export function CreateFlow() {
                 <dl className="summary-list">
                   {[
                     ["Token", `${draft.name} (${draft.symbol})`],
-                    ["Blockchain", "Base"],
+                    ["Blockchain", "Solana"],
                     ["Token supply", "To be defined"],
                     ["Launch fee", "To be defined"],
                     ["Bonding curve model", "To be defined"],
@@ -362,7 +362,7 @@ export function CreateFlow() {
                     </div>
                   ))}
                 </dl>
-                <WalletStatus disconnectedText="Launching will require a connected wallet on Base. Launches are not enabled yet, so connecting is optional and your draft stays saved." />
+                <WalletStatus disconnectedText="Launching will require a Solana wallet. SPL token launches are not enabled yet, so connecting is optional and your draft stays saved." />
                 <p className="form-help mt-5">
                   Economic parameters require specification, testing and review
                   before any deployment. This draft is not submitted to a
@@ -441,7 +441,7 @@ export function CreateFlow() {
                 "Every token has a story. This is where yours begins."}
             </p>
             <span className="status-label">
-              <span className="base-mark" />
+              <span className="solana-mark" />
               New creation · Preview
             </span>
             <dl className="detail-list">

@@ -1,5 +1,7 @@
 # Relatório da Etapa 4: dados reais de mercado na Base
 
+> HISTÓRICO — o contrato e os endpoints Base descritos aqui foram retirados da aplicação ativa. Consulte o [relatório Solana](RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md).
+
 - **Branch:** `feat/retry-real-market-data` em `ArthurBudagMatsuda/launchpadlendaria`, criada a partir da ponta da PR #2 (`f18d017`)
 - **Pull request:** [#3 (Draft)](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/3), com base na `main` desde que a PR #2 entrou nela (28/10/2026, 12:37 UTC). Antes, a base era `feat/retry-frontend-web3-integration`
 - **Data:** 28/10/2026

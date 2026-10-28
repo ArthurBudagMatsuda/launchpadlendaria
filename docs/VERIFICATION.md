@@ -1,5 +1,7 @@
 # RETRY — Verification record
 
+> HISTÓRICO — verificações da versão Base. Resultados atuais estão no [relatório Solana](reports/RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md).
+
 ## User story and boundaries
 
 Discover → typed local token adapter → consistent token details/chart; Create → validation → local draft/preview/summary; Portfolio → wallet state → real native RPC balance or explicit unavailable state. This stage has no API mutations, database or financial contract layer.

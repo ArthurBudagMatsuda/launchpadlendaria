@@ -1,5 +1,7 @@
 # Shared GitHub Pages preview
 
+> HISTÓRICO — publicação da prévia Base. A migração Solana não publica o site; veja [README](../README.md).
+
 > Since PR #2 merged (2026-10-28), `.github/workflows/pages.yml` publishes the integrated app from `main`. [docs/integration/GITHUB_PAGES.md](integration/GITHUB_PAGES.md) describes the workflow and the split preview it replaced.
 
 | URL                                                            | Source                                         |

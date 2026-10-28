@@ -1,5 +1,7 @@
 # Publishing the integrated app on GitHub Pages
 
+> HISTÓRICO — automação da versão Base. Esta migração gera artefatos de revisão e não publica; instruções atuais no [README](../../README.md).
+
 **Status: applied in this branch (PR #2), on Iam's go-ahead to merge.** `.github/workflows/pages.yml` now builds the integrated app and the Web3 test bench from the commit being published and runs only on pushes to `main` (or by hand). Pushing `feat/retry-frontend-web3-integration` does not deploy anything; merging it into `main` publishes the integrated app.
 
 Before this change the workflow built the Stage 1 app from `feat/etapa-1-foundation` and the playground from `feat/etapa-2-web3`, so merging the integration would have brought back the split preview. While the change was pending, the integrated app was published for real-wallet tests from the temporary branch `feat/retry-integrated-preview`, which has its own copy of this workflow.

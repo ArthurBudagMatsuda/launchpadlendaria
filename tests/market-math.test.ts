@@ -13,7 +13,7 @@ import {
   tokenAmount,
   valueUsd,
 } from "@/lib/market/metrics";
-import { normalizeCandles } from "@/lib/market/providers/geckoterminal";
+import { normalizeCandles } from "@/lib/market/solana-market";
 import { highestHigh, initialBars, priceStep } from "@/lib/market/chart-series";
 import {
   quotePrice,
@@ -74,7 +74,7 @@ describe("exact decimals", () => {
 
 describe("market metrics", () => {
   it("computes FDV from on-chain supply and the pool price, exactly", () => {
-    // 1,000,000,000 worth × $0.001826368907 = $1,826,368.907
+    // Exact decimal arithmetic, independent of an asset or network.
     expect(computeFdvUsd(10n ** 27n, 18, "0.001826368907")).toBe("1826368.9");
     expect(computeFdvUsd(10n ** 27n, 18, "0.0018263689079")).toBe("1826368.9");
     expect(computeFdvUsd(2_000_000n, 6, "1.25")).toBe("2.5");
@@ -105,7 +105,7 @@ describe("price formatting", () => {
     expect(usdPrice("0.000000000000000000000000000000000000000006574")).toBe(
       "$6.574E-42",
     );
-    expect(quotePrice("0.0000007750477017", "ETH")).toBe("0.000000775 ETH");
+    expect(quotePrice("0.0000007750477017", "SOL")).toBe("0.000000775 SOL");
     expect(usdAmount("190930.2863")).toBe("$190.93K");
     expect(formatAmount("18985.365382667")).toBe("18.99K");
   });
@@ -149,7 +149,7 @@ describe("OHLCV normalization", () => {
       [T + 4 * H, 1, 2, 0.5, 1.5, -3], // negative volume
       [T + 5 * H + 7, 1, 2, 0.5, 1.5, 3], // not aligned to the interval
       ["x", 1, 2, 0.5, 1.5, 3], // malformed timestamp
-      [3600, 1, 2, 0.5, 1.5, 3], // before Base existed
+      [3600, 1, 2, 0.5, 1.5, 3], // before supported history
       [T + 6 * H, 1, 2, 0.5, 1.5, 3], // valid
     ];
     const { candles, dropped } = normalizeCandles(rows, H);

@@ -1,5 +1,7 @@
 # RETRY — Product requirements
 
+> HISTÓRICO — requisitos da versão Base. O escopo atual está no [README](../README.md) e no [roadmap Solana](SOLANA_LAUNCHPAD_ROADMAP.md).
+
 ## Vision and audience
 
 RETRY helps EVM communities discover and eventually launch and trade memecoins exclusively on Base. Its identity combines cycles, persistence and new beginnings, without promising financial outcomes. Initial users are community creators, explorers and experienced Base users. The interface is English; all writing distinguishes demonstration from execution.

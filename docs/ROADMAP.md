@@ -1,5 +1,7 @@
 # RETRY — Roadmap
 
+> HISTÓRICO — planejamento Base substituído pelo [roadmap Solana](SOLANA_LAUNCHPAD_ROADMAP.md). Não usar parâmetros ou contratos EVM para a versão atual.
+
 | Stage                    | Deliverable                                                                                    | Dependencies / exit criteria                                                                                                                                   |
 | ------------------------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1 · Foundation           | Identity, four application views, local fixtures, initial wallet connectors, docs, Git/CI      | Formatting, lint, strict types, tests, build and browser checks; execution unavailable                                                                         |

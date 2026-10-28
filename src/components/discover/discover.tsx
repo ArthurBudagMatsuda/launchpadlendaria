@@ -19,20 +19,18 @@ import {
   X,
 } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
-import { isAddress } from "viem";
-import { usePublicClient } from "wagmi";
-import { FEATURED_ASSET, TRACKED_ASSETS } from "@/config/featured-assets";
-import { onchainTokenQuery, tokenMarketQuery } from "@/hooks/use-market";
+import { parseAddress } from "@/lib/solana/address";
+import { useSolanaWallet } from "@/components/wallet/solana-provider";
+import { TRACKED_ASSETS } from "@/config/tracked-mints";
+import { onchainTokenQuery, tokenMarketQuery } from "@/hooks/use-solana-market";
 import { compareDecimal, parseDecimal } from "@/lib/market/decimal";
-import { MARKET_CHAIN_ID } from "@/lib/market/networks";
 import {
   matchesSearch,
   sortRows,
   type TokenRow,
   type TokenSort,
-} from "@/lib/market/token-search";
+} from "@/lib/market/solana-token-search";
 import { TrackedTokenCard } from "@/components/tokens/token-card";
-import { FeaturedToken } from "@/components/market/featured-token";
 import { EmptyState } from "@/components/ui/feedback";
 import { Modal } from "@/components/ui/modal";
 import { assetPath } from "@/lib/asset-path";
@@ -40,7 +38,7 @@ import { shorten } from "@/lib/format";
 const categories = [
   {
     id: "tracked",
-    title: "Tracked on Base",
+    title: "Tracked on Solana",
     subtitle: "External tokens with live markets",
     icon: Radar,
     color: "blue",
@@ -69,21 +67,24 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
   const [sort, setSort] = useState<TokenSort>("liquidity");
   const [filters, setFilters] = useState(false);
   const [minLiquidity, setMinLiquidity] = useState(0);
-  const client = usePublicClient({ chainId: MARKET_CHAIN_ID });
-  const active = TRACKED_ASSETS.filter((asset) => asset.status === "active");
+  const { config: client } = useSolanaWallet();
+  const active = TRACKED_ASSETS.filter(
+    (asset) => asset.status === "active" && asset.cluster === client?.cluster,
+  );
   const onchain = useQueries({
     queries: active.map((asset) =>
       onchainTokenQuery(client, {
-        chainId: asset.chainId,
+        cluster: asset.cluster,
         address: asset.address,
       }),
     ),
   });
   const markets = useQueries({
-    queries: active.map((asset) =>
+    queries: active.map((asset, index) =>
       tokenMarketQuery(
-        { chainId: asset.chainId, address: asset.address },
+        { cluster: asset.cluster, address: asset.address },
         asset.primaryPool?.id,
+        onchain[index]?.data?.verdict === "token",
       ),
     ),
   });
@@ -106,20 +107,17 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
   );
   const term = search.trim();
   const lookup =
-    isAddress(term, { strict: false }) &&
-    !active.some((a) => a.address.toLowerCase() === term.toLowerCase())
-      ? term
-      : null;
+    parseAddress(term) && !active.some((a) => a.address === term) ? term : null;
   return (
     <div className="discover-page">
       <div className="page-topline">
         <span>
           <span className="live-dot" />
-          THE NEXT WAVE IS ON BASE
+          THE NEXT WAVE IS ON SOLANA
         </span>
         <span className="data-label">
           <span />
-          Real Base data · Read-only
+          Solana · Read-only
         </span>
       </div>
       <section className="discovery-hero">
@@ -146,21 +144,27 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
         </div>
         <div className="hero-content">
           <div className="hero-eyebrow">
-            <span className="base-mark" />A fresh start. Onchain.
+            <span className="solana-mark" />A fresh start. Onchain.
           </div>
           <h1>
             Your next token
             <br />
             starts <span>here.</span>
           </h1>
-          <p>Discover, launch and trade the next wave on Base.</p>
+          <p>Discover, launch and trade the next wave on Solana.</p>
           <Link href="/create" className="button button-primary">
             Create Token
             <Plus size={16} />
           </Link>
         </div>
       </section>
-      {FEATURED_ASSET ? <FeaturedToken asset={FEATURED_ASSET} /> : null}
+      <section className="featured-section">
+        <div className="trending-heading">
+          <Radar size={15} />
+          <strong>No featured token yet</strong>
+          <span>Discover tokens on Solana</span>
+        </div>
+      </section>
       <section className="board-section" aria-labelledby="discover-title">
         <div className="board-title-row">
           <div>
@@ -192,8 +196,8 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
             <label className="search-input">
               <Search size={15} />
               <input
-                aria-label="Search by name, ticker or contract address"
-                placeholder="Search name, ticker or 0x…"
+                aria-label="Search by name, ticker or mint address"
+                placeholder="Search name, ticker or mint…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -261,13 +265,13 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                       ))}
                       {lookup ? (
                         <Link
-                          href={`/token/?address=${lookup}`}
+                          href={`/token/?cluster=${client?.cluster}&mint=${lookup}`}
                           className="token-card lookup-card"
                         >
                           <strong>Not tracked on RETRY</strong>
                           <span>
-                            Inspect {shorten(lookup)} on Base: contract check
-                            and public market data.
+                            Inspect {shorten(lookup)} on Solana: mint
+                            verification and public market data.
                           </span>
                           <span className="lookup-cta">
                             Inspect address
@@ -277,15 +281,15 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                       ) : null}
                       {!filtered.length && !lookup ? (
                         <EmptyState title="No tokens found">
-                          Try another name, ticker or contract address, or lower
-                          the liquidity filter.
+                          Try another name, ticker or mint address, or lower the
+                          liquidity filter.
                         </EmptyState>
                       ) : null}
                     </>
                   ) : category.id === "new" ? (
                     <EmptyState title="No RETRY launches yet">
-                      The RETRY token factory is not deployed. New launches will
-                      appear here once it is.
+                      The RETRY launch program is not deployed. New launches
+                      will appear here once it is.
                     </EmptyState>
                   ) : (
                     <EmptyState title="Nothing has graduated yet">
@@ -307,7 +311,7 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
           <span>
             <span className="live-dot" />
             {filtered.length} tracked token{filtered.length === 1 ? "" : "s"} on
-            Base · Market data: GeckoTerminal, DEX Screener fallback
+            Solana · Market data: GeckoTerminal, DEX Screener fallback
           </span>
           <Link href="/create">
             Got an idea? Bring it to life

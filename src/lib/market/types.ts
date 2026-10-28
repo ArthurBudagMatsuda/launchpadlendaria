@@ -1,34 +1,34 @@
-import type { Address, Hex } from "viem";
+import type { SolanaAddress as Address } from "@/lib/solana/address";
+import type { SolanaCluster } from "@/config/solana";
 
 /**
  * Normalized market-data models. Provider responses are validated and mapped
- * into these types in `providers/*`; nothing provider-specific reaches the UI.
- * A token is identified by chain ID plus checksummed address, never by symbol.
+ * into these types in `solana-market`; nothing provider-specific reaches the UI.
+ * A token is identified by cluster, case-sensitive SPL mint and owning Token Program.
  */
 export interface TokenRef {
-  chainId: number;
+  cluster: SolanaCluster;
   address: Address;
 }
 
 export type MarketSourceId = "geckoterminal" | "dexscreener";
-export type DataSourceId = MarketSourceId | "base-rpc";
+export type DataSourceId = MarketSourceId | "solana-rpc";
 
 /** Where a value came from and when. Shown next to every market figure. */
 export interface Provenance {
   source: DataSourceId;
-  chainId: number;
+  cluster: SolanaCluster;
   token: Address;
-  /** Pool address (v2/v3) or 32-byte pool ID (v4), when the value is per pool. */
-  poolId?: Hex;
+  /** Solana pool account public key, when the value is per pool. */
+  poolId?: Address;
   /** When RETRY received the response (ms since epoch). */
   retrievedAt: number;
   /** When the provider says the value was observed, if it says. */
   observedAt?: number;
 }
 
-export type QuoteKind = "native-eth" | "weth" | "usdc" | "other";
-export type DexProtocol =
-  "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "aerodrome" | "unknown";
+export type QuoteKind = "wsol" | "other";
+export type DexProtocol = "raydium" | "meteora" | "unknown";
 
 export interface PoolToken {
   address: Address;
@@ -36,9 +36,9 @@ export interface PoolToken {
 }
 
 export interface PoolIdentity {
-  chainId: number;
-  id: Hex;
-  /** Provider's DEX identifier, e.g. "uniswap-v4-base" or "uniswap". */
+  cluster: SolanaCluster;
+  id: Address;
+  /** Provider's DEX identifier, e.g. "raydium" or "meteora". */
   dex: string;
   protocol: DexProtocol;
   /** Fee tier or pool label as reported, e.g. "5%". Informational. */
@@ -92,7 +92,7 @@ export interface Candle {
 }
 
 export interface CandleSeries {
-  pool: Hex;
+  pool: Address;
   interval: CandleInterval;
   candles: Candle[];
   /** Buckets missing between the first and last candle (no trades observed). */
@@ -103,8 +103,8 @@ export interface CandleSeries {
 /** A swap in the pool, as indexed by the provider. Never a wallet's own history. */
 export interface MarketTrade {
   id: string;
-  txHash: Hex;
-  blockNumber: number;
+  signature: string;
+  slot: number;
   time: number;
   side: "buy" | "sell";
   /** Amount of the tracked token, human units (decimal string). */
@@ -116,7 +116,7 @@ export interface MarketTrade {
 }
 
 export interface TradeList {
-  pool: Hex;
+  pool: Address;
   trades: MarketTrade[];
   provenance: Provenance;
 }

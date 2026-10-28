@@ -1,17 +1,7 @@
 packages:
   - .
-  - packages/retry-web3
-  - examples/web3-playground
 allowBuilds:
   esbuild: true
   sharp: true
   "@tailwindcss/oxide": true
   unrs-resolver: true
-  "@reown/appkit": false
-  # Pulled in by the MetaMask SDK (@metamask/connect-evm); its postinstall is not needed.
-  protobufjs: false
-overrides:
-  # zustand (under wagmi and the Coinbase SDK) takes this as a peer. Pinning one
-  # version gives the app and @retry/web3 the same peer set, so pnpm links them
-  # to a single wagmi, Coinbase SDK and WalletConnect copy instead of two.
-  use-sync-external-store: 1.7.0

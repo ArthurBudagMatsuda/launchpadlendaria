@@ -1,5 +1,7 @@
 # RETRY — Open economic and security decisions
 
+> HISTÓRICO — decisões e unidades da Base. Não foram convertidas automaticamente para SOL/SPL. Consulte [decisões econômicas Solana](SOLANA_ECONOMIC_DECISIONS.md).
+
 **Status: all items below are unresolved. No production parameter is selected.** Demonstration metrics and trading illustration ratios are unrelated to these decisions.
 
 | Topic                   | Decision required                                            | Evidence before approval                                                           |
