@@ -402,12 +402,38 @@ try {
   report.providers.geckoterminalPreflight = { error: String(error) };
 }
 
-// OHLCV and trades for the most liquid GeckoTerminal pool, if any.
-const topPool = [...pools].sort(
-  (a, b) =>
-    Number(b.attributes?.reserve_in_usd ?? 0) -
-    Number(a.attributes?.reserve_in_usd ?? 0),
-)[0];
+// OHLCV and trades for the most liquid pool that prices this token against
+// an eligible quote asset. Ranking every pool by reserve alone picks pairs
+// against look-alike tokens (a "worth" token pairs against another "worth").
+const ELIGIBLE_QUOTES = new Set([
+  "base_0x0000000000000000000000000000000000000000", // native ETH (Uniswap v4)
+  "base_0x4200000000000000000000000000000000000006", // WETH
+  "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", // USDC
+]);
+const topPool = pools
+  .filter(
+    (p) =>
+      p.relationships?.base_token?.data?.id === `base_${lower}` &&
+      ELIGIBLE_QUOTES.has(p.relationships?.quote_token?.data?.id),
+  )
+  .sort(
+    (a, b) =>
+      Number(b.attributes?.reserve_in_usd ?? 0) -
+      Number(a.attributes?.reserve_in_usd ?? 0),
+  )[0];
+// GeckoTerminal's public tier allows about 30 calls a minute and GitHub
+// runners share IPs, so space the calls and retry a 429 once.
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function getGecko(url) {
+  await pause(4_000);
+  let r = await getJson(url, gtHeaders);
+  if (r.status === 429) {
+    await pause(30_000);
+    r = await getJson(url, gtHeaders);
+    r.retriedAfter429 = true;
+  }
+  return r;
+}
 if (topPool?.attributes?.address) {
   const poolAddress = topPool.attributes.address;
   const ohlcv = {};
@@ -418,34 +444,34 @@ if (topPool?.attributes?.address) {
     ["4h", "hour", 4],
     ["1d", "day", 1],
   ]) {
-    const r = await getJson(
+    const r = await getGecko(
       `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress}/ohlcv/${timeframe}?aggregate=${aggregate}&limit=300&currency=usd&token=${lower}`,
-      gtHeaders,
     );
     const list = r.body?.data?.attributes?.ohlcv_list;
     ohlcv[label] = {
       status: r.status,
+      retriedAfter429: r.retriedAfter429,
       error: r.error,
       headers: r.headers,
       candles: Array.isArray(list) ? list.length : null,
-      first: Array.isArray(list) ? list[list.length - 1] : null,
-      last: Array.isArray(list) ? list[0] : null,
+      newest: Array.isArray(list) ? list.slice(0, 2) : null,
+      oldest: Array.isArray(list) ? list[list.length - 1] : null,
       meta: r.body?.meta,
       bodyIfError: Array.isArray(list) ? undefined : r.body,
     };
-    await new Promise((resolve) => setTimeout(resolve, 2_500));
   }
   report.providers.geckoterminalOhlcv = { pool: poolAddress, ohlcv };
-  const trades = await getJson(
+  const trades = await getGecko(
     `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress}/trades?token=${lower}`,
-    gtHeaders,
   );
   const list = Array.isArray(trades.body?.data) ? trades.body.data : [];
   report.providers.geckoterminalTrades = {
     status: trades.status,
+    retriedAfter429: trades.retriedAfter429,
     error: trades.error,
     count: list.length,
-    sample: list.slice(0, 3).map((t) => t.attributes),
+    oldest: list.at(-1)?.attributes?.block_timestamp,
+    sample: list.slice(0, 3),
   };
 }
 
