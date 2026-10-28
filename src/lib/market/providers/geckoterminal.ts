@@ -43,15 +43,21 @@ export const GECKOTERMINAL_INTERVALS: Record<
     timeframe: "minute" | "hour" | "day";
     aggregate: number;
     seconds: number;
-    limit: number;
   }
 > = {
-  "5m": { timeframe: "minute", aggregate: 5, seconds: 300, limit: 288 },
-  "15m": { timeframe: "minute", aggregate: 15, seconds: 900, limit: 288 },
-  "1h": { timeframe: "hour", aggregate: 1, seconds: 3600, limit: 168 },
-  "4h": { timeframe: "hour", aggregate: 4, seconds: 14_400, limit: 180 },
-  "1d": { timeframe: "day", aggregate: 1, seconds: 86_400, limit: 365 },
+  "5m": { timeframe: "minute", aggregate: 5, seconds: 300 },
+  "15m": { timeframe: "minute", aggregate: 15, seconds: 900 },
+  "1h": { timeframe: "hour", aggregate: 1, seconds: 3600 },
+  "4h": { timeframe: "hour", aggregate: 4, seconds: 14_400 },
+  "1d": { timeframe: "day", aggregate: 1, seconds: 86_400 },
 };
+/**
+ * GeckoTerminal's largest OHLCV page, so the chart zooms out over as much
+ * history as one request returns. Intervals without trades are not counted:
+ * a busy pool gets about 3.5 days of 5m candles, a young or quiet one its
+ * whole history at 1h and above.
+ */
+const CANDLE_LIMIT = 1000;
 
 function networkPath(token: TokenRef) {
   return `/api/v2/networks/${marketNetwork(token.chainId).geckoterminal}`;
@@ -240,7 +246,7 @@ export async function fetchGeckoCandles(
   const body = asObject(
     await getProviderJson(
       SOURCE,
-      `${networkPath(token)}/pools/${pool}/ohlcv/${spec.timeframe}?aggregate=${spec.aggregate}&limit=${spec.limit}&currency=usd&token=${address}`,
+      `${networkPath(token)}/pools/${pool}/ohlcv/${spec.timeframe}?aggregate=${spec.aggregate}&limit=${CANDLE_LIMIT}&currency=usd&token=${address}`,
       HEADERS,
       options,
     ),

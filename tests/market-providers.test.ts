@@ -113,7 +113,7 @@ describe("GeckoTerminal adapter", () => {
     expect(error.code).toBe("INVALID_RESPONSE");
   });
 
-  it("maps every supported interval to GeckoTerminal's timeframes", async () => {
+  it("maps every supported interval to GeckoTerminal's timeframes and largest page", async () => {
     const { fetch, calls } = marketFetch({
       gecko: (u) =>
         u.pathname.includes("/ohlcv/")
@@ -135,6 +135,10 @@ describe("GeckoTerminal adapter", () => {
       "hour?aggregate=4",
       "day?aggregate=1",
     ]);
+    // The chart can zoom out over as much history as one request returns.
+    expect(calls.map((c) => new URL(c).searchParams.get("limit"))).toEqual(
+      Array(5).fill("1000"),
+    );
   });
 
   it("orients trades to the tracked token and hides anomalous ones", async () => {

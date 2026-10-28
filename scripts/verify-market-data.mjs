@@ -475,21 +475,22 @@ if (topPool?.attributes?.address) {
     sample: list.slice(0, 3),
   };
 
-  // The series the token page draws (same limits as the app's GeckoTerminal
-  // adapter), checked against the pool's own price and price changes.
+  // The series the token page draws (same page size as the app's
+  // GeckoTerminal adapter, CANDLE_LIMIT), checked against the pool's own
+  // price and price changes. `olderPage` asks for the page before the oldest
+  // candle, to show whether the provider holds more history than one page.
   const price = Number(topPool.attributes.base_token_price_usd);
   const changes = topPool.attributes.price_change_percentage ?? {};
   const chart = {};
-  for (const [label, timeframe, aggregate, seconds, limit] of [
-    ["5m", "minute", 5, 300, 288],
-    ["15m", "minute", 15, 900, 288],
-    ["1h", "hour", 1, 3600, 168],
-    ["4h", "hour", 4, 14_400, 180],
-    ["1d", "day", 1, 86_400, 365],
+  for (const [label, timeframe, aggregate, seconds] of [
+    ["5m", "minute", 5, 300],
+    ["15m", "minute", 15, 900],
+    ["1h", "hour", 1, 3600],
+    ["4h", "hour", 4, 14_400],
+    ["1d", "day", 1, 86_400],
   ]) {
-    const r = await getGecko(
-      `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress}/ohlcv/${timeframe}?aggregate=${aggregate}&limit=${limit}&currency=usd&token=${lower}`,
-    );
+    const url = `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress}/ohlcv/${timeframe}?aggregate=${aggregate}&limit=1000&currency=usd&token=${lower}`;
+    const r = await getGecko(url);
     const rows = r.body?.data?.attributes?.ohlcv_list;
     if (!Array.isArray(rows) || !rows.length) {
       chart[label] = { status: r.status, candles: 0 };
@@ -498,6 +499,10 @@ if (topPool?.attributes?.address) {
     const candles = rows
       .map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }))
       .sort((a, b) => a.t - b.t);
+    const older = await getGecko(`${url}&before_timestamp=${candles[0].t}`);
+    const olderTimes = (older.body?.data?.attributes?.ohlcv_list ?? []).map(
+      ([t]) => t,
+    );
     const closes = candles.map((x) => x.c).sort((a, b) => a - b);
     const median = closes[Math.floor(closes.length / 2)];
     const last = candles.at(-1);
@@ -511,6 +516,12 @@ if (topPool?.attributes?.address) {
       last: iso(last.t),
       slots: (last.t - candles[0].t) / seconds + 1,
       gaps: (last.t - candles[0].t) / seconds + 1 - candles.length,
+      olderPage: {
+        status: older.status,
+        candles: olderTimes.length,
+        first: olderTimes.length ? iso(Math.min(...olderTimes)) : null,
+        last: olderTimes.length ? iso(Math.max(...olderTimes)) : null,
+      },
       low: Math.min(...candles.map((x) => x.l)),
       high: Math.max(...candles.map((x) => x.h)),
       medianClose: median,

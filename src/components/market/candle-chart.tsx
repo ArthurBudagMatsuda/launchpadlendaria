@@ -89,9 +89,6 @@ const priceMargins = (width: number) => ({
   top: width < 560 ? 0.2 : 0.1,
   bottom: 0.24,
 });
-/** Zooming out stops once every candle fits; dragging stays free. */
-const fitSpacing = (width: number, total: number) =>
-  Math.max(0.5, width / (total + RIGHT_OFFSET));
 
 /**
  * OHLCV chart on TradingView's open-source Lightweight Charts: drag to move,
@@ -158,8 +155,9 @@ export default function CandleChart({
         borderVisible: false,
         scaleMargins: priceMargins(element.clientWidth),
       },
-      // Either end can be dragged off screen, as on TradingView; the chart
-      // only keeps two bars in view.
+      // As on TradingView and GMGN, either end can be dragged off screen and
+      // zooming out goes past the whole history, down to half a pixel a bar;
+      // the chart only keeps two bars in view.
       timeScale: {
         borderVisible: false,
         rightOffset: RIGHT_OFFSET,
@@ -224,17 +222,13 @@ export default function CandleChart({
       .subscribeVisibleLogicalRangeChange((visible) =>
         setRange(visible ? { from: visible.from, to: visible.to } : null),
       );
-    chart.timeScale().subscribeSizeChange((width) => {
-      chart
-        .priceScale("right")
-        .applyOptions({ scaleMargins: priceMargins(width) });
-      chart.timeScale().applyOptions({
-        minBarSpacing: fitSpacing(
-          chart.timeScale().width(),
-          drawn.current.length,
-        ),
-      });
-    });
+    chart
+      .timeScale()
+      .subscribeSizeChange((width) =>
+        chart
+          .priceScale("right")
+          .applyOptions({ scaleMargins: priceMargins(width) }),
+      );
     api.current = { chart, candles, line, volume };
     placed.current = false;
     return () => {
@@ -273,12 +267,6 @@ export default function CandleChart({
     const priceFormat = { type: "custom" as const, formatter, minMove: step };
     current.candles.applyOptions({ priceFormat });
     current.line.applyOptions({ priceFormat });
-    current.chart.timeScale().applyOptions({
-      minBarSpacing: fitSpacing(
-        current.chart.timeScale().width(),
-        candles.length,
-      ),
-    });
     // Refreshes keep the reader's zoom; only a new chart's first data sets
     // the view.
     if (!placed.current) {

@@ -417,6 +417,11 @@ test.describe("RETRY app with a connected wallet", () => {
         await page.mouse.up();
       }
       await expect.poll(async () => (await range()).from).toBeLessThan(-20);
+      // Zooming out does not stop once all 200 candles fit: as on GMGN, it
+      // goes on past the whole history.
+      for (let notch = 0; notch < 30; notch += 1)
+        await page.mouse.wheel(0, 100);
+      await expect.poll(async () => (await range()).width).toBeGreaterThan(300);
       // The log scale toggles.
       const log = page.getByRole("button", { name: "Log" });
       await log.click();
