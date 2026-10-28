@@ -70,6 +70,19 @@ export const tokenSupply = (value: string) =>
 export const signedPercent = (value: number | null) =>
   value === null ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 
+/** UTC calendar day of a timestamp in seconds: "Oct 27", plus the year when it is not this one. */
+export const utcDay = (seconds: number, now = Date.now()) =>
+  new Date(seconds * 1000).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year:
+      new Date(seconds * 1000).getUTCFullYear() ===
+      new Date(now).getUTCFullYear()
+        ? undefined
+        : "numeric",
+    timeZone: "UTC",
+  });
+
 /** Wall-clock time in UTC, e.g. "03:01:09 UTC". */
 export const utcTime = (ms: number) =>
   `${new Date(ms).toLocaleTimeString("en-GB", { hour12: false, timeZone: "UTC" })} UTC`;

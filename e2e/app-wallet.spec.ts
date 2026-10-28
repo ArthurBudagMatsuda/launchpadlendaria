@@ -11,7 +11,10 @@ import {
   TOKEN_PAGE,
   WORTH,
 } from "./fixtures";
-import { geckoOhlcvResponse } from "../tests/fixtures/market-responses";
+import {
+  geckoDailyOhlcvResponse,
+  geckoOhlcvResponse,
+} from "../tests/fixtures/market-responses";
 
 type MockWindow = {
   __retryMockWallet: {
@@ -214,20 +217,28 @@ test.describe("RETRY app with a connected wallet", () => {
     await expect(page.locator(".market-changes")).toContainText(
       "Trades 24h 2,217 buys · 2,050 sells",
     );
+    // The all-time high comes from the pool's daily candles.
+    await expect(page.locator(".market-changes")).toContainText(
+      "ATH $0.002437 · Oct 27 -25.05%",
+    );
 
-    // Real OHLCV with the missing hour left empty.
+    // Real OHLCV: the hour without trades is skipped, not filled in.
     const chart = page.locator(".chart-panel");
     await expect(chart.locator(".price-chart canvas").first()).toBeVisible();
     await expect(chart.locator(".source-line")).toContainText(
-      "1h OHLCV · UTC · 1 interval without trades left empty",
+      "1h OHLCV · UTC · 1 interval without trades skipped, nothing filled in",
     );
-    // Switching interval refetches; the same hours are 5m buckets with 34 empty ones.
+    await expect(chart.locator(".price-chart-canvas")).toHaveAttribute(
+      "aria-label",
+      /All-time high \$0\.002437 on Oct 27, 2026\.$/,
+    );
+    // Switching interval refetches; the same hours are 5m buckets, 34 of them skipped.
     await chart.getByRole("button", { name: "5m", exact: true }).click();
     await expect(
       chart.getByRole("button", { name: "5m", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(chart.locator(".source-line")).toContainText(
-      "5m OHLCV · UTC · 34 intervals without trades left empty",
+      "5m OHLCV · UTC · 34 intervals without trades skipped, nothing filled in",
     );
 
     // Market activity is everyone's trades, labeled; anomalies are hidden.
@@ -306,7 +317,11 @@ test.describe("RETRY app with a connected wallet", () => {
           status: 200,
           headers: { "access-control-allow-origin": "*" },
           contentType: "application/json",
-          body: JSON.stringify(geckoOhlcvResponse(rows)),
+          body: JSON.stringify(
+            route.request().url().includes("/ohlcv/day")
+              ? geckoDailyOhlcvResponse()
+              : geckoOhlcvResponse(rows),
+          ),
         }),
     );
     const errors = collectPageErrors(page);
@@ -393,6 +408,15 @@ test.describe("RETRY app with a connected wallet", () => {
       await expect
         .poll(async () => (await range()).from)
         .toBeLessThan(zoomed.from - 5);
+      // Nothing pins the oldest candle to the left edge: the chart keeps
+      // moving past it, as on TradingView.
+      for (let drag = 0; drag < 4; drag += 1) {
+        await page.mouse.move(box.x + box.width * 0.1, y);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width * 0.9, y, { steps: 20 });
+        await page.mouse.up();
+      }
+      await expect.poll(async () => (await range()).from).toBeLessThan(-20);
       // The log scale toggles.
       const log = page.getByRole("button", { name: "Log" });
       await log.click();

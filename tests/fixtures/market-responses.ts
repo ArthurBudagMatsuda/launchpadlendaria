@@ -223,6 +223,21 @@ export const geckoOhlcvResponse = (rows?: unknown[]) => ({
   },
 });
 
+/**
+ * Daily buckets (UTC midnight), newest first. Oct 27 holds the pool's high,
+ * $0.00243673440800152, as recorded by the verify workflow on 2026-10-28;
+ * the other values are synthetic.
+ */
+export const geckoDailyOhlcvResponse = () =>
+  geckoOhlcvResponse([
+    [
+      1793145600, 0.0019, 0.00206420239905208, 0.00174107467889263,
+      0.00182636890717942, 71089.79,
+    ],
+    [1793059200, 0.0006, 0.00243673440800152, 0.00059, 0.0019, 901233.12],
+    [1792972800, 0.00042, 0.00061, 0.0004, 0.0006, 120345.5],
+  ]);
+
 function geckoTrade(o: {
   block: number;
   time: string;
@@ -402,6 +417,8 @@ export function marketFetch(
       if (custom) return custom;
       if (url.pathname.endsWith("/pools") && url.pathname.includes("/tokens/"))
         return jsonResponse(geckoPoolsResponse);
+      if (url.pathname.includes("/ohlcv/day"))
+        return jsonResponse(geckoDailyOhlcvResponse());
       if (url.pathname.includes("/ohlcv/"))
         return jsonResponse(geckoOhlcvResponse());
       if (url.pathname.endsWith("/trades"))

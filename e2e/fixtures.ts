@@ -434,6 +434,10 @@ export function collectPageErrors(page: Page) {
     if (message.type() !== "error") return;
     const text = message.text();
     if (/Failed to load resource: net::ERR_FAILED/.test(text)) return;
+    // The Coinbase Wallet SDK sends its telemetry to cca-lite.coinbase.com
+    // in batches every 5 s; the blocked request makes it log this once a
+    // test runs past the first batch.
+    if (/^Analytics SDK: TypeError: Failed to fetch/.test(text)) return;
     errors.push(`${text} (${message.location().url})`);
   });
   return errors;
