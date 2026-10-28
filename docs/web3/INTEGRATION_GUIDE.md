@@ -234,6 +234,6 @@ pnpm installs the module's own dev copies of `wagmi` and `viem` under `packages/
 
 The root `RETRY quality checks` workflow keeps working: `pnpm typecheck` and `pnpm build` now build the module first. The module's own checks (typecheck, Biome, Vitest, build) and the playground's Playwright tests run in `.github/workflows/retry-web3.yml`, only when `packages/retry-web3/**`, `examples/web3-playground/**` or that workflow change.
 
-The shared `Publish RETRY test preview` workflow (`pages.yml`, on `main` and both stage branches) builds the playground from this branch and publishes it at <https://arthurbudagmatsuda.github.io/launchpadlendaria/web3/>. It still passes `VITE_DEFAULT_CHAIN`; the playground now reads `VITE_DEFAULT_NETWORK` (same names as the app). The value it sets is the default anyway, so nothing breaks, but rename it the next time that shared file is edited on all three branches.
+The shared `Publish RETRY test preview` workflow publishes the playground at <https://arthurbudagmatsuda.github.io/launchpadlendaria/web3/>. On the stage branches it still builds it from `feat/etapa-2-web3` and passes `VITE_DEFAULT_CHAIN`, a name the playground ignores (the value is the default anyway). On `main`, after the integration (PR #2), the workflow builds the app and the playground from `main` and passes `VITE_DEFAULT_NETWORK`.
 
 Note that Stage 1 requires Node 24 (`engines`) and its CI uses Node 24; the module supports Node 22.12 and later.
