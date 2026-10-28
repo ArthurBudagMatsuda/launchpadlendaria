@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -10,7 +11,6 @@ import {
   Flame,
   GraduationCap,
   LayoutGrid,
-  Plus,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -24,6 +24,7 @@ import { tokenProvider } from "@/services/token-provider";
 import { TokenAvatar, TokenCard } from "@/components/tokens/token-card";
 import { DemoLabel, EmptyState } from "@/components/ui/feedback";
 import { Modal } from "@/components/ui/modal";
+import { assetPath } from "@/lib/asset-path";
 import { percent, usd } from "@/lib/format";
 const categories = [
   {
@@ -81,44 +82,29 @@ export function Discover({
         </span>
         <DemoLabel />
       </div>
-      <section className="discovery-hero">
-        <div className="hero-content">
-          <div className="hero-eyebrow">
-            <span className="base-mark" />A fresh start. Onchain.
-          </div>
-          <h1>
-            Your next token
-            <br />
-            starts <span>here.</span>
-          </h1>
-          <p>Discover, launch and trade the next wave on Base.</p>
-          <Link href="/create" className="button button-primary">
-            Create Token
-            <Plus size={16} />
-          </Link>
-        </div>
-        <div className="hero-art" aria-hidden="true">
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="orbit orbit-three" />
-          <div className="art-cross cross-one">+</div>
-          <div className="art-cross cross-two">+</div>
-          <div className="hero-sigil">
-            <svg viewBox="0 0 160 160" fill="none">
-              <path
-                d="M122 59C106 24 58 20 35 55L20 77M20 35v42h42M38 101c16 35 64 39 87 4l15-22m0 42V83H98"
-                stroke="currentColor"
-                strokeWidth="18"
-              />
-            </svg>
-          </div>
-          <span className="hero-coordinate">RETRY / NEW POSSIBILITIES</span>
-          <span className="hero-tag">
-            <span className="live-dot" />
-            BUILT TO BEGIN AGAIN
-          </span>
-        </div>
-        <span className="hero-number">01 / ∞</span>
+      <section className="discovery-hero" aria-labelledby="hero-title">
+        <h1 id="hero-title" className="sr-only">
+          RETRY. Your next token starts here.
+        </h1>
+        <Image
+          className="hero-backdrop"
+          src={assetPath("/brand/retry-hero-bg.webp")}
+          alt=""
+          fill
+          sizes="(max-width: 760px) 100vw, 1600px"
+          preload
+          unoptimized
+        />
+        <span className="hero-shadow" aria-hidden="true" />
+        <Image
+          className="hero-logo"
+          src={assetPath("/brand/retry-logo-3d.webp")}
+          alt=""
+          width={474}
+          height={480}
+          loading="eager"
+          unoptimized
+        />
       </section>
       <section className="trending-section" aria-label="Trending demo tokens">
         <div className="trending-heading">

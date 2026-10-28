@@ -80,6 +80,38 @@ test.describe("RETRY app with a connected wallet", () => {
     ).toHaveCount(0);
   });
 
+  test("shows the X banner with the logo floating, and still when the system reduces motion", async ({
+    page,
+  }) => {
+    await page.goto(`${APP}/`);
+    const hero = page.locator(".discovery-hero");
+    await expect(hero.getByRole("heading", { level: 1 })).toHaveText(/RETRY/);
+    // Both images load from the Pages base path.
+    const images = hero.locator("img");
+    await expect(images).toHaveCount(2);
+    for (const image of await images.all()) {
+      await expect
+        .poll(() =>
+          image.evaluate(
+            (el: HTMLImageElement) => el.complete && el.naturalWidth,
+          ),
+        )
+        .toBeGreaterThan(0);
+    }
+    // The logo positions assume the banner's 3:1 ratio.
+    const box = await hero.boundingBox();
+    expect(box!.width / box!.height).toBeCloseTo(3, 1);
+    const logo = hero.locator(".hero-logo");
+    await expect(logo).toHaveCSS("animation-name", "hero-float");
+    await expect(logo).toHaveCSS("animation-iteration-count", "infinite");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(logo).toHaveCSS("animation-name", "none");
+    await expect(hero.locator(".hero-shadow")).toHaveCSS(
+      "animation-name",
+      "none",
+    );
+  });
+
   test("connects in the header and keeps the wallet across Discover, Portfolio, Trade and Create", async ({
     page,
     wallet,
