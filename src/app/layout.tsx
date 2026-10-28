@@ -7,7 +7,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "RETRY — A new beginning on Base", template: "%s | RETRY" },
   description:
-    "Discover your next beginning. RETRY is a Base-native memecoin launchpad. Foundation preview with clearly labeled demo markets.",
+    "Discover your next beginning. RETRY is a Base-native memecoin launchpad. Read-only preview with real Base market data; trading is not enabled yet.",
   icons: { icon: assetPath("/brand/retry-symbol.svg") },
 };
 export default function RootLayout({

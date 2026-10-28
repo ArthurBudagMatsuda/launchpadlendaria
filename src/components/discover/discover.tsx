@@ -8,72 +8,108 @@ import {
   ArrowUpRight,
   Check,
   ChevronDown,
-  Flame,
   GraduationCap,
   LayoutGrid,
   Plus,
+  Radar,
   Search,
   SlidersHorizontal,
   Sparkles,
   Star,
   X,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import type { LaunchStage, Token } from "@/types/token";
-import { filterTokens, type TokenSort } from "@/services/token-provider";
-import { tokenProvider } from "@/services/token-provider";
-import { TokenAvatar, TokenCard } from "@/components/tokens/token-card";
-import { DemoLabel, EmptyState } from "@/components/ui/feedback";
+import { useQueries } from "@tanstack/react-query";
+import { isAddress } from "viem";
+import { usePublicClient } from "wagmi";
+import { FEATURED_ASSET, TRACKED_ASSETS } from "@/config/featured-assets";
+import { onchainTokenQuery, tokenMarketQuery } from "@/hooks/use-market";
+import { compareDecimal, parseDecimal } from "@/lib/market/decimal";
+import { MARKET_CHAIN_ID } from "@/lib/market/networks";
+import {
+  matchesSearch,
+  sortRows,
+  type TokenRow,
+  type TokenSort,
+} from "@/lib/market/token-search";
+import { TrackedTokenCard } from "@/components/tokens/token-card";
+import { FeaturedToken } from "@/components/market/featured-token";
+import { EmptyState } from "@/components/ui/feedback";
 import { Modal } from "@/components/ui/modal";
 import { assetPath } from "@/lib/asset-path";
-import { percent, usd } from "@/lib/format";
+import { shorten } from "@/lib/format";
 const categories = [
   {
-    id: "new",
-    title: "New Creations",
-    subtitle: "Fresh off the launchpad",
-    icon: Sparkles,
+    id: "tracked",
+    title: "Tracked on Base",
+    subtitle: "External tokens with live markets",
+    icon: Radar,
     color: "blue",
   },
   {
-    id: "graduating",
-    title: "About to Graduate",
-    subtitle: "The next chapter is close",
-    icon: Flame,
+    id: "new",
+    title: "New on RETRY",
+    subtitle: "Fresh off the launchpad",
+    icon: Sparkles,
     color: "lime",
   },
   {
     id: "graduated",
     title: "Graduated",
-    subtitle: "Ready for the open market",
+    subtitle: "Completed a RETRY curve",
     icon: GraduationCap,
     color: "purple",
   },
 ] as const;
-export function Discover({
-  initialTokens,
-  initialSearch,
-}: {
-  initialTokens: Token[];
-  initialSearch: string;
-}) {
+type Category = (typeof categories)[number]["id"];
+const LIQUIDITY_STEPS = [0, 10_000, 50_000, 100_000, 500_000];
+
+export function Discover({ initialSearch }: { initialSearch: string }) {
   const [search, setSearch] = useState(initialSearch);
-  const [stage, setStage] = useState<LaunchStage | "all">("all");
-  const [sort, setSort] = useState<TokenSort>("recent");
+  const [stage, setStage] = useState<Category | "all">("all");
+  const [sort, setSort] = useState<TokenSort>("liquidity");
   const [filters, setFilters] = useState(false);
-  const [minProgress, setMinProgress] = useState(0);
-  const { data = initialTokens } = useQuery({
-    queryKey: ["tokens", "demo"],
-    queryFn: () => tokenProvider.list(),
-    initialData: initialTokens,
-    staleTime: Infinity,
+  const [minLiquidity, setMinLiquidity] = useState(0);
+  const client = usePublicClient({ chainId: MARKET_CHAIN_ID });
+  const active = TRACKED_ASSETS.filter((asset) => asset.status === "active");
+  const onchain = useQueries({
+    queries: active.map((asset) =>
+      onchainTokenQuery(client, {
+        chainId: asset.chainId,
+        address: asset.address,
+      }),
+    ),
   });
-  const filtered = filterTokens(data, { search, stage, sort }).filter(
-    (t) => t.launch.curve.progress >= minProgress,
+  const markets = useQueries({
+    queries: active.map((asset) =>
+      tokenMarketQuery(
+        { chainId: asset.chainId, address: asset.address },
+        asset.primaryPool?.id,
+      ),
+    ),
+  });
+  const rows: TokenRow[] = active.map((asset, i) => ({
+    asset,
+    facts: onchain[i]?.data,
+    market: markets[i]?.data,
+  }));
+  const minimum = parseDecimal(String(minLiquidity))!;
+  const filtered = sortRows(
+    rows.filter((row) => {
+      if (!matchesSearch(row, search)) return false;
+      if (!minLiquidity) return true;
+      const liquidity = parseDecimal(
+        row.market?.selection.primary?.liquidityUsd,
+      );
+      return liquidity !== null && compareDecimal(liquidity, minimum) >= 0;
+    }),
+    sort,
   );
-  const trending = [...data]
-    .sort((a, b) => b.market.volume24h - a.market.volume24h)
-    .slice(0, 5);
+  const term = search.trim();
+  const lookup =
+    isAddress(term, { strict: false }) &&
+    !active.some((a) => a.address.toLowerCase() === term.toLowerCase())
+      ? term
+      : null;
   return (
     <div className="discover-page">
       <div className="page-topline">
@@ -81,7 +117,10 @@ export function Discover({
           <span className="live-dot" />
           THE NEXT WAVE IS ON BASE
         </span>
-        <DemoLabel />
+        <span className="data-label">
+          <span />
+          Real Base data · Read-only
+        </span>
       </div>
       <section className="discovery-hero">
         <div className="hero-art" aria-hidden="true">
@@ -121,28 +160,7 @@ export function Discover({
           </Link>
         </div>
       </section>
-      <section className="trending-section" aria-label="Trending demo tokens">
-        <div className="trending-heading">
-          <Flame size={15} />
-          <strong>Trending</strong>
-          <span>24h</span>
-        </div>
-        <div className="trending-tokens">
-          {trending.map((t, i) => (
-            <Link href={`/token/${t.id}`} key={t.id} className="trending-token">
-              <span className="trending-rank">{i + 1}</span>
-              <TokenAvatar token={t} size={27} />
-              <strong>{t.metadata.symbol}</strong>
-              <span
-                className={t.market.change24h >= 0 ? "positive" : "negative"}
-              >
-                {percent(t.market.change24h)}
-              </span>
-              <small>{usd(t.market.volume24h)}</small>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {FEATURED_ASSET ? <FeaturedToken asset={FEATURED_ASSET} /> : null}
       <section className="board-section" aria-labelledby="discover-title">
         <div className="board-title-row">
           <div>
@@ -162,7 +180,7 @@ export function Discover({
               <button
                 key={c.id}
                 aria-pressed={stage === c.id}
-                onClick={() => setStage(c.id as LaunchStage | "all")}
+                onClick={() => setStage(c.id as Category | "all")}
                 className={stage === c.id ? "active" : ""}
               >
                 {c.id === "all" ? <Star size={13} /> : null}
@@ -174,8 +192,8 @@ export function Discover({
             <label className="search-input">
               <Search size={15} />
               <input
-                aria-label="Search by name or ticker"
-                placeholder="Search name or ticker"
+                aria-label="Search by name, ticker or contract address"
+                placeholder="Search name, ticker or 0x…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -192,19 +210,18 @@ export function Discover({
                 value={sort}
                 onChange={(e) => setSort(e.target.value as TokenSort)}
               >
-                <option value="recent">Newest</option>
-                <option value="volume">Volume</option>
-                <option value="marketCap">Market cap</option>
+                <option value="liquidity">Liquidity</option>
+                <option value="volume">Volume 24h</option>
               </select>
               <ChevronDown size={12} />
             </label>
             <button
-              className={`filter-button ${minProgress ? "active" : ""}`}
+              className={`filter-button ${minLiquidity ? "active" : ""}`}
               onClick={() => setFilters(true)}
             >
               <SlidersHorizontal size={14} />
               Filters
-              {minProgress ? <span className="filter-count">1</span> : null}
+              {minLiquidity ? <span className="filter-count">1</span> : null}
             </button>
           </div>
         </div>
@@ -213,51 +230,84 @@ export function Discover({
         >
           {categories
             .filter((c) => stage === "all" || c.id === stage)
-            .map((category) => {
-              const list = filtered.filter(
-                (t) => t.launch.stage === category.id,
-              );
-              return (
-                <section
-                  className={`launch-column ${category.color}`}
-                  key={category.id}
-                >
-                  <div className="column-heading">
-                    <span className="column-icon">
-                      <category.icon size={17} />
-                    </span>
-                    <div>
-                      <h3>
-                        {category.title}
-                        <span className="count-badge">{list.length}</span>
-                      </h3>
-                      <p>{category.subtitle}</p>
-                    </div>
-                    <span className="column-dot" />
+            .map((category) => (
+              <section
+                className={`launch-column ${category.color}`}
+                key={category.id}
+              >
+                <div className="column-heading">
+                  <span className="column-icon">
+                    <category.icon size={17} />
+                  </span>
+                  <div>
+                    <h3>
+                      {category.title}
+                      <span className="count-badge">
+                        {category.id === "tracked" ? filtered.length : 0}
+                      </span>
+                    </h3>
+                    <p>{category.subtitle}</p>
                   </div>
-                  <div className="token-grid">
-                    {list.length ? (
-                      list.map((t) => <TokenCard key={t.id} token={t} />)
-                    ) : (
-                      <EmptyState title="No tokens found">
-                        Try another search or adjust your filters.
-                      </EmptyState>
-                    )}
-                  </div>
-                  <div className="column-end">
-                    <span />
-                    You’re all caught up
-                    <Check size={12} />
-                    <span />
-                  </div>
-                </section>
-              );
-            })}
+                  <span className="column-dot" />
+                </div>
+                <div className="token-grid">
+                  {category.id === "tracked" ? (
+                    <>
+                      {filtered.map((row) => (
+                        <TrackedTokenCard
+                          key={row.asset.slug}
+                          asset={row.asset}
+                        />
+                      ))}
+                      {lookup ? (
+                        <Link
+                          href={`/token/?address=${lookup}`}
+                          className="token-card lookup-card"
+                        >
+                          <strong>Not tracked on RETRY</strong>
+                          <span>
+                            Inspect {shorten(lookup)} on Base: contract check
+                            and public market data.
+                          </span>
+                          <span className="lookup-cta">
+                            Inspect address
+                            <ArrowUpRight size={13} />
+                          </span>
+                        </Link>
+                      ) : null}
+                      {!filtered.length && !lookup ? (
+                        <EmptyState title="No tokens found">
+                          Try another name, ticker or contract address, or lower
+                          the liquidity filter.
+                        </EmptyState>
+                      ) : null}
+                    </>
+                  ) : category.id === "new" ? (
+                    <EmptyState title="No RETRY launches yet">
+                      The RETRY token factory is not deployed. New launches will
+                      appear here once it is.
+                    </EmptyState>
+                  ) : (
+                    <EmptyState title="Nothing has graduated yet">
+                      Tokens that complete a RETRY bonding curve will be listed
+                      here.
+                    </EmptyState>
+                  )}
+                </div>
+                <div className="column-end">
+                  <span />
+                  You’re all caught up
+                  <Check size={12} />
+                  <span />
+                </div>
+              </section>
+            ))}
         </div>
         <div className="board-bottom">
           <span>
             <span className="live-dot" />
-            {filtered.length} demo tokens · Fixed snapshot, Oct 26, 2026
+            {filtered.length} tracked token{filtered.length === 1 ? "" : "s"} on
+            Base · Market data: GeckoTerminal, DEX Screener fallback
           </span>
           <Link href="/create">
             Got an idea? Bring it to life
@@ -282,26 +332,34 @@ export function Discover({
         open={filters}
         onOpenChange={setFilters}
         title="Refine your discovery"
-        description="Filter the local demo catalog."
+        description="Filter tracked tokens by their primary pool's liquidity."
       >
-        <label className="field-label" htmlFor="progress-filter">
-          Minimum bonding progress <span>{minProgress}%</span>
+        <label className="field-label" htmlFor="liquidity-filter">
+          Minimum liquidity{" "}
+          <span>
+            {minLiquidity ? `$${minLiquidity.toLocaleString("en-US")}` : "Any"}
+          </span>
         </label>
         <input
           className="range-input"
-          id="progress-filter"
+          id="liquidity-filter"
           type="range"
           min="0"
-          max="100"
-          step="10"
-          value={minProgress}
-          onChange={(e) => setMinProgress(Number(e.target.value))}
+          max={LIQUIDITY_STEPS.length - 1}
+          step="1"
+          value={LIQUIDITY_STEPS.indexOf(minLiquidity)}
+          onChange={(e) =>
+            setMinLiquidity(LIQUIDITY_STEPS[Number(e.target.value)] ?? 0)
+          }
         />
-        <p className="tiny muted">Graduated tokens have 100% demo progress.</p>
+        <p className="tiny muted">
+          Provider-reported liquidity of each token’s primary pool. Tokens
+          without a reported value are hidden while a minimum is set.
+        </p>
         <div className="two-buttons">
           <button
             className="button button-secondary"
-            onClick={() => setMinProgress(0)}
+            onClick={() => setMinLiquidity(0)}
           >
             Reset filters
           </button>

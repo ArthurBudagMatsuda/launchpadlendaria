@@ -11,6 +11,11 @@ import {
   multicall3Abi,
   numberToHex,
 } from "viem";
+import {
+  answerTokenCall,
+  marketFetch,
+  WORTH,
+} from "../tests/fixtures/market-responses";
 
 export const ALICE = getAddress("0x84a2c0b2e6dc6e1f2c3a4b5d6e7f8091a2b33f91");
 export const BOB = getAddress("0x1111111111111111111111111111111111111111");
@@ -167,14 +172,23 @@ function installMockWallet(setup: Required<WalletSetup>) {
 export interface RpcMock {
   /** Wei balances per chain and lowercase address. */
   balances: Record<number, Record<string, bigint>>;
+  /** Raw balances of the tracked Base token per lowercase owner (Base mainnet). */
+  tokenBalances: Record<string, bigint>;
   /** When set, every RPC call answers with this HTTP status. */
   failStatus: number | undefined;
   calls: { chainId: number; method: string }[];
 }
 
+const MULTICALL3 = "0xca11bde05977b3631167028862be2a173976ca11";
+
+/**
+ * Multicall3 answers: native balances (getEthBalance) and, on Base mainnet,
+ * the tracked token's ERC-20 and B20 reads, like the real chain on 2026-10-28.
+ */
 function answerMulticall(
   data: Hex,
   balanceOf: (address: Address) => bigint,
+  tokenBalanceOf: (owner: Address) => bigint,
 ): Hex {
   const decoded = decodeFunctionData({ abi: multicall3Abi, data });
   if (decoded.functionName === "getEthBalance") {
@@ -185,14 +199,20 @@ function answerMulticall(
       result: balanceOf(address),
     });
   }
-  const [calls] = decoded.args as readonly [readonly { callData: Hex }[]];
+  const [calls] = decoded.args as readonly [
+    readonly { target: Address; callData: Hex }[],
+  ];
   return encodeFunctionResult({
     abi: multicall3Abi,
     functionName: "aggregate3",
-    result: calls.map(({ callData }) => ({
-      success: true,
-      returnData: answerMulticall(callData, balanceOf),
-    })),
+    result: calls.map(({ target, callData }) =>
+      target.toLowerCase() === MULTICALL3
+        ? {
+            success: true,
+            returnData: answerMulticall(callData, balanceOf, tokenBalanceOf),
+          }
+        : answerTokenCall(target, callData, tokenBalanceOf),
+    ),
   });
 }
 
@@ -221,6 +241,9 @@ async function mockRpc(page: Page, rpc: RpcMock) {
       rpc.calls.push({ chainId, method });
       const balanceOf = (address: Address) =>
         rpc.balances[chainId]?.[address.toLowerCase()] ?? 0n;
+      // The tracked token exists on Base mainnet only (its Sepolia address is empty).
+      const tokenBalanceOf = (owner: Address) =>
+        chainId === 8453 ? (rpc.tokenBalances[owner.toLowerCase()] ?? 0n) : 0n;
       switch (method) {
         case "eth_chainId":
           return { jsonrpc: "2.0", id, result: numberToHex(chainId) };
@@ -232,15 +255,35 @@ async function mockRpc(page: Page, rpc: RpcMock) {
             id,
             result: numberToHex(balanceOf(params[0] as Address)),
           };
-        case "eth_call":
+        case "eth_getCode":
+          // Base B20 tokens are precompiles: their code is the single byte 0xef.
           return {
             jsonrpc: "2.0",
             id,
-            result: answerMulticall(
-              (params[0] as { data: Hex }).data,
-              balanceOf,
-            ),
+            result:
+              chainId === 8453 &&
+              (params[0] as Address).toLowerCase() === WORTH.toLowerCase()
+                ? "0xef"
+                : "0x",
           };
+        case "eth_call": {
+          const { to, data } = params[0] as { to: Address; data: Hex };
+          if (to.toLowerCase() === MULTICALL3)
+            return {
+              jsonrpc: "2.0",
+              id,
+              result: answerMulticall(data, balanceOf, tokenBalanceOf),
+            };
+          const direct =
+            chainId === 8453 ? answerTokenCall(to, data, tokenBalanceOf) : null;
+          return direct?.success
+            ? { jsonrpc: "2.0", id, result: direct.returnData }
+            : {
+                jsonrpc: "2.0",
+                id,
+                error: { code: 3, message: "execution reverted", data: "0x" },
+              };
+        }
         default:
           return {
             jsonrpc: "2.0",
@@ -258,44 +301,105 @@ async function mockRpc(page: Page, rpc: RpcMock) {
   });
 }
 
+export interface MarketMock {
+  /** Per provider: when set, every request answers with this HTTP status. */
+  failStatus: { geckoterminal?: number; dexscreener?: number };
+  /** Requested provider URLs (host + path + query). */
+  calls: string[];
+}
+
+const MARKET_HOSTS: Record<string, keyof MarketMock["failStatus"]> = {
+  "api.geckoterminal.com": "geckoterminal",
+  "api.dexscreener.com": "dexscreener",
+};
+
+/**
+ * GeckoTerminal and DEX Screener answer from the recorded responses in
+ * tests/fixtures (the same ones the unit tests use), with the CORS header the
+ * live APIs send, so the static export's client-side fetches run unchanged.
+ */
+async function mockMarket(page: Page, market: MarketMock) {
+  const answers = marketFetch();
+  await page.route(
+    /^https:\/\/api\.(geckoterminal|dexscreener)\.com\//,
+    async (route) => {
+      const url = new URL(route.request().url());
+      market.calls.push(`${url.hostname}${url.pathname}${url.search}`);
+      const headers = { "access-control-allow-origin": "*" };
+      const failStatus = market.failStatus[MARKET_HOSTS[url.hostname]];
+      if (failStatus)
+        return route.fulfill({ status: failStatus, headers, body: "{}" });
+      const response = await answers.fetch(url.toString());
+      return route.fulfill({
+        status: response.status,
+        headers,
+        contentType: "application/json",
+        body: await response.text(),
+      });
+    },
+  );
+}
+
 export const test = base.extend<{
   wallet: (setup?: WalletSetup) => Promise<void>;
   rpc: RpcMock;
+  market: MarketMock;
   externalRequests: string[];
 }>({
-  externalRequests: async ({ page }, use) => {
-    const external: string[] = [];
-    // Keep tests hermetic: anything that is not the app or the mocked RPC is blocked and recorded.
-    await page.route(
-      (url) =>
-        ![
-          "localhost",
-          "127.0.0.1",
-          "sepolia.base.org",
-          "mainnet.base.org",
-        ].includes(url.hostname),
-      (route) => {
-        external.push(new URL(route.request().url()).hostname);
-        return route.abort();
-      },
-    );
-    await use(external);
-  },
-  rpc: async ({ page, externalRequests: _blocked }, use) => {
-    const rpc: RpcMock = {
-      balances: {
-        84532: {
-          [ALICE.toLowerCase()]: 23_400_000_000_000_000n,
-          [BOB.toLowerCase()]: 2n * 10n ** 18n,
+  externalRequests: [
+    async ({ page }, use) => {
+      const external: string[] = [];
+      // Keep tests hermetic: anything that is not the app, the mocked RPC or
+      // the mocked market providers is blocked and recorded.
+      await page.route(
+        (url) =>
+          ![
+            "localhost",
+            "127.0.0.1",
+            "sepolia.base.org",
+            "mainnet.base.org",
+            ...Object.keys(MARKET_HOSTS),
+          ].includes(url.hostname),
+        (route) => {
+          external.push(new URL(route.request().url()).hostname);
+          return route.abort();
         },
-        8453: { [ALICE.toLowerCase()]: 5n * 10n ** 18n },
-      },
-      failStatus: undefined,
-      calls: [],
-    };
-    await mockRpc(page, rpc);
-    await use(rpc);
-  },
+      );
+      await use(external);
+    },
+    { auto: true },
+  ],
+  market: [
+    async ({ page, externalRequests: _blocked }, use) => {
+      const market: MarketMock = { failStatus: {}, calls: [] };
+      await mockMarket(page, market);
+      await use(market);
+    },
+    { auto: true },
+  ],
+  // Automatic, because Discover reads the tracked token from Base mainnet on load.
+  rpc: [
+    async ({ page, externalRequests: _blocked }, use) => {
+      const rpc: RpcMock = {
+        balances: {
+          84532: {
+            [ALICE.toLowerCase()]: 23_400_000_000_000_000n,
+            [BOB.toLowerCase()]: 2n * 10n ** 18n,
+          },
+          8453: { [ALICE.toLowerCase()]: 5n * 10n ** 18n },
+        },
+        // 18,985.365382667 worth on Base mainnet.
+        tokenBalances: {
+          [ALICE.toLowerCase()]: 18_985_365_382_667n * 10n ** 9n,
+        },
+        failStatus: undefined,
+        calls: [],
+      };
+      await mockRpc(page, rpc);
+      await use(rpc);
+    },
+    { auto: true },
+  ],
   wallet: async ({ page, rpc: _rpc }, use) => {
     await use(async (setup = {}) => {
       await page.addInitScript(installMockWallet, {
@@ -317,6 +421,10 @@ export const short = (address: string) =>
 
 /** GitHub Pages serves the app under the repository name. */
 export const APP = "/launchpadlendaria";
+
+/** The tracked Base token's statically exported page. */
+export const TOKEN_PAGE = `${APP}/token/base/${WORTH.toLowerCase()}/`;
+export { WORTH };
 
 /** Errors from the page itself; requests the hermetic setup blocks on purpose are ignored. */
 export function collectPageErrors(page: Page) {

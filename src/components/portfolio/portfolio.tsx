@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/components/providers";
 import { EmptyState } from "@/components/ui/feedback";
+import { TrackedBalances } from "@/components/portfolio/tracked-balances";
 import { shorten } from "@/lib/format";
 import Link from "next/link";
 export function Portfolio() {
@@ -41,8 +42,8 @@ export function Portfolio() {
           <span className="eyebrow">IT STARTS WITH YOUR WALLET</span>
           <h2>A home for your next chapter.</h2>
           <p>
-            Connect your wallet to see your Base network and ETH balance. Token
-            positions and activity will arrive in a future stage.
+            Connect your wallet to see your Base network, your ETH balance and
+            your balances of the tokens RETRY tracks, read from Base RPC.
           </p>
           <ConnectWalletButton align="start" />
           <div className="portfolio-features">
@@ -142,7 +143,7 @@ export function Portfolio() {
           <section className="panel">
             <nav className="portfolio-tabs" aria-label="Portfolio sections">
               {[
-                { id: "holdings", title: "Tokens acquired" },
+                { id: "holdings", title: "Tracked tokens" },
                 { id: "created", title: "Tokens created" },
                 { id: "activity", title: "Activity" },
               ].map((t) => (
@@ -156,30 +157,30 @@ export function Portfolio() {
                 </button>
               ))}
             </nav>
-            <EmptyState
-              title={
-                tab === "holdings"
-                  ? "Your next discovery awaits."
-                  : tab === "created"
+            {tab === "holdings" ? (
+              <TrackedBalances owner={address} />
+            ) : (
+              <EmptyState
+                title={
+                  tab === "created"
                     ? "An idea is a good place to start."
                     : "A fresh page in your story."
-              }
-              action={
-                <Link
-                  href={tab === "created" ? "/create" : "/"}
-                  className="button button-secondary"
-                >
-                  {tab === "created" ? "Preview a token" : "Explore tokens"}
-                  <ArrowUpRight size={14} />
-                </Link>
-              }
-            >
-              {tab === "holdings"
-                ? "Token balances are not indexed in this preview. This is not a statement of your actual holdings."
-                : tab === "created"
+                }
+                action={
+                  <Link
+                    href={tab === "created" ? "/create" : "/"}
+                    className="button button-secondary"
+                  >
+                    {tab === "created" ? "Preview a token" : "Explore tokens"}
+                    <ArrowUpRight size={14} />
+                  </Link>
+                }
+              >
+                {tab === "created"
                   ? "Token launches are not enabled yet. You can prepare a local draft."
-                  : "Onchain activity is not indexed yet. No transaction history is available in this preview."}
-            </EmptyState>
+                  : "Your wallet’s transactions are not indexed yet, so no history is shown. Market activity for tracked tokens (all traders) is on each token’s page."}
+              </EmptyState>
+            )}
           </section>
         </>
       )}

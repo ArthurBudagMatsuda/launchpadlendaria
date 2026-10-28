@@ -20,14 +20,6 @@ export function EmptyState({
     </div>
   );
 }
-export function DemoLabel() {
-  return (
-    <span className="demo-label">
-      <span />
-      Demo Data
-    </span>
-  );
-}
 export function LoadingSkeleton() {
   return (
     <div role="status" aria-label="Loading content" className="skeleton-wrap">

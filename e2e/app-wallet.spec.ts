@@ -8,6 +8,8 @@ import {
   navigate,
   short,
   test,
+  TOKEN_PAGE,
+  WORTH,
 } from "./fixtures";
 
 type MockWindow = {
@@ -30,8 +32,14 @@ test.describe("RETRY app with a connected wallet", () => {
   }) => {
     const errors = collectPageErrors(page);
     await wallet();
-    for (const route of ["/", "/create/", "/portfolio/", "/token/orbit/"]) {
-      await page.goto(`${APP}${route}`);
+    for (const path of [
+      `${APP}/`,
+      `${APP}/create/`,
+      `${APP}/portfolio/`,
+      TOKEN_PAGE,
+      `${APP}/token/`,
+    ]) {
+      await page.goto(path);
       await expect(
         page
           .getByRole("banner")
@@ -44,13 +52,13 @@ test.describe("RETRY app with a connected wallet", () => {
         ),
       ).toBe("rgb(10, 11, 16)");
     }
-    // Token illustrations too (public/ files need the base path prefix).
+    // Brand art too (public/ files need the base path prefix).
     await page.goto(`${APP}/`);
-    const art = page.locator(`img[src^="${APP}/tokens/"]`).first();
+    const art = page.locator(`img[src^="${APP}/brand/"]`).first();
     await expect(art).toBeVisible();
-    expect(
-      await art.evaluate((image: HTMLImageElement) => image.naturalWidth),
-    ).toBeGreaterThan(0);
+    await expect
+      .poll(() => art.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
     expect(errors).toEqual([]);
     await page.goto(`${APP}/token/does-not-exist/`);
     // Unknown token routes get the export's not-found page, not a crash.
@@ -65,19 +73,244 @@ test.describe("RETRY app with a connected wallet", () => {
     ]);
   });
 
-  test("Discover keeps the demo catalogue and shows the target network while disconnected", async ({
+  test("Discover features the tracked Base token with real, labeled figures and no demo data", async ({
     page,
     wallet,
+    market,
   }) => {
     await wallet();
     await page.goto(`${APP}/`);
-    await expect(page.getByText("Demo Data").first()).toBeVisible();
+    await expect(page.getByText("Real Base data · Read-only")).toBeVisible();
+    const featured = page.getByRole("region", { name: "Featured token" });
+    await expect(featured).toContainText(
+      "Tracked on RETRY · not a RETRY launch",
+    );
+    await expect(featured).toContainText("one life, its worth an attempt");
+    await expect(featured).toContainText("$0.001826");
+    await expect(featured).toContainText("+108.20% 24h");
+    await expect(featured).toContainText("$882.05K");
+    await expect(featured).toContainText("$190.93K");
+    // FDV is calculated from on-chain supply; market cap is never guessed.
+    await expect(featured).toContainText("$1.83M");
+    await expect(featured.locator(".featured-stats > div").last()).toHaveText(
+      /Market cap\s*Unavailable/,
+    );
+    await expect(featured.locator(".source-line")).toContainText(
+      "GeckoTerminal · worth/ETH · Uniswap v4 pool",
+    );
+    await expect(featured.locator(".freshness")).toHaveText("Live");
+    await expect(
+      featured.getByRole("link", { name: /Open market/ }),
+    ).toHaveAttribute("href", TOKEN_PAGE);
+    // The tracked column holds the real token; RETRY's own columns are honest.
+    await expect(
+      page.locator(`a.token-card[href="${TOKEN_PAGE}"]`),
+    ).toBeVisible();
+    await expect(page.getByText("No RETRY launches yet")).toBeVisible();
+    await expect(page.getByText("Nothing has graduated yet")).toBeVisible();
+    await expect(
+      page.getByText(/Demo Data|Orbit Cat|Toast Protocol/),
+    ).toHaveCount(0);
     await expect(page.getByTestId("rw3-network-indicator")).toContainText(
       "Base Sepolia",
     );
+    // No wallet address is shown while disconnected.
     await expect(
-      page.getByText(/0x[0-9a-fA-F]{4}…|0x[0-9a-fA-F]{4}\.\.\./),
+      page.getByRole("banner").getByText(/0x[0-9a-fA-F]{4}(…|\.\.\.)/),
     ).toHaveCount(0);
+    // Market data comes from the public providers, keyless and read-only.
+    expect(market.calls.length).toBeGreaterThan(0);
+    for (const call of market.calls)
+      expect(call).toMatch(/^api\.(geckoterminal|dexscreener)\.com\//);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+
+  test("searches by name, ticker or contract address and inspects untracked addresses", async ({
+    page,
+  }) => {
+    await page.goto(`${APP}/`);
+    const search = page.getByRole("textbox", {
+      name: "Search by name, ticker or contract address",
+    });
+    const card = page.locator(`a.token-card[href="${TOKEN_PAGE}"]`);
+    for (const term of ["worth", "WORTH", "0xb200", WORTH]) {
+      await search.fill(term);
+      await expect(card).toBeVisible();
+    }
+    await search.fill("orbit");
+    await expect(card).toHaveCount(0);
+    await expect(page.getByText("No tokens found")).toBeVisible();
+
+    // A full address RETRY does not track gets an inspection link, not a guess.
+    const other = "0x1111111111111111111111111111111111111111";
+    await search.fill(other);
+    const lookup = page.getByRole("link", { name: /Not tracked on RETRY/ });
+    await expect(lookup).toHaveAttribute(
+      "href",
+      `${APP}/token/?address=${other}`,
+    );
+    await lookup.click();
+    await expect(
+      page.getByRole("heading", {
+        name: "No contract at this address on Base",
+      }),
+    ).toBeVisible();
+    await expect(page.getByText("Untracked lookup")).toBeVisible();
+    await expect(page.locator(".market-stats")).toHaveCount(0);
+    await expect(page.getByText(/\$\d/)).toHaveCount(0);
+  });
+
+  test("Token Detail shows the verified identity, real market data, the chart and labeled market activity", async ({
+    page,
+    wallet,
+    rpc,
+  }) => {
+    const errors = collectPageErrors(page);
+    await wallet();
+    await page.goto(TOKEN_PAGE);
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: /one life, its worth an attempt/,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Tracked on RETRY · External token"),
+    ).toBeVisible();
+    await expect(page.getByText("B20 · Asset")).toBeVisible();
+    await expect(page.getByRole("link", { name: /BaseScan/ })).toHaveAttribute(
+      "href",
+      `https://basescan.org/token/${WORTH}`,
+    );
+
+    const stats = page.locator(".market-stats");
+    await expect(stats).toContainText("$0.001826");
+    await expect(stats).toContainText("0.000000775 ETH");
+    await expect(stats).toContainText("$882.05K");
+    await expect(stats).toContainText("$190.93K");
+    await expect(stats).toContainText("FDV · calculated$1.83M");
+    await expect(stats.locator(".market-stat").last()).toHaveText(
+      /Market cap\s*Unavailable/,
+    );
+    await expect(page.locator(".market-changes")).toContainText(
+      "Trades 24h 2,217 buys · 2,050 sells",
+    );
+
+    // Real OHLCV with the missing hour left empty.
+    const chart = page.locator(".chart-panel");
+    await expect(chart.locator(".price-chart svg").first()).toBeVisible();
+    await expect(chart.locator(".source-line")).toContainText(
+      "1h OHLCV · UTC · 1 interval without trades left empty",
+    );
+    // Switching interval refetches; the same hours are 5m buckets with 34 empty ones.
+    await chart.getByRole("button", { name: "5m", exact: true }).click();
+    await expect(
+      chart.getByRole("button", { name: "5m", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(chart.locator(".source-line")).toContainText(
+      "5m OHLCV · UTC · 34 intervals without trades left empty",
+    );
+
+    // Market activity is everyone's trades, labeled; anomalies are hidden.
+    const activity = page.locator(".activity-panel");
+    await expect(activity).toContainText("not your wallet");
+    await expect(activity.locator("tbody tr")).toHaveCount(2);
+    await expect(
+      activity.getByRole("link", { name: /buy/ }).first(),
+    ).toHaveAttribute(
+      "href",
+      "https://basescan.org/tx/0xd063902d8f7b0a1a6ac385736f4fd4dc1bdf3e4b67aced249200a7c93451c8c6",
+    );
+    await expect(activity).toContainText(
+      "1 flagged anomalous by the provider hidden",
+    );
+
+    // The pool policy is visible: two eligible pools, never summed.
+    const pools = page.locator(".pools-panel");
+    await expect(pools).toContainText("2 eligible of 5 listed · never summed");
+    await expect(pools.locator("tbody tr").first()).toContainText(
+      "worth/ETHPrimary",
+    );
+    await expect(pools).toContainText("below $1,000 liquidity");
+
+    // Trading stays off.
+    const trade = page.getByRole("region", { name: "Trade preview" });
+    await expect(trade).toContainText("Not available");
+    await expect(trade).toContainText("None verified");
+    await expect(
+      trade.getByRole("button", { name: /Trading Coming Soon/ }),
+    ).toBeVisible();
+
+    // On-chain reads went to Base mainnet only, and only as eth_call/eth_getCode.
+    const mainnet = rpc.calls.filter((call) => call.chainId === 8453);
+    expect(mainnet.length).toBeGreaterThan(0);
+    expect(
+      mainnet.filter(
+        (call) =>
+          !["eth_chainId", "eth_getCode", "eth_call"].includes(call.method),
+      ),
+    ).toEqual([]);
+    // Phones get the chart first and the trade box right after it.
+    const chartBox = (await chart.boundingBox())!;
+    const tradeBox = (await trade.boundingBox())!;
+    if (page.viewportSize()!.width < 760)
+      expect(tradeBox.y).toBeGreaterThan(chartBox.y);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test("falls back to DEX Screener when GeckoTerminal is rate limited, and says what is missing", async ({
+    page,
+    market,
+  }) => {
+    market.failStatus.geckoterminal = 429;
+    await page.goto(TOKEN_PAGE);
+    const stats = page.locator(".market-stats");
+    await expect(stats).toContainText("$0.00183");
+    await expect(stats).toContainText("$191.34K");
+    await expect(page.locator(".source-line").first()).toContainText(
+      "DEX Screener (fallback)",
+    );
+    // Candles and trades only come from GeckoTerminal: no chart is invented.
+    await expect(page.locator(".chart-panel")).toContainText(
+      "Price history is unavailable",
+    );
+    await expect(page.locator(".chart-panel .price-chart")).toHaveCount(0);
+    await expect(page.locator(".activity-panel")).toContainText(
+      "Trades are unavailable",
+    );
+  });
+
+  test("shows market data as unavailable when every provider fails, never a price", async ({
+    page,
+    market,
+  }) => {
+    market.failStatus = { geckoterminal: 503, dexscreener: 503 };
+    await page.goto(TOKEN_PAGE);
+    const error = page.locator(".market-error").first();
+    await expect(error).toContainText("Market data is unavailable", {
+      timeout: 15_000,
+    });
+    await expect(page.locator(".market-stats")).toHaveCount(0);
+    await expect(page.getByText(/\$0\.\d/)).toHaveCount(0);
+    // The identity still comes from the chain.
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: /one life, its worth an attempt/,
+      }),
+    ).toBeVisible();
+    market.failStatus = {};
+    await error.getByRole("button", { name: "Try again" }).click();
+    await expect(page.locator(".market-stats")).toContainText("$0.001826");
   });
 
   test("shows the X banner with the headline and the logo floating, and still when the system reduces motion", async ({
@@ -174,10 +407,13 @@ test.describe("RETRY app with a connected wallet", () => {
     await expect(
       portfolio.getByRole("link", { name: /View on Basescan/ }),
     ).toHaveAttribute("href", `https://sepolia.basescan.org/address/${ALICE}`);
-    // No invented holdings or history.
-    await expect(
-      page.getByText("Token balances are not indexed"),
-    ).toBeVisible();
+    // The tracked token's real balance on Base mainnet; nothing else is invented.
+    const holdings = page.locator(".tracked-balances");
+    await expect(holdings).toContainText("18.99K worth");
+    await expect(holdings).toContainText("≈ $34.67 at the pool price");
+    await expect(holdings).toContainText(
+      "Other tokens in your wallet are not indexed",
+    );
 
     await navigate(page, "Discover");
     await expect(page).toHaveURL(`${APP}/`);
@@ -185,18 +421,22 @@ test.describe("RETRY app with a connected wallet", () => {
       banner.getByRole("button", { name: short(ALICE) }),
     ).toBeVisible();
 
-    await page.locator(`a[href="${APP}/token/orbit/"]`).first().click();
-    await expect(page).toHaveURL(`${APP}/token/orbit/`);
+    await page.locator(`a.token-card[href="${TOKEN_PAGE}"]`).click();
+    await expect(page).toHaveURL(TOKEN_PAGE);
     const trade = page.getByRole("region", { name: "Trade preview" });
     await expect(trade.locator(".wallet-status")).toContainText(short(ALICE));
     await expect(trade.locator(".wallet-status")).toContainText("Base Sepolia");
     await expect(trade).toContainText("Balance: 0.0234 ETH");
+    // Selling shows the token balance read from Base mainnet.
+    await trade.getByRole("button", { name: "Sell" }).click();
+    await expect(trade).toContainText("Balance: 18.99K worth");
     await expect(
       banner.getByRole("button", { name: short(ALICE) }),
     ).toBeVisible();
 
-    // The balance came from the (mocked) Base Sepolia RPC, never from a fixture.
+    // Balances came from the (mocked) Base RPCs, never from a fixture in the app.
     expect(rpc.calls.some((call) => call.chainId === 84532)).toBe(true);
+    expect(rpc.calls.some((call) => call.chainId === 8453)).toBe(true);
   });
 
   test("Trade and Create stay non-financial", async ({ page, wallet }) => {
@@ -215,7 +455,7 @@ test.describe("RETRY app with a connected wallet", () => {
       );
     }, PIXEL);
     await wallet();
-    await page.goto(`${APP}/token/orbit/`);
+    await page.goto(TOKEN_PAGE);
     const trade = page.getByRole("region", { name: "Trade preview" });
     await expect(trade.locator(".wallet-status")).toHaveAttribute(
       "data-state",

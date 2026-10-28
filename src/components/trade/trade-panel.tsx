@@ -1,30 +1,52 @@
 "use client";
 import { useState } from "react";
 import { LockKeyhole, Settings2 } from "lucide-react";
-import { useRetryBalance } from "@retry/web3";
-import type { Token } from "@/types/token";
-import { number } from "@/lib/format";
+import { useRetryBalance, useRetryWallet } from "@retry/web3";
+import { useTokenBalance } from "@/hooks/use-market";
+import { tokenAmount as rawToAmount } from "@/lib/market/metrics";
+import type { TokenRef } from "@/lib/market/types";
+import { number, tokenAmount } from "@/lib/format";
 import { useApp } from "@/components/providers";
 import { Button } from "@/components/ui/button";
 import { WalletStatus } from "@/components/wallet/wallet-status";
-export function TradePanel({ token }: { token: Token }) {
+
+// View-only. Market data on the page is real, but RETRY has no verified swap
+// route yet, so this panel shows no quote, builds no transaction and never
+// asks the wallet for an approval or signature.
+export function TradePanel({
+  symbol,
+  token,
+  decimals = null,
+}: {
+  symbol: string;
+  token?: TokenRef;
+  decimals?: number | null;
+}) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("1");
   const { notify } = useApp();
   const balance = useRetryBalance();
+  const wallet = useRetryWallet();
+  const owner = wallet.isConnected ? wallet.address : undefined;
+  const tokenBalance = useTokenBalance(token, owner);
   const quantity = Number(amount);
   const valid = Number.isFinite(quantity) && quantity > 0 && quantity <= 1e12;
-  // This is a UI fixture ratio, unrelated to token prices, reserves or any live quote.
-  const estimate = valid
-    ? side === "buy"
-      ? `${number(quantity * 250000)} ${token.metadata.symbol}`
-      : `${(quantity / 250000).toFixed(6)} ETH`
-    : "—";
+  const sellBalance = !token
+    ? "Token balance: not indexed"
+    : !owner
+      ? "Wallet not connected"
+      : tokenBalance.isPending
+        ? "Reading balance…"
+        : tokenBalance.isError ||
+            decimals === null ||
+            tokenBalance.data === undefined
+          ? "Balance unavailable"
+          : `Balance: ${tokenAmount(rawToAmount(tokenBalance.data, decimals))} ${symbol}`;
   return (
     <section className="panel trade-panel" aria-label="Trade preview">
-      <h2>Trade {token.metadata.symbol}</h2>
-      <WalletStatus disconnectedText="Connect a wallet to see your ETH balance here. Trading is not enabled yet." />
+      <h2>Trade {symbol}</h2>
+      <WalletStatus disconnectedText="Connect a wallet to see your balances here. Trading is not enabled yet." />
       <div className="segmented" aria-label="Trade direction">
         {(["buy", "sell"] as const).map((s) => (
           <button
@@ -45,7 +67,7 @@ export function TradePanel({ token }: { token: Token }) {
           You {side === "buy" ? "pay" : "sell"}
           <span>
             {side === "sell"
-              ? "Token balance: not indexed"
+              ? sellBalance
               : balance.status === "success"
                 ? `Balance: ${balance.display}`
                 : balance.status === "loading"
@@ -70,7 +92,7 @@ export function TradePanel({ token }: { token: Token }) {
             onChange={(e) => setAmount(e.target.value)}
             aria-invalid={amount !== "" && !valid}
           />
-          <span>{side === "buy" ? "ETH" : token.metadata.symbol}</span>
+          <span>{side === "buy" ? "ETH" : symbol}</span>
         </div>
         {amount && !valid ? (
           <p className="form-error">
@@ -110,12 +132,12 @@ export function TradePanel({ token }: { token: Token }) {
       </label>
       <div className="trade-summary">
         <div>
-          <span>Illustrative output</span>
-          <strong>{estimate}</strong>
+          <span>Quote</span>
+          <strong>Not available</strong>
         </div>
         <div>
-          <span>Platform fee</span>
-          <strong>To be defined</strong>
+          <span>Route</span>
+          <strong>None verified</strong>
         </div>
         <div>
           <span>Network fee</span>
@@ -123,7 +145,7 @@ export function TradePanel({ token }: { token: Token }) {
         </div>
         <div>
           <span>Execution</span>
-          <strong>Preview only</strong>
+          <strong>Disabled</strong>
         </div>
       </div>
       <Button
@@ -137,9 +159,8 @@ export function TradePanel({ token }: { token: Token }) {
         Trading Coming Soon
       </Button>
       <p className="tiny">
-        Demo ratio: 1 ETH = 250K tokens.
-        <br />
-        Illustration only. No executable quote or transaction.
+        View only. Prices on this page come from public market data; RETRY does
+        not quote, route or execute trades yet.
       </p>
     </section>
   );
