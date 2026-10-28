@@ -175,6 +175,11 @@ test("Mainnet adapters render indexed figures, original chart and signatures", a
   await expect(
     page.getByRole("button", { name: /Trading Coming Soon/ }),
   ).toBeDisabled();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement)
+      document.activeElement.blur();
+    window.scrollTo(0, 0);
+  });
   await page.screenshot({
     path: `test-results/mainnet-chart-${info.project.name}.png`,
     fullPage: true,
