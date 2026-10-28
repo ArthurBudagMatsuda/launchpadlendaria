@@ -99,6 +99,21 @@ describe("GeckoTerminal adapter", () => {
     expect(series.provenance.observedAt).toBe(1793156400 * 1000);
   });
 
+  it("asks for the older page that ends at a given candle", async () => {
+    const { fetch, calls } = marketFetch();
+    await fetchGeckoCandles(token, pinned, "1h", { fetch }, 1793145600);
+    expect(new URL(calls[0]).searchParams.get("before_timestamp")).toBe(
+      "1793145600",
+    );
+    for (const before of [0, -3600, 1.5, Number.NaN]) {
+      const error = await rejection(
+        fetchGeckoCandles(token, pinned, "1h", { fetch }, before),
+      );
+      expect(error.code).toBe("INVALID_INPUT");
+    }
+    expect(calls).toHaveLength(1);
+  });
+
   it("refuses a series priced for the other side of the pair", async () => {
     const other = geckoOhlcvResponse();
     other.meta.base.address = IMPOSTOR.toLowerCase();
@@ -113,7 +128,7 @@ describe("GeckoTerminal adapter", () => {
     expect(error.code).toBe("INVALID_RESPONSE");
   });
 
-  it("maps every supported interval to GeckoTerminal's timeframes", async () => {
+  it("maps every supported interval to GeckoTerminal's timeframes and largest page", async () => {
     const { fetch, calls } = marketFetch({
       gecko: (u) =>
         u.pathname.includes("/ohlcv/")
@@ -135,6 +150,10 @@ describe("GeckoTerminal adapter", () => {
       "hour?aggregate=4",
       "day?aggregate=1",
     ]);
+    // The chart can zoom out over as much history as one request returns.
+    expect(calls.map((c) => new URL(c).searchParams.get("limit"))).toEqual(
+      Array(5).fill("1000"),
+    );
   });
 
   it("orients trades to the tracked token and hides anomalous ones", async () => {

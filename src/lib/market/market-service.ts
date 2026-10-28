@@ -114,14 +114,18 @@ export async function loadTokenMarket(
   );
 }
 
-/** OHLCV comes from GeckoTerminal only; DEX Screener has no candle API. */
+/**
+ * OHLCV comes from GeckoTerminal only; DEX Screener has no candle API. With
+ * `before`, the older page that ends at that candle.
+ */
 export function loadCandles(
   token: TokenRef,
   poolId: Hex,
   interval: CandleInterval,
   options?: MarketFetchOptions,
+  before?: number,
 ): Promise<CandleSeries> {
-  return fetchGeckoCandles(token, poolId, interval, options);
+  return fetchGeckoCandles(token, poolId, interval, options, before);
 }
 
 export function loadTrades(

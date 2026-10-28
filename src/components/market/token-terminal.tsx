@@ -18,6 +18,7 @@ import {
   CANDLE_REFRESH_MS,
   POOLS_REFRESH_MS,
   TRADES_REFRESH_MS,
+  useCandleHistory,
   useCandles,
   useMarketTrades,
   useOnchainToken,
@@ -468,16 +469,18 @@ function ChartPanel({
 }) {
   const [interval, setInterval] = useState<CandleInterval>("1h");
   const [mode, setMode] = useState<"candles" | "line">("candles");
-  const candles = useCandles(token, primary?.pool.id, interval);
+  const history = useCandleHistory(token, primary?.pool.id, interval);
+  const candles = history.newest;
+  const series = history.data;
   // The daily history (the 1d view's own query) holds the all-time high;
   // the candles on screen can be newer than its last refresh.
   const daily = useCandles(token, primary?.pool.id, "1d");
   const ath = useMemo(
     () =>
       daily.data
-        ? highestHigh(daily.data.candles, candles.data?.candles ?? [])
+        ? highestHigh(daily.data.candles, series?.candles ?? [])
         : null,
-    [daily.data, candles.data],
+    [daily.data, series],
   );
   return (
     <section className="panel chart-panel">
@@ -533,15 +536,16 @@ function ChartPanel({
           message={`Price history is unavailable: ${errorMessage(candles.error)}`}
           onRetry={() => candles.refetch()}
         />
-      ) : candles.data ? (
+      ) : series ? (
         <>
-          {candles.data.candles.length ? (
+          {series.candles.length ? (
             <CandleChart
-              candles={candles.data.candles}
-              interval={candles.data.interval}
+              candles={series.candles}
+              interval={series.interval}
               mode={mode}
               pairLabel={pair?.pair ?? symbol}
               ath={ath}
+              onReachStart={history.loadOlder}
             />
           ) : (
             <EmptyState title="No candles for this interval">
@@ -550,11 +554,11 @@ function ChartPanel({
             </EmptyState>
           )}
           <SourceLine
-            source={candles.data.provenance.source}
-            retrievedAt={candles.data.provenance.retrievedAt}
+            source={series.provenance.source}
+            retrievedAt={series.provenance.retrievedAt}
             refreshMs={CANDLE_REFRESH_MS[interval]}
             refreshFailed={candles.isRefetchError}
-            detail={`${interval} OHLCV · UTC${candles.data.gaps ? ` · ${candles.data.gaps} interval${candles.data.gaps === 1 ? "" : "s"} without trades skipped, nothing filled in` : ""}`}
+            detail={`${interval} OHLCV · UTC${series.gaps ? ` · ${series.gaps} interval${series.gaps === 1 ? "" : "s"} without trades skipped, nothing filled in` : ""}${history.loadingOlder ? " · loading older candles" : history.olderFailed ? " · older candles unavailable" : ""}`}
           />
         </>
       ) : null}
