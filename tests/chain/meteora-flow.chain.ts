@@ -1,0 +1,464 @@
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import BN from "bn.js";
+import {
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  type Connection,
+} from "@solana/web3.js";
+import {
+  getAccount,
+  getAssociatedTokenAddressSync,
+  getMint,
+} from "@solana/spl-token";
+import { RETRY_DBC_CONFIGS } from "@/config/retry-protocol";
+import { customContext, type MeteoraContext } from "@/lib/meteora/client";
+import { prepareCreateToken } from "@/lib/meteora/create-token";
+import { configMismatches, retryCurve } from "@/lib/meteora/curve";
+import { userMessage } from "@/lib/meteora/errors";
+import { prepareCreatorClaim, splitTradingFee } from "@/lib/meteora/fees";
+import { graduationView, prepareMigration } from "@/lib/meteora/graduation";
+import { readMetadata } from "@/lib/meteora/metadata";
+import { memoryStore } from "@/lib/meteora/operations";
+import {
+  decodeConfig,
+  listRetryPools,
+  readRetryPool,
+} from "@/lib/meteora/pools";
+import {
+  DAMM_V2_PROGRAM,
+  SYSTEM_PROGRAM,
+  WSOL_MINT,
+} from "@/lib/meteora/programs";
+import {
+  currentPoint,
+  QuoteError,
+  quoteTrade,
+  type TradeQuote,
+} from "@/lib/meteora/quotes";
+import { prepareTrade, tokenBalance } from "@/lib/meteora/trade";
+import {
+  execute,
+  SimulationError,
+  type TxExpectation,
+} from "@/lib/meteora/transactions";
+import {
+  connect,
+  DEVNET_GENESIS,
+  env,
+  fund,
+  keypairSigner,
+  log,
+  transferSol,
+  writeEvidence,
+} from "./harness";
+
+const SOL = BigInt(LAMPORTS_PER_SOL);
+const store = memoryStore();
+/** False when the Devnet faucet refused: the chain steps are skipped, not faked. */
+let funded = true;
+
+let connection: Connection;
+let context: MeteoraContext;
+let configKey: PublicKey;
+let pool: PublicKey;
+let mint: PublicKey;
+const partner = Keypair.generate();
+const creator = Keypair.generate();
+const trader = Keypair.generate();
+const evidence: Record<string, unknown> = {
+  partner: partner.publicKey.toBase58(),
+  creator: creator.publicKey.toBase58(),
+  trader: trader.publicKey.toBase58(),
+};
+
+async function run(
+  label: string,
+  signer: Keypair,
+  prepared: {
+    tx: import("@solana/web3.js").Transaction;
+    expect: TxExpectation;
+  },
+  extraSigners: Keypair[] = [],
+) {
+  const { signature, result, preview } = await execute({
+    context,
+    tx: prepared.tx,
+    signer: keypairSigner(signer),
+    extraSigners,
+    expect: prepared.expect,
+    record: {
+      cluster: context.cluster,
+      kind: "buy",
+      owner: signer.publicKey.toBase58(),
+      pool: pool?.toBase58() ?? "",
+      mint: mint?.toBase58() ?? "",
+      summary: label,
+    },
+    store,
+  });
+  log(label, {
+    signature,
+    status: result.status,
+    simulatedBalanceChange: preview.balanceChange,
+    networkFee: preview.networkFee,
+    units: preview.unitsConsumed,
+  });
+  expect(result.status).toBe("confirmed");
+  return signature;
+}
+
+async function quote(
+  side: TradeQuote["side"],
+  amountIn: bigint,
+  slippageBps = 100,
+) {
+  const read = await readRetryPool(context, pool);
+  return quoteTrade({
+    side,
+    pool: {
+      address: pool.toBase58(),
+      raw: read.raw,
+      config: read.config,
+      slot: read.pool.slot,
+    },
+    amountIn,
+    slippageBps,
+    currentPoint: await currentPoint(context, read.config),
+    context,
+  });
+}
+
+describe(`RETRY on Meteora DBC (${env.mode})`, () => {
+  beforeAll(async () => {
+    connection = connect();
+    const genesis = await connection.getGenesisHash();
+    if (env.mode === "devnet") expect(genesis).toBe(DEVNET_GENESIS);
+    const need = env.mode === "local" ? 40 : 2;
+    for (const key of [creator, trader]) {
+      const balance = await fund(connection, key.publicKey, need);
+      log("funded", { key: key.publicKey.toBase58(), lamports: balance });
+      if (balance < 1.2 * LAMPORTS_PER_SOL) funded = false;
+    }
+    if (!funded) {
+      log("faucet refused", {
+        reason: "not enough test SOL; chain steps skipped",
+      });
+      evidence.skipped = "Devnet faucet refused the airdrops";
+      writeEvidence(evidence);
+      return;
+    }
+    await transferSol(
+      connection,
+      creator,
+      partner.publicKey,
+      0.05 * LAMPORTS_PER_SOL,
+    );
+    // The context is created after the config exists (or is reused).
+    context = customContext(connection, null, genesis, "devnet");
+  }, 600_000);
+
+  beforeEach((test) => {
+    if (!funded) test.skip();
+  });
+
+  it("creates the RETRY config with createConfig2 (or reuses it) and it matches the reviewed parameters", async () => {
+    const reuse = env.useAppConfig
+      ? RETRY_DBC_CONFIGS.devnet?.address
+      : env.devnetConfig;
+    if (reuse) {
+      configKey = new PublicKey(reuse);
+      log("config reused", { config: configKey.toBase58() });
+    } else {
+      const config = Keypair.generate();
+      const tx = await context.client.partner.createConfig2({
+        config: config.publicKey,
+        feeClaimer: partner.publicKey,
+        leftoverReceiver: partner.publicKey,
+        quoteMint: WSOL_MINT,
+        payer: partner.publicKey,
+        ...retryCurve(),
+      });
+      tx.feePayer = partner.publicKey;
+      const { blockhash } = await connection.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = blockhash;
+      tx.sign(partner, config);
+      const signature = await connection.sendRawTransaction(tx.serialize());
+      const latest = await connection.getLatestBlockhash();
+      await connection.confirmTransaction(
+        { signature, ...latest },
+        "confirmed",
+      );
+      configKey = config.publicKey;
+      log("config created", { config: configKey.toBase58(), signature });
+      evidence.configSignature = signature;
+    }
+    evidence.config = configKey.toBase58();
+    context = { ...context, retryConfig: configKey };
+    const onchain = decodeConfig(
+      context,
+      await connection.getAccountInfo(configKey),
+    );
+    expect(configMismatches(onchain)).toEqual([]);
+    expect(onchain.quoteMint.equals(WSOL_MINT)).toBe(true);
+  });
+
+  it("launches a token with an atomic first buy, fixed supply and no mint or freeze authority", async () => {
+    const prepared = await prepareCreateToken(context, {
+      name: "RETRY Devnet Test",
+      symbol: "RTEST",
+      uri: env.metadataUri,
+      creator: creator.publicKey,
+      initialBuyLamports: SOL / 10n,
+      slippageBps: 100,
+    });
+    pool = prepared.pool;
+    mint = prepared.mint.publicKey;
+    const signature = await run("create + first buy", creator, prepared, [
+      prepared.mint,
+    ]);
+    evidence.createSignature = signature;
+    evidence.pool = pool.toBase58();
+    evidence.mint = mint.toBase58();
+
+    const info = await getMint(connection, mint, "confirmed");
+    expect(info.mintAuthority).toBeNull();
+    expect(info.freezeAuthority).toBeNull();
+    expect(info.decimals).toBe(9);
+    expect(info.supply).toBe(1_000_000_000n * 10n ** 9n);
+
+    const metadata = (await readMetadata(context, [mint])).get(mint.toBase58());
+    expect(metadata).toMatchObject({
+      name: "RETRY Devnet Test",
+      symbol: "RTEST",
+      uri: env.metadataUri,
+    });
+    expect(metadata?.isMutable).toBe(false);
+    log("metadata", { ...metadata });
+
+    // The creator holds exactly what the first buy returned: no hidden allocation.
+    const held = await tokenBalance(context, creator.publicKey, mint);
+    expect(held).toBe(prepared.initialBuyOut);
+    expect(held).toBeGreaterThanOrEqual(prepared.initialBuyMinimumOut!);
+    const read = await readRetryPool(context, pool);
+    // Every other token sits in the pool's vault (curve + graduation liquidity).
+    const vault = await getAccount(
+      connection,
+      new PublicKey(read.pool.baseVault),
+      "confirmed",
+    );
+    expect(vault.amount + held).toBe(info.supply);
+    expect(read.pool.creator).toBe(creator.publicKey.toBase58());
+    expect(read.pool.status).toBe("active");
+    log("pool after create", { ...read.pool });
+  });
+
+  it("buys with a quote from pool state and receives exactly the quoted amount", async () => {
+    const q = await quote("buy", SOL / 2n);
+    const before = await tokenBalance(context, trader.publicKey, mint);
+    const prepared = await prepareTrade(context, {
+      owner: trader.publicKey,
+      pool,
+      side: "buy",
+      amountIn: q.amountIn,
+      slippageBps: q.slippageBps,
+      reviewed: q,
+    });
+    evidence.buySignature = await run("buy 0.5 SOL", trader, prepared);
+    const after = await tokenBalance(context, trader.publicKey, mint);
+    expect(after - before).toBe(prepared.quote.amountOut);
+    const split = splitTradingFee(prepared.quote.fee);
+    log("buy fee split", {
+      fee: prepared.quote.fee,
+      ...split,
+      quote: prepared.quote,
+    });
+  });
+
+  it("sells half and receives at least the quoted minimum in SOL", async () => {
+    const held = await tokenBalance(context, trader.publicKey, mint);
+    const q = await quote("sell", held / 2n);
+    const before = BigInt(
+      await connection.getBalance(trader.publicKey, "confirmed"),
+    );
+    const prepared = await prepareTrade(context, {
+      owner: trader.publicKey,
+      pool,
+      side: "sell",
+      amountIn: q.amountIn,
+      slippageBps: q.slippageBps,
+      reviewed: q,
+    });
+    evidence.sellSignature = await run("sell half", trader, prepared);
+    const after = BigInt(
+      await connection.getBalance(trader.publicKey, "confirmed"),
+    );
+    // Network fee is the only other debit; WSOL is unwrapped back to SOL.
+    expect(after - before + 10_000n).toBeGreaterThanOrEqual(
+      prepared.quote.minimumAmountOut,
+    );
+    expect(await tokenBalance(context, trader.publicKey, mint)).toBe(
+      held - held / 2n,
+    );
+  });
+
+  it("refuses to sell more than the wallet holds", async () => {
+    const held = await tokenBalance(context, trader.publicKey, mint);
+    const q = await quote("sell", held + 1n);
+    await expect(
+      prepareTrade(context, {
+        owner: trader.publicKey,
+        pool,
+        side: "sell",
+        amountIn: q.amountIn,
+        slippageBps: q.slippageBps,
+        reviewed: q,
+      }),
+    ).rejects.toBeInstanceOf(QuoteError);
+  });
+
+  it("is stopped by the program when the minimum out is not met (slippage)", async () => {
+    const q = await quote("buy", SOL / 10n);
+    const tx = await context.client.pool.swap2({
+      owner: trader.publicKey,
+      pool,
+      swapBaseForQuote: false,
+      referralTokenAccount: null,
+      payer: trader.publicKey,
+      swapMode: 0,
+      amountIn: new BN(q.amountIn.toString()),
+      minimumAmountOut: new BN((q.amountOut + 1n).toString()),
+    });
+    const read = await readRetryPool(context, pool);
+    const error = await run("slippage guard", trader, {
+      tx,
+      expect: {
+        owner: trader.publicKey,
+        dbc: ["swap2"],
+        accounts: { pool, config: read.raw.poolState.config },
+        ataMints: [mint, WSOL_MINT],
+      },
+    }).catch((cause) => cause);
+    expect(error).toBeInstanceOf(SimulationError);
+    expect(userMessage(error)).toMatch(/slippage/);
+    log("slippage guard", { message: userMessage(error) });
+  });
+
+  it("completes the curve with a partial fill and stops quoting", async () => {
+    const read = await readRetryPool(context, pool);
+    const missing = read.pool.migrationQuoteThreshold - read.pool.quoteReserve;
+    const balance = BigInt(
+      await connection.getBalance(trader.publicKey, "confirmed"),
+    );
+    if (balance < missing + SOL / 2n) {
+      log("graduation skipped", {
+        reason: "not enough test SOL",
+        balance,
+        missing,
+      });
+      evidence.graduation = "skipped: not enough test SOL from the faucet";
+      return;
+    }
+    // Offer more than needed: the program fills up to the threshold and the rest stays.
+    const q = await quote("buy", missing + SOL / 5n);
+    expect(q.completesCurve).toBe(true);
+    expect(q.amountLeft).toBeGreaterThan(0n);
+    const prepared = await prepareTrade(context, {
+      owner: trader.publicKey,
+      pool,
+      side: "buy",
+      amountIn: q.amountIn,
+      slippageBps: q.slippageBps,
+      reviewed: q,
+    });
+    evidence.completeSignature = await run("complete curve", trader, prepared);
+    const after = await readRetryPool(context, pool);
+    expect(after.pool.quoteReserve).toBeGreaterThanOrEqual(
+      after.pool.migrationQuoteThreshold,
+    );
+    expect(after.pool.status).toBe("graduation-ready");
+    expect(graduationView(after.pool).canMigrate).toBe(true);
+    await expect(quote("buy", SOL / 10n)).rejects.toBeInstanceOf(QuoteError);
+    log("curve complete", { ...after.pool });
+  });
+
+  it("migrates to DAMM v2 with permanently locked liquidity (manual, permissionless)", async () => {
+    const read = await readRetryPool(context, pool);
+    if (!graduationView(read.pool).canMigrate) {
+      log("migration skipped", { reason: "curve not complete" });
+      return;
+    }
+    const dammConfig = new PublicKey(read.pool.dammV2Config);
+    const dammConfigInfo = await connection.getAccountInfo(dammConfig);
+    if (!dammConfigInfo) {
+      // Local validators do not have Meteora's public DAMM v2 configs unless cloned.
+      await expect(
+        prepareMigration(context, { payer: trader.publicKey, pool }),
+      ).rejects.toThrow(/DAMM v2 migration config is missing/);
+      log("migration skipped", {
+        reason: "DAMM v2 config account not on this validator",
+        dammConfig,
+      });
+      evidence.migration =
+        "skipped: DAMM v2 config not present on this validator";
+      return;
+    }
+    const prepared = await prepareMigration(context, {
+      payer: trader.publicKey,
+      pool,
+    });
+    evidence.migrateSignature = await run(
+      "migrate to DAMM v2",
+      trader,
+      prepared,
+      prepared.signers,
+    );
+    const after = await readRetryPool(context, pool);
+    expect(after.pool.isMigrated).toBe(true);
+    expect(after.pool.status).toBe("graduated");
+    const damm = await connection.getAccountInfo(prepared.dammV2Pool);
+    expect(damm?.owner.equals(DAMM_V2_PROGRAM)).toBe(true);
+    evidence.dammV2Pool = prepared.dammV2Pool.toBase58();
+    log("graduated", { dammV2Pool: prepared.dammV2Pool, pool: after.pool });
+  });
+
+  it("lets only the creator claim the creator share of trading fees, as SOL", async () => {
+    await expect(
+      prepareCreatorClaim(context, { creator: trader.publicKey, pool }),
+    ).rejects.toThrow(/Only the creator/);
+    const before = BigInt(
+      await connection.getBalance(creator.publicKey, "confirmed"),
+    );
+    const prepared = await prepareCreatorClaim(context, {
+      creator: creator.publicKey,
+      pool,
+    });
+    expect(prepared.amount).toBeGreaterThan(0n);
+    evidence.claimSignature = await run("creator claim", creator, prepared);
+    const after = BigInt(
+      await connection.getBalance(creator.publicKey, "confirmed"),
+    );
+    // Claimed SOL minus the network fee; a new WSOL account's rent is refunded on close.
+    expect(after - before).toBeGreaterThanOrEqual(prepared.amount - 10_000n);
+    const read = await readRetryPool(context, pool);
+    expect(read.pool.creatorQuoteFee).toBe(0n);
+    log("creator claim", {
+      claimed: prepared.amount,
+      balanceChange: after - before,
+    });
+  });
+
+  it("lists the launch from the DBC program accounts, filtered by the RETRY config", async () => {
+    const pools = await listRetryPools(context);
+    expect(pools.map((p) => p.address)).toContain(pool.toBase58());
+    const metadata = await readMetadata(context, [mint]);
+    expect(metadata.get(mint.toBase58())?.updateAuthority).toBe(
+      SYSTEM_PROGRAM.toBase58(),
+    );
+    const ata = getAssociatedTokenAddressSync(mint, creator.publicKey);
+    expect(
+      (await getAccount(connection, ata)).owner.equals(creator.publicKey),
+    ).toBe(true);
+    writeEvidence(evidence);
+  });
+});
