@@ -29,6 +29,26 @@ const pair = {
 };
 afterEach(() => vi.unstubAllGlobals());
 describe("Solana market identity and history", () => {
+  it("requests the largest page and validates an older-page cursor before HTTP", async () => {
+    const fetch = vi.fn(
+      async (_url: string) =>
+        new Response(
+          JSON.stringify({
+            meta: { base: { address: mint } },
+            data: { attributes: { ohlcv_list: [] } },
+          }),
+        ),
+    );
+    await loadSolanaCandles(token, pool, "1h", { fetch }, 1793145600);
+    const url = new URL(fetch.mock.calls[0][0] as unknown as string);
+    expect(url.searchParams.get("limit")).toBe("1000");
+    expect(url.searchParams.get("before_timestamp")).toBe("1793145600");
+    for (const cursor of [0, -1, 1.5, NaN])
+      await expect(
+        loadSolanaCandles(token, pool, "1h", { fetch }, cursor),
+      ).rejects.toThrow(/cursor/);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
   it("uses the Solana fallback when the primary provider is rate limited", async () => {
     const fetch = vi.fn(
       async (url: string) =>

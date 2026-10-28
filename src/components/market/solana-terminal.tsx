@@ -11,6 +11,7 @@ import {
 import { CLUSTERS, explorerUrl } from "@/config/solana";
 import {
   useCandles,
+  useCandleHistory,
   useMarketTrades,
   useOnchainToken,
   useTokenMarket,
@@ -53,17 +54,16 @@ export function SolanaTokenTerminal({ token }: { token: TokenRef }) {
   const [interval, setInterval] = useState<CandleInterval>("1h");
   const [mode, setMode] = useState<"candles" | "line">("candles");
   const [tab, setTab] = useState("activity");
-  const candles = useCandles(token, primary?.pool.id, interval);
+  const history = useCandleHistory(token, primary?.pool.id, interval);
+  const candles = history.newest;
+  const series = history.data;
   const daily = useCandles(token, primary?.pool.id, "1d");
   const activity = useMarketTrades(token, primary?.pool.id);
   const symbol =
     primary?.pool.baseToken.symbol && primary.pool.baseToken.symbol !== "Token"
       ? primary.pool.baseToken.symbol
       : "Token";
-  const ath = highestHigh(
-    daily.data?.candles ?? [],
-    candles.data?.candles ?? [],
-  );
+  const ath = highestHigh(daily.data?.candles ?? [], series?.candles ?? []);
   const fdv = computeFdvUsd(
     facts?.totalSupply ?? null,
     facts?.decimals ?? null,
@@ -221,9 +221,9 @@ export function SolanaTokenTerminal({ token }: { token: TokenRef }) {
                     </button>
                   </div>
                 </div>
-                {candles.data?.candles.length ? (
+                {series?.candles.length ? (
                   <CandleChart
-                    candles={candles.data.candles}
+                    candles={series.candles}
                     interval={interval}
                     mode={mode}
                     pairLabel={
@@ -232,6 +232,7 @@ export function SolanaTokenTerminal({ token }: { token: TokenRef }) {
                         : "Solana market"
                     }
                     ath={ath}
+                    onReachStart={history.loadOlder}
                   />
                 ) : (
                   <EmptyState
@@ -257,7 +258,7 @@ export function SolanaTokenTerminal({ token }: { token: TokenRef }) {
                     retrievedAt={candles.data.provenance.retrievedAt}
                     refreshMs={CANDLE_REFRESH_MS[interval]}
                     refreshFailed={candles.isError}
-                    detail="OHLCV price history"
+                    detail={`OHLCV price history${history.loadingOlder ? " · loading older candles" : history.olderFailed ? " · older candles unavailable" : ""}${series?.gaps ? ` · ${series.gaps} intervals without trades` : ""}`}
                   />
                 ) : null}
               </section>

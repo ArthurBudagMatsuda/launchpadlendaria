@@ -30,6 +30,8 @@ const DOWN_VOLUME = "rgba(240, 119, 135, 0.32)";
 const ATH = "#f0b45b";
 /** Empty bars kept right of the newest candle. */
 const RIGHT_OFFSET = 4;
+/** Older history is asked for once the view is this many bars from its start. */
+const START_MARGIN = 10;
 
 interface ChartApi {
   chart: IChartApi;
@@ -89,16 +91,14 @@ const priceMargins = (width: number) => ({
   top: width < 560 ? 0.2 : 0.1,
   bottom: 0.24,
 });
-/** Zooming out stops once every candle fits; dragging stays free. */
-const fitSpacing = (width: number, total: number) =>
-  Math.max(0.5, width / (total + RIGHT_OFFSET));
 
 /**
  * OHLCV chart on TradingView's open-source Lightweight Charts: drag to move,
  * wheel or pinch to zoom, axes in UTC with dates. Like TradingView and GMGN,
  * candles sit side by side: an interval without trades is skipped, never
  * filled with a made-up price, and the dates on the axis show the jump. It
- * opens on the newest candles; older history is one drag or zoom away.
+ * opens on the newest candles; older history is one drag or zoom away, and
+ * `onReachStart` asks for the page before the oldest candle.
  */
 export default function CandleChart({
   candles,
@@ -106,6 +106,7 @@ export default function CandleChart({
   mode,
   pairLabel,
   ath,
+  onReachStart,
 }: {
   /** Oldest first, one per interval with trades. */
   candles: readonly Candle[];
@@ -113,6 +114,7 @@ export default function CandleChart({
   mode: "candles" | "line";
   pairLabel: string;
   ath: PriceHigh | null;
+  onReachStart?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<ChartApi | null>(null);
@@ -121,6 +123,10 @@ export default function CandleChart({
   const [hovered, setHovered] = useState<Candle | null>(null);
   const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [logScale, setLogScale] = useState(false);
+  const reachStart = useRef(onReachStart);
+  useEffect(() => {
+    reachStart.current = onReachStart;
+  });
 
   const resetView = useCallback(() => {
     const current = api.current;
@@ -158,8 +164,9 @@ export default function CandleChart({
         borderVisible: false,
         scaleMargins: priceMargins(element.clientWidth),
       },
-      // Either end can be dragged off screen, as on TradingView; the chart
-      // only keeps two bars in view.
+      // As on TradingView and GMGN, either end can be dragged off screen and
+      // zooming out goes past the whole history, down to half a pixel a bar;
+      // the chart only keeps two bars in view.
       timeScale: {
         borderVisible: false,
         rightOffset: RIGHT_OFFSET,
@@ -219,22 +226,17 @@ export default function CandleChart({
           : null,
       ),
     );
+    chart.timeScale().subscribeVisibleLogicalRangeChange((visible) => {
+      setRange(visible ? { from: visible.from, to: visible.to } : null);
+      if (visible && visible.from < START_MARGIN) reachStart.current?.();
+    });
     chart
       .timeScale()
-      .subscribeVisibleLogicalRangeChange((visible) =>
-        setRange(visible ? { from: visible.from, to: visible.to } : null),
+      .subscribeSizeChange((width) =>
+        chart
+          .priceScale("right")
+          .applyOptions({ scaleMargins: priceMargins(width) }),
       );
-    chart.timeScale().subscribeSizeChange((width) => {
-      chart
-        .priceScale("right")
-        .applyOptions({ scaleMargins: priceMargins(width) });
-      chart.timeScale().applyOptions({
-        minBarSpacing: fitSpacing(
-          chart.timeScale().width(),
-          drawn.current.length,
-        ),
-      });
-    });
     api.current = { chart, candles, line, volume };
     placed.current = false;
     return () => {
@@ -273,12 +275,6 @@ export default function CandleChart({
     const priceFormat = { type: "custom" as const, formatter, minMove: step };
     current.candles.applyOptions({ priceFormat });
     current.line.applyOptions({ priceFormat });
-    current.chart.timeScale().applyOptions({
-      minBarSpacing: fitSpacing(
-        current.chart.timeScale().width(),
-        candles.length,
-      ),
-    });
     // Refreshes keep the reader's zoom; only a new chart's first data sets
     // the view.
     if (!placed.current) {

@@ -1,6 +1,81 @@
 import { test, expect } from "@playwright/test";
 import { ALICE, BOB, solanaFixture } from "./solana-fixtures";
 const root = "/launchpadlendaria";
+test("older Solana candles load when panning and preserve the chart view", async ({
+  page,
+}) => {
+  await solanaFixture(page, { market: true });
+  const end = Math.floor(Date.now() / 3600000) * 3600 - 3600;
+  const rows = Array.from({ length: 350 }, (_, i) => [
+    end - i * 3600,
+    1,
+    3,
+    0.5,
+    2,
+    10,
+  ]);
+  const olderRequests: string[] = [];
+  await page.route(
+    /https:\/\/api\.geckoterminal\.com\/.*\/ohlcv\/hour/,
+    async (route) => {
+      const url = new URL(route.request().url()),
+        before = url.searchParams.get("before_timestamp");
+      if (before) olderRequests.push(before);
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          meta: { base: { address: ALICE } },
+          data: {
+            attributes: {
+              ohlcv_list: rows
+                .filter(([time]) => !before || time <= Number(before))
+                .slice(0, 200),
+            },
+          },
+        }),
+      });
+    },
+  );
+  await page.goto(`${root}/`);
+  await page
+    .getByLabel("Application Solana cluster")
+    .selectOption("mainnet-beta");
+  await page.getByPlaceholder("Search name, ticker or mint…").fill(ALICE);
+  await page.locator(".lookup-card").click();
+  const chart = page.locator(".price-chart-canvas");
+  await expect(chart.locator("canvas").first()).toBeVisible();
+  await chart.scrollIntoViewIfNeeded();
+  const box = (await chart.boundingBox())!;
+  for (let n = 0; n < 12 && !olderRequests.length; n++) {
+    await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.5, {
+      steps: 15,
+    });
+    await page.mouse.up();
+  }
+  await expect.poll(() => olderRequests).toContain(String(rows[199][0]));
+  const stamp = new Date(rows[349][0] * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "UTC",
+  });
+  await expect(chart).toHaveAttribute(
+    "aria-label",
+    new RegExp(`from ${stamp} UTC`),
+  );
+  await page.getByRole("button", { name: "Reset view" }).click();
+  await expect
+    .poll(async () =>
+      Number(
+        await page.locator(".price-chart").getAttribute("data-visible-from"),
+      ),
+    )
+    .toBeGreaterThan(150);
+});
 test("Mainnet adapters render indexed figures, original chart and signatures", async ({
   page,
 }, info) => {

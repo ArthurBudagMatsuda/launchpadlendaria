@@ -14,7 +14,13 @@ import {
   valueUsd,
 } from "@/lib/market/metrics";
 import { normalizeCandles } from "@/lib/market/solana-market";
-import { highestHigh, initialBars, priceStep } from "@/lib/market/chart-series";
+import {
+  countGaps,
+  highestHigh,
+  initialBars,
+  mergeCandles,
+  priceStep,
+} from "@/lib/market/chart-series";
 import {
   quotePrice,
   tokenAmount as formatAmount,
@@ -186,6 +192,20 @@ describe("OHLCV normalization", () => {
       T - D,
     );
     expect(highestHigh([], [])).toBeNull();
+  });
+
+  it("joins older pages to the newest one without repeats or holes", () => {
+    const older = [candle(T), candle(T + H), candle(T + 3 * H)];
+    // GeckoTerminal's older page includes its boundary candle (T + 3h); the
+    // newer copy of a candle wins.
+    const newest = [candle(T + 3 * H, 0.5, 2.2), candle(T + 4 * H)];
+    const merged = mergeCandles(older, newest);
+    expect(merged.map((c) => c.time)).toEqual([T, T + H, T + 3 * H, T + 4 * H]);
+    expect(merged[2].high).toBe(2.2);
+    // One hour without trades between T + 1h and T + 3h.
+    expect(countGaps(merged, H)).toBe(1);
+    expect(mergeCandles()).toEqual([]);
+    expect(countGaps([], H)).toBe(0);
   });
 
   it("opens the chart on the newest candles and sizes the price step", () => {
