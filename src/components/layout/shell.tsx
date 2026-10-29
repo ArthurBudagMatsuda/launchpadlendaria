@@ -53,7 +53,8 @@ export function Shell({ children }: { children: ReactNode }) {
       <footer className="footer">
         <span className="footer-status">
           <i />
-          Preview mode<span className="footer-divider">/</span>Built on Solana
+          Devnet · Mainnet locked<span className="footer-divider">/</span>Built
+          on Solana
         </span>
         <span>Every new beginning starts with a retry.</span>
         <button onClick={() => setHelp(true)}>
@@ -65,27 +66,26 @@ export function Shell({ children }: { children: ReactNode }) {
         open={help}
         onOpenChange={setHelp}
         title="A new beginning on Solana."
-        description="RETRY · Foundation preview"
+        description="RETRY · Devnet MVP"
       >
         <div className="info-box">
           <p>
-            Discover tokens on Solana, preview your next launch, and connect a
-            Solana wallet.
+            Launch a token on a Meteora Dynamic Bonding Curve, trade it on the
+            curve, and watch it graduate to Meteora DAMM v2 with its liquidity
+            locked for good.
           </p>
           <p>
-            Prices, charts, pools and market activity come from public market
-            data (GeckoTerminal, with DEX Screener as a fallback) and token
-            identities from Solana RPC. Each figure shows its source and update
-            time. Tracked tokens are external: none was launched on RETRY.
+            Launching and trading work on Solana Devnet with free test SOL.
+            Mainnet is locked in code until the economics and a security review
+            are approved.
           </p>
           <p>
-            Trading and token launches are coming soon. No funds can be moved
-            through this app.
+            RETRY never holds your funds or keys. Every launch, trade and claim
+            is simulated first and needs your approval in the wallet.
           </p>
           <p>
-            Public keys and native SOL balances are read on the application’s
-            selected Solana cluster. Connecting never asks for a signature or a
-            transaction.
+            External mints and their public market data (GeckoTerminal, DEX
+            Screener fallback) stay read-only. Each figure shows its source.
           </p>
         </div>
       </Modal>

@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { ALICE, BOB, solanaFixture } from "./solana-fixtures";
+import {
+  ALICE,
+  BOB,
+  READ_ONLY_RPC_METHODS,
+  solanaFixture,
+} from "./solana-fixtures";
 const root = "/launchpadlendaria";
 test("copy confirmation follows the account being copied", async ({ page }) => {
   await solanaFixture(page);
@@ -26,7 +31,7 @@ test("copy confirmation follows the account being copied", async ({ page }) => {
     page.getByRole("button", { name: "Copy address", exact: true }),
   ).toBeVisible();
 });
-test("Create preserves validated metadata and image through the disabled launch summary", async ({
+test("Create preserves validated metadata and image through the locked launch step", async ({
   page,
 }) => {
   await solanaFixture(page, { absent: true });
@@ -49,8 +54,12 @@ test("Create preserves validated metadata and image through the disabled launch 
   });
   await page.getByRole("button", { name: "Continue to Preview" }).click();
   await page.getByRole("button", { name: "Continue to Summary" }).click();
+  // No Devnet config or metadata host in this build: nothing can be signed.
   await expect(
-    page.getByRole("button", { name: /Launch Token.*Coming Soon/ }),
+    page.getByRole("button", { name: /Review launch cost/ }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /Sign & launch/ }),
   ).toBeDisabled();
   await expect(page.locator(".create-form")).toContainText("Review Token");
   await page.reload();
@@ -298,10 +307,8 @@ for (const name of ["Phantom", "Solflare", "Backpack"])
     await page.getByRole("button", { name: "Disconnect", exact: true }).click();
     await expect(page.locator(".portfolio-connect")).toBeVisible();
     expect(
-      calls.every((method) =>
-        ["getGenesisHash", "getBalance"].includes(method),
-      ),
-    ).toBe(true);
+      calls.filter((method) => !READ_ONLY_RPC_METHODS.has(method)),
+    ).toEqual([]);
   });
 test("rejection and RPC failure have honest user states", async ({ page }) => {
   await solanaFixture(page, { reject: true });
@@ -361,9 +368,52 @@ test("mint lookup preserves terminal and disabled trade, rejects EVM address and
     `${root}/token/base/0x1111111111111111111111111111111111111111/`,
   );
   expect(response?.status()).toBe(404);
-  expect(
-    calls.every((method) =>
-      ["getGenesisHash", "getBalance", "getAccountInfo"].includes(method),
+  expect(calls.filter((method) => !READ_ONLY_RPC_METHODS.has(method))).toEqual(
+    [],
+  );
+});
+
+test("launching stays locked on Mainnet and without a metadata host, with nothing signed", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await solanaFixture(page, { restore: true });
+  await page.goto(`${root}/create/`);
+  await page.locator("#name").fill("Locked Cat");
+  await page.locator("#symbol").fill("LOCK");
+  await page
+    .locator("#description")
+    .fill("A launch that must stay locked here.");
+  await page.locator("#token-image").setInputFiles({
+    name: "cat.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "base64",
     ),
-  ).toBe(true);
+  });
+  await expect(page.getByText("Image added to your draft.")).toBeVisible();
+  await page.getByRole("button", { name: /Continue to Preview/ }).click();
+  await page.getByRole("button", { name: /Continue to Summary/ }).click();
+  await expect(
+    page.getByText("1,000,000,000 · fixed, 9 decimals"),
+  ).toBeVisible();
+  // Devnet config is registered; the metadata host is deliberately not set.
+  await expect(
+    page.getByRole("button", { name: /Review launch cost/ }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /Sign & launch/ }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Application Solana cluster")
+    .selectOption("mainnet-beta");
+  await expect(
+    page.getByText(/Solana Mainnet are locked/).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Sign & launch/ }),
+  ).toBeDisabled();
+  expect(errors).toEqual([]);
 });

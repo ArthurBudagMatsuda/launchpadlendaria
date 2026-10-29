@@ -58,7 +58,7 @@ export function ConnectWalletButton({
         open={open}
         onOpenChange={dismiss}
         title={connected ? "Your Solana wallet" : "Connect a Solana wallet"}
-        description="Read-only access. No signatures or transactions."
+        description="Connecting shares your public address. Every transaction needs your approval in the wallet."
       >
         {connected ? (
           <div className="solana-wallet-menu">

@@ -5,6 +5,8 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 4174;
 export default defineConfig({
   testDir: "./e2e",
+  // e2e/chain needs a validator; it has its own config (playwright.chain.config.ts).
+  testIgnore: ["chain/**"],
   timeout: 30_000,
   expect: { timeout: 7_000 },
   fullyParallel: true,

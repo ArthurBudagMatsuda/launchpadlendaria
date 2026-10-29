@@ -18,7 +18,6 @@ export interface SolanaConfig {
   rpcUrl: string;
   wsUrl?: string;
 }
-export const financialActionsEnabled = false;
 export function isCluster(value: unknown): value is SolanaCluster {
   return value === "devnet" || value === "mainnet-beta";
 }
@@ -28,7 +27,11 @@ export function parseSolanaConfig(
   const cluster = env.cluster || "devnet";
   if (!isCluster(cluster)) throw new Error("Unsupported Solana cluster.");
   if ([env.trading, env.launch].some((value) => value && value !== "false"))
-    throw new Error("Financial operations are unavailable in this migration.");
+    // Execution is governed in code (src/config/retry-protocol.ts), never by
+    // a build flag, so these legacy flags may only be absent or "false".
+    throw new Error(
+      "Financial operations cannot be enabled by environment flags.",
+    );
   const rpcUrl = env.rpc || CLUSTERS[cluster].rpc;
   const rpc = new URL(rpcUrl);
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(rpc.hostname);

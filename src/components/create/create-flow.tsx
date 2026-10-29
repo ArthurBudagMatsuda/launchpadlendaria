@@ -22,8 +22,9 @@ import {
 } from "@/lib/validation";
 import { useTokenDraft } from "@/hooks/use-token-draft";
 import { useApp } from "@/components/providers";
+import { curveSummary } from "@/lib/meteora/curve";
 import { Button } from "@/components/ui/button";
-import { WalletStatus } from "@/components/wallet/solana-status";
+import { LaunchPanel } from "@/components/launch/launch-panel";
 type Errors = Partial<Record<keyof TokenDraft, string>>;
 export function CreateFlow() {
   const { draft, saveDraft } = useTokenDraft();
@@ -179,7 +180,7 @@ export function CreateFlow() {
         </div>
         <span className="status-label">
           <LockKeyhole size={11} />
-          Preview only
+          Devnet · Mainnet locked
         </span>
       </div>
       <div className="create-layout">
@@ -332,42 +333,17 @@ export function CreateFlow() {
                 </dl>
                 <p className="notice-strip mt-6">
                   <CircleHelp size={16} />
-                  This preview is saved locally. No token has been created.
+                  This preview is saved locally. No token has been created yet.
                 </p>
               </>
             ) : (
               <>
                 <h2>Almost a new beginning.</h2>
                 <p className="muted">
-                  Your token details are ready. Onchain launches are coming in a
-                  future stage.
+                  Review the launch terms, then sign one transaction that
+                  creates your token on Solana.
                 </p>
-                <div className="notice-strip">
-                  <LockKeyhole size={17} />
-                  Coming Soon — Preview Only
-                </div>
-                <dl className="summary-list">
-                  {[
-                    ["Token", `${draft.name} (${draft.symbol})`],
-                    ["Blockchain", "Solana"],
-                    ["Token supply", "To be defined"],
-                    ["Launch fee", "To be defined"],
-                    ["Bonding curve model", "To be defined"],
-                    ["Graduation rules", "To be defined"],
-                    ["Liquidity migration", "Coming soon"],
-                  ].map(([k, v]) => (
-                    <div key={k}>
-                      <dt>{k}</dt>
-                      <dd>{v}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <WalletStatus disconnectedText="Launching will require a Solana wallet. SPL token launches are not enabled yet, so connecting is optional and your draft stays saved." />
-                <p className="form-help mt-5">
-                  Economic parameters require specification, testing and review
-                  before any deployment. This draft is not submitted to a
-                  blockchain or server.
-                </p>
+                <LaunchPanel draft={draft} />
               </>
             )}
             <div className="form-actions">
@@ -399,17 +375,12 @@ export function CreateFlow() {
                   Continue to {step === 0 ? "Preview" : "Summary"}
                   <ArrowRight size={14} />
                 </Button>
-              ) : (
-                <Button type="button" disabled>
-                  <LockKeyhole size={14} />
-                  Launch Token · Coming Soon
-                </Button>
-              )}
+              ) : null}
             </div>
             <p className="draft-note">
               <CloudCheck size={12} />
               {persisted
-                ? "Draft saved in this browser. No wallet required."
+                ? "Draft saved in this browser. A wallet is needed only to launch."
                 : "Draft kept in this tab only. Browser storage unavailable."}
             </p>
           </form>
@@ -446,12 +417,12 @@ export function CreateFlow() {
             </span>
             <dl className="detail-list">
               <div>
-                <dt>Market cap</dt>
-                <dd>—</dd>
+                <dt>Supply</dt>
+                <dd>1,000,000,000</dd>
               </div>
               <div>
-                <dt>Volume</dt>
-                <dd>—</dd>
+                <dt>Starting FDV</dt>
+                <dd>~{curveSummary().startFdvSol} SOL</dd>
               </div>
               <div>
                 <dt>Bonding curve</dt>
@@ -461,8 +432,8 @@ export function CreateFlow() {
           </div>
           <p className="preview-note">
             <CircleHelp size={16} />
-            Your preview updates as you type. Market data will appear only after
-            a real launch is integrated.
+            Your preview updates as you type. Prices and progress appear once
+            the token is live on its curve.
           </p>
         </aside>
       </div>

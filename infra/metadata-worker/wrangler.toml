@@ -1,0 +1,24 @@
+# RETRY metadata host. Deploy from this folder with `npx wrangler deploy`
+# only after owner approval and protected Access configuration. No deploy was run.
+name = "retry-metadata"
+main = "src/index.ts"
+compatibility_date = "2026-10-23"
+
+[vars]
+# Set to this Worker's public URL after the first deploy.
+PUBLIC_URL = "https://retry-metadata.example.workers.dev"
+ALLOWED_ORIGINS = "http://127.0.0.1:3000"
+# Fill with the owner's real Access application; missing values fail closed.
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUDIENCE = ""
+
+[[kv_namespaces]]
+binding = "METADATA"
+# Replace with the id printed by `npx wrangler kv namespace create METADATA`.
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[[ratelimits]]
+name = "UPLOAD_RATE_LIMITER"
+# Choose an unused positive namespace ID in the owner's account before deploy.
+namespace_id = "REPLACE_WITH_RATE_LIMIT_NAMESPACE_ID"
+simple = { limit = 10, period = 60 }

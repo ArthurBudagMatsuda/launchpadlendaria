@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s | RETRY",
   },
   description:
-    "Discover your next beginning. RETRY is a Solana-native memecoin launchpad. Read-only wallet and mint inspection; trading and launches are not enabled yet.",
+    "Discover your next beginning. RETRY is a Solana-native memecoin launchpad. Launch and trade on Meteora bonding curves, on Solana Devnet while Mainnet stays locked.",
   icons: { icon: assetPath("/brand/retry-symbol.svg") },
 };
 export default function RootLayout({

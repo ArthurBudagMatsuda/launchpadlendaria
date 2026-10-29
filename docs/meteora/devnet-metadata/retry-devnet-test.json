@@ -1,0 +1,10 @@
+{
+  "name": "RETRY Devnet Test",
+  "symbol": "RTEST",
+  "description": "Test token launched by RETRY's automated Devnet run. It has no value and is not an offer.",
+  "image": "https://raw.githubusercontent.com/ArthurBudagMatsuda/launchpadlendaria/main/public/brand/retry-logo-3d.webp",
+  "extensions": {
+    "website": "https://arthurbudagmatsuda.github.io/launchpadlendaria/"
+  },
+  "createdOn": "RETRY"
+}

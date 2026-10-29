@@ -33,8 +33,8 @@ export function WalletStatus({
         </div>
       </dl>
       <p className="tiny">
-        Read-only connection. Cluster selection does not switch your wallet
-        settings.
+        RETRY asks this wallet to sign only when you confirm an action. Set the
+        wallet to the same cluster; RETRY does not switch it.
       </p>
     </div>
   );

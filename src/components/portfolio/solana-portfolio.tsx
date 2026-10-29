@@ -17,7 +17,19 @@ import {
 import { useApp } from "@/components/providers";
 import { EmptyState } from "@/components/ui/feedback";
 import { CLUSTERS, explorerUrl } from "@/config/solana";
-import { shorten } from "@/lib/format";
+import { ago, shorten } from "@/lib/format";
+import { tokenHref } from "@/config/tracked-mints";
+import {
+  useMeteora,
+  useOperations,
+  useRetryHoldings,
+  useRetryLaunches,
+} from "@/hooks/use-retry";
+import { sol, tokens } from "@/lib/meteora/format";
+import { LaunchCard } from "@/components/launch/launch-card";
+import { ExplorerLink, StatusBadge } from "@/components/launch/launch-ui";
+import type { SolanaAddress } from "@/lib/solana/address";
+import Decimal from "decimal.js";
 export function Portfolio() {
   const wallet = useSolanaWallet();
   const balance = useSolBalance();
@@ -57,7 +69,7 @@ export function Portfolio() {
             </span>
             <span>
               <Radio size={12} />
-              Read-only access
+              You sign every transaction
             </span>
           </div>
         </section>
@@ -128,7 +140,7 @@ export function Portfolio() {
               <p>
                 {balance.isError
                   ? "RPC request failed. No estimated balance is shown."
-                  : "Lamports read on the selected cluster, without a signature."}
+                  : "Lamports read on the selected cluster."}
               </p>
               <button
                 className="reference-button mt-3"
@@ -155,30 +167,13 @@ export function Portfolio() {
                 </button>
               ))}
             </nav>
-            <EmptyState
-              title={
-                tab === "holdings"
-                  ? "SPL holdings are not indexed yet"
-                  : tab === "created"
-                    ? "An idea is a good place to start."
-                    : "A fresh page in your story."
-              }
-              action={
-                <Link
-                  href={tab === "created" ? "/create" : "/"}
-                  className="button button-secondary"
-                >
-                  {tab === "created" ? "Preview a token" : "Explore tokens"}
-                  <ArrowUpRight size={14} />
-                </Link>
-              }
-            >
-              {tab === "holdings"
-                ? "Token accounts, mint ownership and prices need verified indexing. No holdings or PnL are inferred."
-                : tab === "created"
-                  ? "Token launches are not enabled. You can prepare a local draft."
-                  : "Solana transaction signatures are not indexed yet. No activity is invented."}
-            </EmptyState>
+            {tab === "holdings" ? (
+              <Holdings owner={wallet.address} />
+            ) : tab === "created" ? (
+              <Created owner={wallet.address} />
+            ) : (
+              <Activity owner={wallet.address} />
+            )}
           </section>
         </>
       )}
@@ -187,6 +182,182 @@ export function Portfolio() {
           {wallet.configError}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function Holdings({ owner }: { owner: string }) {
+  const holdings = useRetryHoldings(owner);
+  if (holdings.isError)
+    return (
+      <EmptyState title="Holdings unavailable">
+        Solana RPC did not answer. No balances are estimated.
+      </EmptyState>
+    );
+  if (!holdings.data?.length)
+    return (
+      <EmptyState
+        title={
+          holdings.isPending ? "Reading token accounts…" : "No RETRY tokens yet"
+        }
+        action={
+          <Link href="/" className="button button-secondary">
+            Explore tokens
+            <ArrowUpRight size={14} />
+          </Link>
+        }
+      >
+        RETRY tokens held by this wallet on the selected cluster appear here,
+        read from its SPL token accounts.
+      </EmptyState>
+    );
+  return (
+    <div className="table-scroll">
+      <table className="activity-table">
+        <caption className="sr-only">RETRY tokens held by this wallet.</caption>
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Balance</th>
+            <th>Value at curve price</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {holdings.data.map(({ launch, amount }) => (
+            <tr key={launch.pool.baseMint}>
+              <td>
+                <Link
+                  href={tokenHref({
+                    cluster: launch.pool.cluster,
+                    address: launch.pool.baseMint as SolanaAddress,
+                  })}
+                >
+                  {launch.metadata?.symbol ?? shorten(launch.pool.baseMint)}
+                </Link>
+              </td>
+              <td>{tokens(amount)}</td>
+              <td>
+                {new Decimal(amount.toString())
+                  .div(1e9)
+                  .mul(launch.pool.priceSol)
+                  .toSignificantDigits(4)
+                  .toString()}{" "}
+                SOL
+              </td>
+              <td>
+                <StatusBadge status={launch.pool.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="tiny mt-3">
+        Value is balance × the curve&apos;s spot price, before the 1% fee and
+        price impact a sale would have. RETRY does not show PnL: it does not
+        know your entry prices.
+      </p>
+    </div>
+  );
+}
+
+function Created({ owner }: { owner: string }) {
+  const launches = useRetryLaunches();
+  const mine = (launches.data ?? []).filter(
+    (launch) => launch.pool.creator === owner,
+  );
+  if (!mine.length)
+    return (
+      <EmptyState
+        title={
+          launches.isPending && launches.fetchStatus !== "idle"
+            ? "Reading launches…"
+            : "An idea is a good place to start."
+        }
+        action={
+          <Link href="/create" className="button button-secondary">
+            Create a token
+            <ArrowUpRight size={14} />
+          </Link>
+        }
+      >
+        Tokens this wallet launched on RETRY appear here with their unclaimed
+        creator fees.
+      </EmptyState>
+    );
+  return (
+    <div className="token-grid portfolio-created">
+      {mine.map((launch) => (
+        <div key={launch.pool.address}>
+          <LaunchCard launch={launch} />
+          <p className="tiny mt-2">
+            Unclaimed creator fees: {sol(launch.pool.creatorQuoteFee, 6)}. Claim
+            them on the token page.
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Activity({ owner }: { owner: string }) {
+  const { context } = useMeteora();
+  const { operations } = useOperations();
+  const mine = operations.filter(
+    (op) => op.owner === owner && op.cluster === context?.cluster,
+  );
+  if (!mine.length)
+    return (
+      <EmptyState title="A fresh page in your story.">
+        Launches, trades and claims you send from this browser appear here, with
+        their confirmation status read from Solana.
+      </EmptyState>
+    );
+  return (
+    <div className="table-scroll">
+      <table className="activity-table">
+        <caption className="sr-only">
+          Transactions sent from this browser.
+        </caption>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Action</th>
+            <th>Status</th>
+            <th>Transaction</th>
+          </tr>
+        </thead>
+        <tbody>
+          {mine.map((op) => (
+            <tr key={op.signature}>
+              <td>{ago(op.createdAt)}</td>
+              <td>{op.summary}</td>
+              <td
+                className={
+                  op.status === "confirmed"
+                    ? "positive"
+                    : op.status === "sent"
+                      ? ""
+                      : "negative"
+                }
+              >
+                {op.status === "sent" ? "waiting" : op.status}
+              </td>
+              <td>
+                <ExplorerLink
+                  cluster={op.cluster}
+                  kind="tx"
+                  value={op.signature}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="tiny mt-3">
+        Kept in this browser only. Other devices and wallets&apos; history are
+        on the explorer.
+      </p>
     </div>
   );
 }
