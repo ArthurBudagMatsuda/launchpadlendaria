@@ -9,6 +9,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import type { TransactionSigner } from "@/lib/meteora/transactions";
+import { publicRpcTransport } from "./public-rpc";
 import {
   DEVNET_GENESIS,
   devnetBudget,
@@ -54,7 +55,11 @@ export function connect() {
     !["localhost", "127.0.0.1", "[::1]"].includes(new URL(env.rpc).hostname)
   )
     throw new Error("Local chain tests require a loopback RPC.");
-  return new Connection(env.rpc, { commitment: "confirmed" });
+  return new Connection(env.rpc, {
+    commitment: "confirmed",
+    disableRetryOnRateLimit: env.mode === "devnet",
+    fetch: env.mode === "devnet" ? publicRpcTransport() : undefined,
+  });
 }
 
 /** Signs like a wallet: a copy of the bytes, signed, handed back. */
