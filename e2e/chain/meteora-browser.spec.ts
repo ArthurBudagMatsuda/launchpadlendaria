@@ -15,8 +15,9 @@ import {
 } from "../../tests/fixtures/cloudflare-access";
 
 // The whole RETRY flow in a real browser against a real validator running
-// Meteora's programs: launch with a first buy, buy, sell, portfolio. Only two
-// things are stand-ins, both outside RETRY's code: the wallet extension (a
+// Meteora's programs: launch with a first buy, buy, sell, complete the curve,
+// graduate to DAMM v2, buy there, claim LP fees, portfolio. Only two things
+// are stand-ins, both outside RETRY's code: the wallet extension (a
 // Wallet Standard wallet whose key signs in this test process) and
 // Cloudflare (the metadata Worker runs in-process on an in-memory KV).
 // The validator answers as Devnet: only its genesis hash is rewritten.
@@ -185,7 +186,7 @@ async function setup(page: Page, owner: Keypair) {
   return signed;
 }
 
-test("launch, buy, sell and portfolio against Meteora's programs", async ({
+test("launch, trade, graduate and trade on DAMM v2 against Meteora's programs", async ({
   page,
 }, info) => {
   test.setTimeout(240_000);
@@ -193,7 +194,8 @@ test("launch, buy, sell and portfolio against Meteora's programs", async ({
   const connection = new Connection(RPC, "confirmed");
   const airdrop = await connection.requestAirdrop(
     owner.publicKey,
-    5 * LAMPORTS_PER_SOL,
+    // The trades, plus the 10 SOL that complete the curve.
+    15 * LAMPORTS_PER_SOL,
   );
   await connection.confirmTransaction({
     signature: airdrop,
@@ -244,6 +246,8 @@ test("launch, buy, sell and portfolio against Meteora's programs", async ({
     { timeout: 30_000 },
   );
   await expect(page.locator(".token-detail-heading img")).toBeVisible();
+  const mint = new URL(page.url()).searchParams.get("mint");
+  expect(mint).toMatch(/^\w{32,44}$/);
   await expect(page.locator(".trade-info").first()).toContainText("Graduation");
   await page.locator("#trade-amount").fill("0.1");
   await expect(page.locator(".trade-summary")).toContainText("BCAT", {
@@ -268,23 +272,84 @@ test("launch, buy, sell and portfolio against Meteora's programs", async ({
     fullPage: true,
   });
 
+  // Complete the curve from the same form: the program fills up to the
+  // threshold and refunds the rest (partial fill).
+  await page.getByRole("button", { name: "Buy", exact: true }).click();
+  await page.locator("#trade-amount").fill("10.5");
+  await expect(
+    page.getByText("This buy completes the curve.", { exact: false }),
+  ).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Buy BCAT" }).click();
+  await expect(
+    page.getByText("Bought. Balances refresh in a moment."),
+  ).toBeVisible({ timeout: 60_000 });
+
+  // Devnet has no Meteora keeper: anyone can submit the migration here.
+  const graduate = page.getByRole("button", { name: /Graduate to DAMM v2/ });
+  await expect(graduate).toBeEnabled({ timeout: 30_000 });
+  await graduate.click();
+  await expect(
+    page.getByText("Graduated. The DAMM v2 pool is live."),
+  ).toBeVisible({ timeout: 60_000 });
+
+  // The same page now proves the lock and trades the graduated pool.
+  await expect(page.getByText("Lock verified on-chain")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    page.getByText("trades go to this token's Meteora DAMM v2 pool", {
+      exact: false,
+    }),
+  ).toBeVisible({ timeout: 30_000 });
+  await page.locator("#trade-amount").fill("0.2");
+  await expect(page.locator(".trade-summary")).toContainText("BCAT", {
+    timeout: 20_000,
+  });
+  await page.getByRole("button", { name: "Buy BCAT" }).click();
+  await expect(
+    page.getByText("Bought. Balances refresh in a moment."),
+  ).toBeVisible({ timeout: 60_000 });
+
+  // The creator holds one of the two locked positions and claims its fees.
+  const claim = page.getByRole("button", { name: "Claim LP fees" });
+  await expect(claim).toBeEnabled({ timeout: 30_000 });
+  await claim.click();
+  await expect(
+    page.getByText("LP fees claimed. The locked liquidity did not move."),
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText("Lock verified on-chain")).toBeVisible();
+  // A full-page capture taken while scrolled draws the fixed header mid-page.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: `test-results/chain-graduated-${info.project.name}.png`,
+    fullPage: true,
+  });
+
   await page.goto(`${root}/portfolio/`);
   await expect(page.locator(".activity-table")).toContainText("BCAT", {
     timeout: 30_000,
   });
+  await page.getByRole("button", { name: "LP positions" }).click();
+  await expect(page.locator(".activity-table")).toContainText("Permanently", {
+    timeout: 30_000,
+  });
   await page.getByRole("button", { name: "Activity" }).click();
   await expect(page.locator(".activity-table")).toContainText("Launch BCAT");
+  await expect(page.locator(".activity-table")).toContainText(
+    "Graduate to Meteora DAMM v2",
+  );
   await expect(page.locator(".activity-table")).toContainText("confirmed");
   await page.goto(`${root}/`);
   await expect(
-    page.locator(".launch-card").filter({ hasText: "Browser Cat" }),
-  ).toBeVisible({ timeout: 30_000 });
+    page.locator(`.launch-card[href*="mint=${mint}"]`),
+  ).toContainText("Browser Cat", { timeout: 30_000 });
   await page.screenshot({
     path: `test-results/chain-discover-${info.project.name}.png`,
     fullPage: true,
   });
 
-  // Three wallet signatures: launch, buy, sell. Nothing else was signed.
-  expect(signed).toHaveLength(3);
+  // Seven wallet signatures: launch, buy, sell, the buy that completes the
+  // curve, the migration, the DAMM v2 buy and the LP fee claim. Nothing else.
+  expect(signed).toHaveLength(7);
   expect(errors).toEqual([]);
 });

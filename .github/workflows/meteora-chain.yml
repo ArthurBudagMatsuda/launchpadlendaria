@@ -143,7 +143,7 @@ jobs:
       - name: Point the test build at the validator's RETRY config
         if: env.APP_CONFIG == ''
         run: node tests/chain/use-validator-config.mjs evidence-validator.json
-      - name: Browser flow (launch, buy, sell, portfolio) on the validator
+      - name: Browser flow (launch, trade, graduate, DAMM v2, LP fees, portfolio) on the validator
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm exec playwright test --config playwright.chain.config.ts
