@@ -1,6 +1,7 @@
 import { Buffer } from "buffer";
 import {
   PublicKey,
+  SendTransactionError,
   Transaction,
   VersionedTransaction,
   type Connection,
@@ -12,8 +13,14 @@ import { DynamicBondingCurveIdl } from "./sdk";
 import { getBase58Decoder } from "@solana/kit";
 import type { MeteoraContext } from "./client";
 import {
+  DAMM_V2_INSTRUCTIONS,
+  type DammInstructionLayout,
+  type DammInstructionName,
+} from "./damm-layout";
+import {
   ASSOCIATED_TOKEN_PROGRAM,
   COMPUTE_BUDGET_PROGRAM,
+  DAMM_V2_PROGRAM,
   DBC_PROGRAM,
   LIGHTHOUSE_PROGRAM,
   SPL_TOKEN_PROGRAM,
@@ -35,7 +42,9 @@ export type DbcInstructionName = DbcInstruction["name"];
 export interface TxExpectation {
   owner: PublicKey;
   dbc: DbcInstructionName[];
-  /** DBC instruction accounts (IDL names) that must hold these keys. */
+  /** DAMM v2 (cp_amm) instructions allowed, for graduated pools. */
+  damm?: DammInstructionName[];
+  /** Meteora instruction accounts (IDL names) that must hold these keys. */
   accounts: Record<string, PublicKey>;
   /** Mints the owner may get an associated token account for. */
   ataMints: PublicKey[];
@@ -55,8 +64,27 @@ const DBC_BY_DISCRIMINATOR = new Map(
   ]),
 );
 
+const DAMM_BY_DISCRIMINATOR = new Map<string, DammInstructionLayout>(
+  Object.values(DAMM_V2_INSTRUCTIONS).map((ix) => [
+    Buffer.from(ix.discriminator).toString("hex"),
+    ix,
+  ]),
+);
+
 function fail(message: string): never {
   throw new TransactionValidationError(message);
+}
+
+function checkAccounts(
+  ix: TransactionInstruction,
+  names: readonly string[],
+  expect: TxExpectation,
+) {
+  names.forEach((name, index) => {
+    const wanted = expect.accounts[name];
+    if (wanted && !ix.keys[index]?.pubkey.equals(wanted))
+      fail(`Account ${name} was substituted.`);
+  });
 }
 
 function checkInstruction(ix: TransactionInstruction, expect: TxExpectation) {
@@ -66,11 +94,21 @@ function checkInstruction(ix: TransactionInstruction, expect: TxExpectation) {
     const definition = DBC_BY_DISCRIMINATOR.get(discriminatorOf(ix.data));
     if (!definition || !expect.dbc.includes(definition.name))
       fail(`Unexpected Meteora instruction ${definition?.name ?? "unknown"}.`);
-    definition.accounts.forEach((account, index) => {
-      const wanted = expect.accounts[account.name];
-      if (wanted && !ix.keys[index]?.pubkey.equals(wanted))
-        fail(`Account ${account.name} was substituted.`);
-    });
+    checkAccounts(
+      ix,
+      definition.accounts.map((account) => account.name),
+      expect,
+    );
+    return;
+  }
+  if (ix.programId.equals(DAMM_V2_PROGRAM)) {
+    const definition = DAMM_BY_DISCRIMINATOR.get(discriminatorOf(ix.data));
+    if (
+      !definition ||
+      !expect.damm?.includes(definition.name as DammInstructionName)
+    )
+      fail(`Unexpected DAMM v2 instruction ${definition?.name ?? "unknown"}.`);
+    checkAccounts(ix, definition.accounts, expect);
     return;
   }
   if (ix.programId.equals(SYSTEM_PROGRAM)) {
@@ -363,7 +401,12 @@ export async function execute(input: ExecuteInput) {
         error: message,
         updatedAt: Date.now(),
       });
-      throw new SimulationError(message, []);
+      // DBC and DAMM v2 reuse error numbers; the program's own log line
+      // names the error, so the message is about the program that failed.
+      throw new SimulationError(
+        message,
+        cause instanceof SendTransactionError ? (cause.logs ?? []) : [],
+      );
     }
   }
   input.onStage?.("confirming");

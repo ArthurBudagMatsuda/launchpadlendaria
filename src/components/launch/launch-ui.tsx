@@ -57,12 +57,12 @@ export function LaunchMark({
 }
 
 export const STATUS_LABELS: Record<LaunchStatus, string> = {
-  active: "On the curve",
-  "near-graduation": "Graduating soon",
-  "graduation-ready": "Ready to graduate",
-  migrating: "Graduating",
+  active: "Bonding curve active",
+  "near-graduation": "Near graduation",
+  "graduation-ready": "Awaiting migration",
+  migrating: "Migration in progress",
   graduated: "Graduated",
-  "needs-attention": "Check status",
+  "needs-attention": "Migration needs attention",
 };
 
 export function StatusBadge({ status }: { status: LaunchStatus }) {

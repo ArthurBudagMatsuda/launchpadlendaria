@@ -13,15 +13,18 @@ name: RETRY Meteora on-chain tests
 # prints a secret.
 on:
   push:
+    # The browser flow drives the whole app (Create, token page, Portfolio,
+    # Discover, wallet provider), so any source change runs it.
     paths:
-      - "src/lib/meteora/**"
-      - "src/config/retry-protocol.ts"
-      - "src/components/launch/**"
+      - "src/**"
       - "tests/chain/**"
       - "e2e/chain/**"
       - "infra/metadata-worker/**"
+      - "playwright.chain.config.ts"
+      - "vitest.chain.config.ts"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/meteora-chain.yml"
   workflow_dispatch:
     inputs:
@@ -50,6 +53,25 @@ env:
   AGAVE_VERSION: v3.1.10
   DEVNET_RPC: https://api.devnet.solana.com
 jobs:
+  programs:
+    name: Pinned programs on Devnet and Mainnet (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Owner, executable flag, last deploy slot and upgrade authority of each
+      # program, plus the DAMM v2 migration config, DBC's rent float and the
+      # cluster's rent-exempt minimums.
+      - name: Devnet
+        run: node tests/chain/verify-programs.mjs https://api.devnet.solana.com devnet --dump
+      - name: Mainnet (reads only)
+        run: node tests/chain/verify-programs.mjs https://api.mainnet-beta.solana.com mainnet --dump
   validator:
     name: Local validator with ${{ matrix.programs }} programs (full flow + browser)
     runs-on: ubuntu-latest
@@ -125,7 +147,7 @@ jobs:
       - name: Point the test build at the validator's RETRY config
         if: env.APP_CONFIG == ''
         run: node tests/chain/use-validator-config.mjs evidence-validator.json
-      - name: Browser flow (launch, buy, sell, portfolio) on the validator
+      - name: Browser flow (launch, trade, graduate, DAMM v2, LP fees, portfolio) on the validator
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm exec playwright test --config playwright.chain.config.ts

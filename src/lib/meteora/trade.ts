@@ -39,7 +39,11 @@ export async function prepareTrade(
     reviewed: TradeQuote;
   },
 ): Promise<PreparedTrade> {
-  assertWritable(context);
+  if (input.reviewed.venue !== "dbc")
+    throw new QuoteError(
+      "This token trades on DAMM v2 now. Refresh the quote.",
+    );
+  assertWritable(context, "trade-curve");
   await assertCluster(context);
   if (!isQuoteFresh(input.reviewed))
     throw new QuoteError("The quote expired. Review the new quote first.");

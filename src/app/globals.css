@@ -3122,6 +3122,17 @@ select option {
   align-self: flex-start;
   white-space: nowrap;
 }
+.launch-naming {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: -6px 0 10px;
+  font-size: 9px;
+  color: #9fafd1;
+}
+.launch-naming.over-limit {
+  color: var(--red);
+}
 .amount-shortcuts {
   display: flex;
   gap: 6px;

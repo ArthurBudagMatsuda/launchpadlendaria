@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { CLUSTERS, explorerUrl, parseSolanaConfig } from "@/config/solana";
 import {
+  disabledFeatures,
   executionPolicy,
+  FEATURE_DEFAULTS,
   MAINNET_EXECUTION_ENABLED,
   RETRY_DBC_CONFIGS,
+  RETRY_FEATURES,
 } from "@/config/retry-protocol";
 import {
   formatSol,
@@ -53,14 +56,63 @@ describe("Solana environments and units", () => {
       feeClaimerKind: "treasury" as const,
     };
     expect(
-      executionPolicy("mainnet-beta", { devnet: null, "mainnet-beta": config }),
+      executionPolicy("mainnet-beta", undefined, {
+        configs: { devnet: null, "mainnet-beta": config },
+      }),
     ).toMatchObject({ enabled: false, reason: "mainnet-locked" });
     expect(
-      executionPolicy("devnet", { devnet: config, "mainnet-beta": null }),
+      executionPolicy("devnet", undefined, {
+        configs: { devnet: config, "mainnet-beta": null },
+      }),
     ).toMatchObject({ enabled: true });
     expect(
-      executionPolicy("devnet", { devnet: null, "mainnet-beta": null }),
+      executionPolicy("devnet", undefined, {
+        configs: { devnet: null, "mainnet-beta": null },
+      }),
     ).toMatchObject({ enabled: false, reason: "config-missing" });
+  });
+  it("switches each signing capability separately, Mainnet off for all", () => {
+    const config = {
+      address: "11111111111111111111111111111111",
+      feeClaimer: "11111111111111111111111111111111",
+      createdBy: "x",
+      createdAt: "2026-10-29",
+      feeClaimerKind: "ephemeral-test-key" as const,
+    };
+    const configs = { devnet: config, "mainnet-beta": config };
+    for (const feature of RETRY_FEATURES) {
+      expect(FEATURE_DEFAULTS["mainnet-beta"][feature]).toBe(false);
+      expect(FEATURE_DEFAULTS.devnet[feature]).toBe(true);
+      expect(
+        executionPolicy("devnet", feature, { configs, disabled: new Set() }),
+      ).toMatchObject({ enabled: true });
+      // Defaults switched on for Mainnet still do nothing while it is locked.
+      expect(
+        executionPolicy("mainnet-beta", feature, {
+          configs,
+          defaults: {
+            ...FEATURE_DEFAULTS,
+            "mainnet-beta": FEATURE_DEFAULTS.devnet,
+          },
+        }),
+      ).toMatchObject({ enabled: false, reason: "mainnet-locked" });
+    }
+    expect(
+      executionPolicy("devnet", "trade-damm", {
+        configs,
+        disabled: disabledFeatures("trade-damm, create"),
+      }),
+    ).toMatchObject({ enabled: false, reason: "feature-off" });
+    expect(
+      executionPolicy("devnet", "trade-curve", {
+        configs,
+        disabled: disabledFeatures("trade-damm, create"),
+      }),
+    ).toMatchObject({ enabled: true });
+    expect([...disabledFeatures("all")]).toEqual([...RETRY_FEATURES]);
+    // Unset, empty or unknown names leave the reviewed defaults alone.
+    for (const value of [undefined, "", "trading,launch", "TRADE-DAMM"])
+      expect(disabledFeatures(value).size).toBe(0);
   });
   it("validates decoded 32-byte base58 addresses without Ethereum normalization", () => {
     expect(parseAddress("11111111111111111111111111111111")).toBeTruthy();

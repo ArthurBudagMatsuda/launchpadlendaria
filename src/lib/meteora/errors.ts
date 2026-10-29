@@ -22,6 +22,7 @@ const MESSAGES: Record<string, string> = {
   NotPermitToDoThisAction:
     "This action is not available for the pool right now.",
   InsufficientLiquidityForMigration: "The pool cannot graduate yet.",
+  PoolDisabled: "Trading is paused on this DAMM v2 pool.",
 };
 
 function programErrorCode(text: string) {

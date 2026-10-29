@@ -6,8 +6,10 @@ import {
   type SolanaConfig,
 } from "@/config/solana";
 import {
-  MAINNET_EXECUTION_ENABLED,
+  featureBlock,
+  POLICY_MESSAGES,
   RETRY_DBC_CONFIGS,
+  type RetryFeature,
 } from "@/config/retry-protocol";
 import { assertSdkProgramIds } from "./programs";
 
@@ -22,6 +24,11 @@ export interface MeteoraContext {
   client: DynamicBondingCurveClient;
   /** RETRY DBC config key for this cluster, or null when none is deployed. */
   retryConfig: PublicKey | null;
+  /**
+   * Fee claimer the config must pay (RETRY's treasury on Mainnet), from the
+   * same reviewed entry. Null when a script or test brings its own config.
+   */
+  feeClaimer: PublicKey | null;
   /** Genesis hash the RPC must answer before any write. */
   genesis: string;
 }
@@ -43,6 +50,7 @@ export function meteoraContext(config: SolanaConfig): MeteoraContext {
       connection,
       client: new DynamicBondingCurveClient(connection, "confirmed"),
       retryConfig: retry ? new PublicKey(retry.address) : null,
+      feeClaimer: retry ? new PublicKey(retry.feeClaimer) : null,
       genesis: CLUSTERS[config.cluster].genesis,
     };
     contexts.set(key, context);
@@ -56,6 +64,7 @@ export function customContext(
   retryConfig: PublicKey | null,
   genesis: string,
   cluster: SolanaCluster = "devnet",
+  feeClaimer: PublicKey | null = null,
 ): MeteoraContext {
   assertSdkProgramIds();
   return {
@@ -63,6 +72,7 @@ export function customContext(
     connection,
     client: new DynamicBondingCurveClient(connection, "confirmed"),
     retryConfig,
+    feeClaimer,
     genesis,
   };
 }
@@ -77,10 +87,20 @@ export async function assertCluster(context: MeteoraContext) {
   verified.set(context.connection, Date.now() + 60_000);
 }
 
-/** Writes need a RETRY config on the cluster, and Mainnet stays locked. */
-export function assertWritable(context: MeteoraContext): PublicKey {
-  if (context.cluster === "mainnet-beta" && !MAINNET_EXECUTION_ENABLED)
+/**
+ * Writes need a RETRY config on the cluster and the feature switched on,
+ * and Mainnet stays locked. Checked again here, not only in the UI.
+ */
+export function assertWritable(
+  context: MeteoraContext,
+  feature: RetryFeature,
+): PublicKey {
+  const blocked = featureBlock(context.cluster, feature);
+  if (blocked === "mainnet-locked")
     throw new Error("Mainnet execution is locked.");
+  if (blocked) throw new Error(POLICY_MESSAGES[blocked]);
+  // The config key comes from the context: the app's per-cluster entry, or
+  // the one a script or test created (customContext).
   if (!context.retryConfig)
     throw new Error("The RETRY launch configuration is not deployed.");
   return context.retryConfig;

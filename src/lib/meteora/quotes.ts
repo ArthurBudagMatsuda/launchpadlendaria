@@ -19,7 +19,11 @@ export const MIN_SLIPPAGE_BPS = 10,
 /** A quote older than this must be refreshed before it can be executed. */
 export const QUOTE_TTL_MS = 30_000;
 
+/** Where a trade executes: the bonding curve, or the graduated DAMM v2 pool. */
+export type TradeVenue = "dbc" | "damm-v2";
+
 export interface TradeQuote {
+  venue: TradeVenue;
   side: TradeSide;
   pool: string;
   /** Input the wallet pays: lamports (buy) or raw token units (sell). */
@@ -136,6 +140,7 @@ export function quoteTrade(input: {
       toBig(result.excludedFeeInputAmount)
     : 0n;
   return {
+    venue: "dbc",
     side,
     pool: pool.address,
     amountIn,

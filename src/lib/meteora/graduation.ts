@@ -1,5 +1,6 @@
+import BN from "bn.js";
 import type { Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { deriveDammV2PoolAddress } from "./sdk";
+import { deriveDammV2PoolAddress, getPriceFromSqrtPrice } from "./sdk";
 import { assertCluster, assertWritable, type MeteoraContext } from "./client";
 import { RETRY_LAUNCH } from "./curve";
 import { MIGRATION_PROGRESS, readRetryPool, type RetryPool } from "./pools";
@@ -64,7 +65,7 @@ export async function prepareMigration(
   context: MeteoraContext,
   input: { payer: PublicKey; pool: PublicKey },
 ): Promise<PreparedMigration> {
-  assertWritable(context);
+  assertWritable(context, "graduate");
   await assertCluster(context);
   const read = await readRetryPool(context, input.pool);
   const view = graduationView(read.pool);
@@ -133,4 +134,27 @@ export function graduatedFeeBps() {
   return (
     { 0: 25, 1: 30, 2: 100, 3: 200, 4: 400, 5: 600 } as Record<number, number>
   )[RETRY_LAUNCH.migrationFeeOption];
+}
+
+const priceOf = (sqrtPrice: bigint) =>
+  getPriceFromSqrtPrice(new BN(sqrtPrice.toString()), RETRY_LAUNCH.decimals, 9);
+
+/**
+ * Price continuity at graduation: the curve's final marginal price against
+ * the price the DAMM v2 pool opens at (the config's migration sqrt price,
+ * which the migration writes into the new pool). Both are on-chain Q64.64
+ * sqrt prices, so this needs no history.
+ */
+export function graduationPriceGap(
+  curveSqrtPrice: bigint,
+  dammSqrtPrice: bigint,
+) {
+  const curve = priceOf(curveSqrtPrice);
+  const damm = priceOf(dammSqrtPrice);
+  return {
+    curvePriceSol: curve.toSignificantDigits(8).toString(),
+    dammPriceSol: damm.toSignificantDigits(8).toString(),
+    /** (DAMM − curve) / curve, in percent. */
+    gapPct: damm.div(curve).minus(1).mul(100).toDecimalPlaces(4).toString(),
+  };
 }

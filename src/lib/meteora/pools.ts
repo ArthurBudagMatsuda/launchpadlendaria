@@ -153,6 +153,30 @@ function deriveStatus(
   return progress >= BigInt(NEAR_GRADUATION_BPS) ? "near-graduation" : "active";
 }
 
+/** Discover's columns. Each launch is in exactly one. */
+export type DiscoverCategory =
+  "new" | "active" | "near-graduation" | "graduated";
+/** A launch counts as new for this long after its pool activates. */
+export const NEW_LAUNCH_SECONDS = 24 * 60 * 60;
+
+/**
+ * Where a launch sits on Discover, from its pool state alone: graduated;
+ * close to graduating (80% of the threshold or more, complete and waiting
+ * for its migration, or a migration needing attention); new (activated in
+ * the last 24 hours); otherwise active on the curve. "Trending" would need
+ * volume history, which RETRY does not index, so there is no such column.
+ */
+export function discoverCategory(
+  pool: Pick<RetryPool, "status" | "activationPoint">,
+  nowSeconds: number,
+): DiscoverCategory {
+  if (pool.status === "graduated") return "graduated";
+  if (pool.status !== "active") return "near-graduation";
+  return nowSeconds - Number(pool.activationPoint) < NEW_LAUNCH_SECONDS
+    ? "new"
+    : "active";
+}
+
 export function toRetryPool(
   context: MeteoraContext,
   address: PublicKey,

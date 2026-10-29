@@ -1,8 +1,10 @@
+import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
+  SendTransactionError,
   SystemProgram,
   Transaction,
   TransactionInstruction,
@@ -56,6 +58,7 @@ import {
   type TradeQuote,
 } from "@/lib/meteora/quotes";
 import {
+  execute,
   reconcile,
   TransactionValidationError,
   validateSigned,
@@ -63,7 +66,9 @@ import {
   type TxExpectation,
 } from "@/lib/meteora/transactions";
 import { supportsSigning, walletSigner } from "@/lib/meteora/wallet-signer";
-import { customContext } from "@/lib/meteora/client";
+import { assertCluster, customContext } from "@/lib/meteora/client";
+import { prepareCreateToken } from "@/lib/meteora/create-token";
+import { CLUSTERS } from "@/config/solana";
 import type { Wallet, WalletAccount } from "@wallet-standard/base";
 
 const owner = Keypair.generate().publicKey;
@@ -456,6 +461,10 @@ describe("RETRY curve and config", () => {
     expect(
       configMismatches(as({ ...onchain, creatorTradingFeePercentage: 100 })),
     ).toEqual(["creatorTradingFeePercentage"]);
+    // Slot activation would make "launched in the last 24 hours" meaningless.
+    expect(configMismatches(as({ ...onchain, activationType: 0 }))).toEqual([
+      "activationType",
+    ]);
     expect(
       configMismatches(
         as({
@@ -712,5 +721,217 @@ describe("operations and reconciliation", () => {
       [sig("5")]: "sent",
       [sig("6")]: "expired",
     });
+  });
+});
+
+describe("execution (adversarial)", () => {
+  const payer = Keypair.generate();
+  const payerWsol = getAssociatedTokenAddressSync(
+    WSOL_MINT,
+    payer.publicKey,
+    true,
+  );
+  /** Wrap 0.001 SOL into the payer's own WSOL account: allowed as is. */
+  const wrapTx = () =>
+    new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: payerWsol,
+        lamports: 1_000_000,
+      }),
+      createSyncNativeInstruction(payerWsol),
+    );
+  const wrapExpectation: TxExpectation = {
+    owner: payer.publicKey,
+    dbc: [],
+    accounts: {},
+    ataMints: [],
+  };
+  /** A test double of the RPC calls execute makes; it records each send. */
+  function rpc(store: ReturnType<typeof memoryStore>) {
+    const sent: { stored: string[] }[] = [];
+    const connection = {
+      getLatestBlockhash: async () => ({
+        blockhash: Keypair.generate().publicKey.toBase58(),
+        lastValidBlockHeight: 100,
+      }),
+      getBalance: async () => 1_000_000_000,
+      getFeeForMessage: async () => ({ value: 5_000 }),
+      simulateTransaction: async () => ({
+        value: {
+          err: null,
+          logs: [],
+          unitsConsumed: 450,
+          accounts: [{ lamports: 1_000_000_000 - 1_005_000 }],
+        },
+      }),
+      sendRawTransaction: async () => {
+        sent.push({ stored: store.list().map((op) => op.status) });
+        return "sent";
+      },
+      getSignatureStatuses: async () => ({
+        value: [{ confirmationStatus: "confirmed", slot: 7, err: null }],
+      }),
+      getBlockHeight: async () => 50,
+    };
+    return { connection, sent };
+  }
+  const record = {
+    cluster: "devnet" as const,
+    kind: "buy" as const,
+    owner: payer.publicKey.toBase58(),
+    pool: pool.toBase58(),
+    mint: mint.toBase58(),
+    summary: "Wrap",
+  };
+  const copy = (tx: Transaction) =>
+    Transaction.from(
+      tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
+    );
+
+  it("stores the signature before sending, then confirms from chain state", async () => {
+    const store = memoryStore();
+    const { connection, sent } = rpc(store);
+    const { result, preview } = await execute({
+      context: customContext(connection as never, null, "x"),
+      tx: wrapTx(),
+      signer: {
+        publicKey: payer.publicKey,
+        signTransaction: async (tx) => {
+          const signed = copy(tx);
+          signed.partialSign(payer);
+          return signed;
+        },
+      },
+      expect: wrapExpectation,
+      record,
+      store,
+    });
+    expect(sent).toEqual([{ stored: ["sent"] }]);
+    expect(result).toEqual({ status: "confirmed", slot: 7 });
+    expect(preview.balanceChange).toBe(-1_000_000n);
+    expect(store.list().map((op) => op.status)).toEqual(["confirmed"]);
+  });
+
+  it("sends nothing when the wallet signs with another account (account switched while signing)", async () => {
+    const store = memoryStore();
+    const { connection, sent } = rpc(store);
+    // A real Ed25519 signature, by a key that is not the fee payer's.
+    const other = generateKeyPairSync("ed25519");
+    await expect(
+      execute({
+        context: customContext(connection as never, null, "x"),
+        tx: wrapTx(),
+        signer: {
+          publicKey: payer.publicKey,
+          signTransaction: async (tx) => {
+            const signed = copy(tx);
+            signed.addSignature(
+              payer.publicKey,
+              sign(null, signed.serializeMessage(), other.privateKey),
+            );
+            return signed;
+          },
+        },
+        expect: wrapExpectation,
+        record,
+        store,
+      }),
+    ).rejects.toThrow("A required signature is missing.");
+    expect(sent).toEqual([]);
+    expect(store.list()).toEqual([]);
+  });
+
+  it("names the failing program's own error when the RPC preflight refuses a send", async () => {
+    const store = memoryStore();
+    const { connection } = rpc(store);
+    // DAMM v2's PoolDisabled is 6003; the same number is another DBC error.
+    connection.sendRawTransaction = async () => {
+      throw new SendTransactionError({
+        action: "send",
+        signature: "",
+        transactionMessage:
+          "Transaction simulation failed: Error processing Instruction 0: custom program error: 0x1773",
+        logs: [
+          "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG invoke [1]",
+          "Program log: AnchorError occurred. Error Code: PoolDisabled. Error Number: 6003. Error Message: Pool disabled.",
+        ],
+      });
+    };
+    const error = await execute({
+      context: customContext(connection as never, null, "x"),
+      tx: wrapTx(),
+      signer: {
+        publicKey: payer.publicKey,
+        signTransaction: async (tx) => {
+          const signed = copy(tx);
+          signed.partialSign(payer);
+          return signed;
+        },
+      },
+      expect: wrapExpectation,
+      record,
+      store,
+    }).catch((cause: unknown) => cause);
+    expect(userMessage(error)).toBe("Trading is paused on this DAMM v2 pool.");
+    expect(store.list().map((op) => op.status)).toEqual(["failed"]);
+  });
+});
+
+describe("cluster guard (adversarial)", () => {
+  /** An RPC double that answers getGenesisHash and records every call. */
+  const rpcAnswering = (genesis: string) => {
+    const calls: string[] = [];
+    const connection = new Proxy(
+      {},
+      {
+        get: (_, method: string) => async () => {
+          calls.push(method);
+          if (method === "getGenesisHash") return genesis;
+          throw new Error(`unexpected ${method}`);
+        },
+      },
+    );
+    return { connection, calls };
+  };
+
+  it("builds nothing when the RPC answers for another cluster", async () => {
+    const { connection, calls } = rpcAnswering(
+      CLUSTERS["mainnet-beta"].genesis,
+    );
+    const context = customContext(
+      connection as never,
+      config,
+      CLUSTERS.devnet.genesis,
+    );
+    await expect(assertCluster(context)).rejects.toThrow(
+      "RPC cluster does not match the selected environment.",
+    );
+    await expect(
+      prepareCreateToken(context, {
+        name: "Orbit",
+        symbol: "ORBIT",
+        uri: "https://raw.githubusercontent.com/ArthurBudagMatsuda/launchpadlendaria/feat/retry-meteora-dbc-mvp/docs/meteora/devnet-metadata/retry-devnet-test.json",
+        creator: owner,
+        initialBuyLamports: 0n,
+        slippageBps: 100,
+      }),
+    ).rejects.toThrow("RPC cluster does not match");
+    // The genesis hash is the only thing asked: no account was read.
+    expect(new Set(calls)).toEqual(new Set(["getGenesisHash"]));
+    expect(
+      userMessage(
+        new Error("RPC cluster does not match the selected environment."),
+      ),
+    ).toMatch(/different Solana cluster/);
+  });
+
+  it("goes on when the RPC answers with the selected cluster's genesis", async () => {
+    const { connection } = rpcAnswering(CLUSTERS.devnet.genesis);
+    await expect(
+      assertCluster(
+        customContext(connection as never, config, CLUSTERS.devnet.genesis),
+      ),
+    ).resolves.toBeUndefined();
   });
 });

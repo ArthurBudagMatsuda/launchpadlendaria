@@ -57,11 +57,11 @@ Versões exatas, lockfile verificado pela política de supply chain do pnpm. Pac
 
 ## 6. Arquitetura implementada
 
-Ver [RETRY_METEORA_ARCHITECTURE.md](../meteora/RETRY_METEORA_ARCHITECTURE.md). Em resumo: UI → hooks (`use-retry.ts`) → `MeteoraContext` (mesma carteira, cluster e RPC do provider do PR #6) → SDK oficial → allowlist de instruções → simulação → assinatura na carteira (Wallet Standard `solana:signTransaction`) → verificação pós-assinatura → registro → envio → confirmação → atualização das queries. Site estático no GitHub Pages; único serviço extra é o Worker de metadados.
+Ver [ARCHITECTURE.md](../meteora-mvp/ARCHITECTURE.md). Em resumo: UI → hooks (`use-retry.ts`) → `MeteoraContext` (mesma carteira, cluster e RPC do provider do PR #6) → SDK oficial → allowlist de instruções → simulação → assinatura na carteira (Wallet Standard `solana:signTransaction`) → verificação pós-assinatura → registro → envio → confirmação → atualização das queries. Site estático no GitHub Pages; único serviço extra é o Worker de metadados.
 
 ## 7. Configuração DBC
 
-Uma config de parceiro RETRY por cluster, construída com `buildCurve` do SDK. Detalhes e motivos em [METEORA_DBC_CONFIGURATION.md](../meteora/METEORA_DBC_CONFIGURATION.md). Antes de cada operação, a config on-chain é comparada campo a campo com a revisada (`configMismatches`). Endereço Devnet: **pendente** (será criado na primeira execução na Devnet pública). Mainnet: vazio por decisão.
+Uma config de parceiro RETRY por cluster, construída com `buildCurve` do SDK. Detalhes e motivos em [RETRY_LAUNCH_CONFIGURATION.md](../meteora-mvp/RETRY_LAUNCH_CONFIGURATION.md). Antes de cada operação, a config on-chain é comparada campo a campo com a revisada (`configMismatches`). Endereço Devnet: **pendente** (será criado na primeira execução na Devnet pública). Mainnet: vazio por decisão.
 
 ## 8. Configuração de tokens SPL
 
@@ -73,7 +73,7 @@ SPL Token clássico (não Token-2022), sem transfer fee, sem transfer hook. Auto
 
 ## 10. Taxas
 
-1% fixo por negociação: 0,2% Meteora, 0,4% criador, 0,4% RETRY. Taxa de criação 0. Taxa de migração do parceiro/criador 0%. Meteora retém 0,2% da liquidez na graduação. LP da pool graduada: 1%. Medido on-chain: compra de 0,5 SOL pagou 0,005 SOL (0,001 + 0,002 + 0,002). Ver [FEES_AND_COSTS.md](../meteora/FEES_AND_COSTS.md).
+1% fixo por negociação: 0,2% Meteora, 0,4% criador, 0,4% RETRY. Taxa de criação 0. Taxa de migração do parceiro/criador 0%. Meteora retém 0,2% da liquidez na graduação. LP da pool graduada: 1%. Medido on-chain: compra de 0,5 SOL pagou 0,005 SOL (0,001 + 0,002 + 0,002). Ver [FEES_AND_COSTS.md](../meteora-mvp/FEES_AND_COSTS.md).
 
 ## 11. Custos de lançamento
 
@@ -85,7 +85,7 @@ Medidos por simulação e saldo real. O validador local cobra 6.960 lamports de 
 
 ## 12. Criação de tokens
 
-`prepareCreateToken` usa `createPoolWithFirstBuy` do SDK; tudo numa transação. Validações: nome 2–32 bytes, ticker 2–10 `[A-Z0-9]`, URI só do host RETRY, primeira compra 0–1 SOL, slippage válido. Proteções: id de requisição contra duplicata, revisão presa aos dados, janela de 45 s para assinar, registro antes do envio, reconciliação. Ver [CREATE_TOKEN_FLOW.md](../meteora/CREATE_TOKEN_FLOW.md).
+`prepareCreateToken` usa `createPoolWithFirstBuy` do SDK; tudo numa transação. Validações: nome 2–32 bytes, ticker 2–10 `[A-Z0-9]`, URI só do host RETRY, primeira compra 0–1 SOL, slippage válido. Proteções: id de requisição contra duplicata, revisão presa aos dados, janela de 45 s para assinar, registro antes do envio, reconciliação. Ver [TOKEN_CREATION.md](../meteora-mvp/TOKEN_CREATION.md).
 
 ## 13. Metadados
 
@@ -121,7 +121,7 @@ Abas Holdings (contas de token da carteira filtradas pelos mints RETRY), Created
 
 ## 21. Graduação
 
-Status e progresso do estado on-chain (seção [GRADUATION_AND_LOCKING.md](../meteora/GRADUATION_AND_LOCKING.md)). Curva completada com preenchimento parcial (10,000000001 SOL na reserva, FDV 50 SOL). Depois disso, novas quotes são recusadas. Na Devnet a migração é manual pelo painel; na Mainnet, keeper da Meteora.
+Status e progresso do estado on-chain (seção [GRADUATION.md](../meteora-mvp/GRADUATION.md)). Curva completada com preenchimento parcial (10,000000001 SOL na reserva, FDV 50 SOL). Depois disso, novas quotes são recusadas. Na Devnet a migração é manual pelo painel; na Mainnet, keeper da Meteora.
 
 **Achado real**: a migração falhou na primeira execução com os programas clonados porque o DBC pega emprestado o aluguel das contas do DAMM v2 da sua pool authority (`FhVo3m…uHLuM`) e cobra de volta do pagador na mesma instrução. No validador essa conta estava vazia ([execução](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40766575716)). Corrigido clonando a conta do cluster e adicionando uma verificação clara no app. Saldo dessa conta: **99,226635387 SOL na Devnet e 68,824058017 SOL na Mainnet** em 28/10/2026 (lido do RPC público de cada cluster pelo workflow). Depois da migração o saldo não diminuiu: o empréstimo é devolvido na mesma instrução.
 
@@ -169,7 +169,7 @@ GitHub Pages (R$ 0), Worker Cloudflare no plano gratuito (R$ 0 dentro dos limite
 
 **Bloqueado pelo faucet.** O job "Solana Devnet" rodou em 28/10/2026 e o `requestAirdrop` respondeu `410 Gone: The RPC faucet is closed on this cluster. Request test SOL at https://faucet.solana.com` ([job](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40765616436/job/123088843971)). Os testes foram pulados e registrados como pulados, não simulados.
 
-Caminho pronto: secret `RETRY_DEVNET_FUNDER` com uma carteira de teste financiada à mão em faucet.solana.com (passo a passo no [runbook](../meteora/OPERATIONAL_RUNBOOK.md)). O job confere o genesis da Devnet antes de usar a chave, cria a config RETRY de Devnet, roda o fluxo e devolve o SOL que sobrar.
+Caminho pronto: secret `RETRY_DEVNET_FUNDER` com uma carteira de teste financiada à mão em faucet.solana.com (passo a passo no [runbook](../meteora-mvp/OPERATIONAL_RUNBOOK.md)). O job confere o genesis da Devnet antes de usar a chave, cria a config RETRY de Devnet, roda o fluxo e devolve o SOL que sobrar.
 
 Como compensação parcial, o fluxo completo roda contra os **binários de Devnet e de Mainnet** clonados num validador local. Isso testa o código da RETRY contra os programas reais, mas não substitui a rede pública (latência, RPC público, carteiras reais).
 
@@ -265,7 +265,7 @@ Nenhum force-push, nenhum commit no PR #6 nem na `main`.
 5. Implantação do Worker e política de moderação.
 6. Revisão de segurança independente.
 7. Requisitos jurídicos.
-8. Aprovação do checklist ([MAINNET_DEPLOYMENT_CHECKLIST.md](../meteora/MAINNET_DEPLOYMENT_CHECKLIST.md)) e autorização específica.
+8. Aprovação do checklist ([MAINNET_RELEASE_CHECKLIST.md](../meteora-mvp/MAINNET_RELEASE_CHECKLIST.md)) e autorização específica.
 
 ## 40. Próximas etapas
 

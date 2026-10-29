@@ -18,7 +18,7 @@ import {
 /**
  * RETRY launch parameters (Devnet candidate, not approved for Mainnet).
  * Every value is documented with its reason in
- * docs/meteora/METEORA_DBC_CONFIGURATION.md. Change them only together with
+ * docs/meteora-mvp/RETRY_LAUNCH_CONFIGURATION.md. Change them only together with
  * that document and a new config key: an existing DBC config is immutable.
  */
 export const RETRY_LAUNCH = {
@@ -133,6 +133,8 @@ export function configMismatches(
       bn(expected.migrationQuoteThreshold),
     ],
     ["sqrtStartPrice", bn(onchain.sqrtStartPrice), bn(expected.sqrtStartPrice)],
+    // Timestamp activation: a pool's activation point is a Unix time.
+    ["activationType", bn(onchain.activationType), bn(expected.activationType)],
     [
       "cliffFeeNumerator",
       bn(onchain.poolFees.baseFee.cliffFeeNumerator),

@@ -20,6 +20,8 @@ import { CLUSTERS, explorerUrl } from "@/config/solana";
 import { ago, shorten } from "@/lib/format";
 import { tokenHref } from "@/config/tracked-mints";
 import {
+  useDammPools,
+  useLpPositions,
   useMeteora,
   useOperations,
   useRetryHoldings,
@@ -155,6 +157,7 @@ export function Portfolio() {
               {[
                 { id: "holdings", title: "SPL holdings" },
                 { id: "created", title: "Tokens created" },
+                { id: "lp", title: "LP positions" },
                 { id: "activity", title: "Activity" },
               ].map((item) => (
                 <button
@@ -171,6 +174,8 @@ export function Portfolio() {
               <Holdings owner={wallet.address} />
             ) : tab === "created" ? (
               <Created owner={wallet.address} />
+            ) : tab === "lp" ? (
+              <LpPositions owner={wallet.address} />
             ) : (
               <Activity owner={wallet.address} />
             )}
@@ -188,6 +193,16 @@ export function Portfolio() {
 
 function Holdings({ owner }: { owner: string }) {
   const holdings = useRetryHoldings(owner);
+  // A graduated token's price is its DAMM v2 pool's, not its last curve price.
+  const graduated = (holdings.data ?? [])
+    .map(({ launch }) => launch.pool)
+    .filter((pool) => pool.status === "graduated");
+  const damm = useDammPools(graduated);
+  const dammPrice = new Map(
+    damm.flatMap((query) =>
+      query.data ? [[query.data.pool.dbcPool, query.data.pool.priceSol]] : [],
+    ),
+  );
   if (holdings.isError)
     return (
       <EmptyState title="Holdings unavailable">
@@ -219,7 +234,7 @@ function Holdings({ owner }: { owner: string }) {
           <tr>
             <th>Token</th>
             <th>Balance</th>
-            <th>Value at curve price</th>
+            <th>Value at pool price</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -238,12 +253,17 @@ function Holdings({ owner }: { owner: string }) {
               </td>
               <td>{tokens(amount)}</td>
               <td>
-                {new Decimal(amount.toString())
-                  .div(1e9)
-                  .mul(launch.pool.priceSol)
-                  .toSignificantDigits(4)
-                  .toString()}{" "}
-                SOL
+                {launch.pool.status === "graduated" &&
+                !dammPrice.has(launch.pool.address)
+                  ? "Reading DAMM v2 pool…"
+                  : `${new Decimal(amount.toString())
+                      .div(1e9)
+                      .mul(
+                        dammPrice.get(launch.pool.address) ??
+                          launch.pool.priceSol,
+                      )
+                      .toSignificantDigits(4)
+                      .toString()} SOL`}
               </td>
               <td>
                 <StatusBadge status={launch.pool.status} />
@@ -253,9 +273,10 @@ function Holdings({ owner }: { owner: string }) {
         </tbody>
       </table>
       <p className="tiny mt-3">
-        Value is balance × the curve&apos;s spot price, before the 1% fee and
-        price impact a sale would have. RETRY does not show PnL: it does not
-        know your entry prices.
+        Value is balance × the pool&apos;s spot price (the curve&apos;s, or the
+        DAMM v2 pool&apos;s once graduated), before the 1% fee and the price
+        impact a sale would have. RETRY does not show PnL: it does not know your
+        entry prices.
       </p>
     </div>
   );
@@ -293,9 +314,105 @@ function Created({ owner }: { owner: string }) {
           <p className="tiny mt-2">
             Unclaimed creator fees: {sol(launch.pool.creatorQuoteFee, 6)}. Claim
             them on the token page.
+            {launch.pool.status === "graduated"
+              ? " Your share of the graduated liquidity is permanently locked and earns LP fees; see LP positions."
+              : null}
           </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function LpPositions({ owner }: { owner: string }) {
+  const positions = useLpPositions(owner);
+  const launches = useRetryLaunches();
+  const byPool = new Map(
+    (launches.data ?? []).map((launch) => [launch.pool.address, launch]),
+  );
+  if (positions.isError)
+    return (
+      <EmptyState title="LP positions unavailable">
+        Solana RPC did not answer. Nothing is estimated.
+      </EmptyState>
+    );
+  if (!positions.data?.length)
+    return (
+      <EmptyState
+        title={
+          positions.isPending && positions.fetchStatus !== "idle"
+            ? "Reading positions…"
+            : "No LP positions"
+        }
+      >
+        When a token this wallet created graduates, its share of the DAMM v2
+        liquidity is a position NFT in this wallet, permanently locked. It
+        appears here with the LP fees it can claim.
+      </EmptyState>
+    );
+  return (
+    <div className="table-scroll">
+      <table className="activity-table">
+        <caption className="sr-only">
+          This wallet&apos;s LP positions in graduated RETRY pools.
+        </caption>
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Share of pool</th>
+            <th>Locked</th>
+            <th>Claimable LP fees</th>
+            <th>Position</th>
+          </tr>
+        </thead>
+        <tbody>
+          {positions.data.map((position) => {
+            const launch = byPool.get(position.dbcPool);
+            return (
+              <tr key={position.position}>
+                <td>
+                  {launch ? (
+                    <Link
+                      href={tokenHref({
+                        cluster: launch.pool.cluster,
+                        address: launch.pool.baseMint as SolanaAddress,
+                      })}
+                    >
+                      {launch.metadata?.symbol ?? shorten(launch.pool.baseMint)}
+                    </Link>
+                  ) : (
+                    shorten(position.dbcPool)
+                  )}
+                </td>
+                <td>{position.sharePct}%</td>
+                <td>
+                  {position.unlockedLiquidity <= 1n &&
+                  position.vestedLiquidity === 0n
+                    ? "Permanently"
+                    : "Partly"}
+                </td>
+                <td>{sol(position.feeBClaimable, 6)}</td>
+                <td>
+                  {launch ? (
+                    <ExplorerLink
+                      cluster={launch.pool.cluster}
+                      kind="address"
+                      value={position.position}
+                    />
+                  ) : (
+                    shorten(position.position)
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="tiny mt-3">
+        Read from this wallet&apos;s position NFTs and the DAMM v2 positions
+        they point to. The locked liquidity cannot be withdrawn; claim the fees
+        on the token page.
+      </p>
     </div>
   );
 }
