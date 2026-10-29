@@ -33,6 +33,24 @@ env:
   AGAVE_VERSION: v3.1.10
   DEVNET_RPC: https://api.devnet.solana.com
 jobs:
+  programs:
+    name: Pinned programs on Devnet and Mainnet (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Owner, executable flag, last deploy slot and upgrade authority of each
+      # program, plus the DAMM v2 migration config and DBC's rent float.
+      - name: Devnet
+        run: node tests/chain/verify-programs.mjs https://api.devnet.solana.com devnet --dump
+      - name: Mainnet (reads only)
+        run: node tests/chain/verify-programs.mjs https://api.mainnet-beta.solana.com mainnet --dump
   validator:
     name: Local validator with ${{ matrix.programs }} programs (full flow + browser)
     runs-on: ubuntu-latest
