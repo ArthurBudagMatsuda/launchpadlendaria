@@ -1,7 +1,8 @@
 // CI only: point a throwaway test build at the RETRY config that the chain
 // tests just created on the local validator, so the browser flow can run
-// before a real Devnet config exists. It edits the checkout of the CI runner,
-// never a commit. Usage: node tests/chain/use-validator-config.mjs <evidence>
+// where the app's Devnet config does not exist: before one is registered, and
+// on the Mainnet-binaries leg. It edits the checkout of the CI runner, never a
+// commit. Usage: node tests/chain/use-validator-config.mjs <evidence>
 import { readFileSync, writeFileSync } from "node:fs";
 
 const [evidencePath] = process.argv.slice(2);
@@ -19,7 +20,10 @@ const entry = `devnet: {
     createdAt: "${evidence.at}",
     feeClaimerKind: "ephemeral-test-key",
   },`;
-if (!source.includes("devnet: null,"))
-  throw new Error("The app already has a Devnet config; nothing to point at.");
-writeFileSync(file, source.replace("devnet: null,", entry));
+const devnet = /devnet: (?:null|\{[^}]*\}),/;
+if (!devnet.test(source)) throw new Error(`No Devnet entry in ${file}.`);
+writeFileSync(
+  file,
+  source.replace(devnet, () => entry),
+);
 console.log(`Test build uses the validator's RETRY config ${evidence.config}`);
