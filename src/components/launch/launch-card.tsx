@@ -8,12 +8,17 @@ import type { SolanaAddress } from "@/lib/solana/address";
 import { sol } from "@/lib/meteora/format";
 import { CurveProgress, LaunchMark, StatusBadge } from "./launch-ui";
 
-/** Discover card for a RETRY launch. Every figure is read from its DBC pool. */
+/**
+ * Discover card for a RETRY launch. Every figure is read from its DBC pool;
+ * a graduated token's curve figures are its last ones, labelled as such
+ * (its live price is on its page, read from the DAMM v2 pool).
+ */
 export function LaunchCard({ launch }: { launch: RetryLaunch }) {
   const { pool, metadata } = launch;
   const offchain = useOffchainMetadata(metadata).data;
   const symbol = metadata?.symbol ?? null;
   const created = Number(pool.activationPoint) * 1000;
+  const graduated = pool.status === "graduated";
   return (
     <Link
       href={tokenHref({
@@ -49,11 +54,11 @@ export function LaunchCard({ launch }: { launch: RetryLaunch }) {
       </p>
       <div className="token-values">
         <div>
-          <span>Price</span>
+          <span>{graduated ? "Price at graduation" : "Price"}</span>
           <strong>{Number(pool.priceSol).toPrecision(3)} SOL</strong>
         </div>
         <div>
-          <span>FDV</span>
+          <span>{graduated ? "FDV at graduation" : "FDV"}</span>
           <strong>
             {Number(pool.fdvSol).toLocaleString("en-US", {
               maximumFractionDigits: 2,
@@ -62,15 +67,17 @@ export function LaunchCard({ launch }: { launch: RetryLaunch }) {
           </strong>
         </div>
         <div>
-          <span>In curve</span>
-          <strong>{sol(pool.quoteReserve, 2)}</strong>
+          <span>{graduated ? "Trades on" : "In curve"}</span>
+          <strong>{graduated ? "DAMM v2" : sol(pool.quoteReserve, 2)}</strong>
         </div>
       </div>
       <CurveProgress bps={pool.progressBps} label="Graduation progress" />
       <div className="token-card-footer">
         <span title={pool.baseMint}>{shorten(pool.baseMint)}</span>
         <span>Solana · {pool.cluster}</span>
-        <span className="tiny">Meteora DBC</span>
+        <span className="tiny">
+          {graduated ? "Meteora DAMM v2" : "Meteora DBC"}
+        </span>
       </div>
     </Link>
   );

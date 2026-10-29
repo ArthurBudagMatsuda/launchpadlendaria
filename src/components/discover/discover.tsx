@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
+  Activity,
   ArrowDownUp,
   ArrowRight,
   ArrowUpRight,
@@ -38,7 +39,7 @@ import {
   useRetryLaunches,
   type RetryLaunch,
 } from "@/hooks/use-retry";
-import type { LaunchStatus } from "@/lib/meteora/pools";
+import { discoverCategory, type DiscoverCategory } from "@/lib/meteora/pools";
 import { POLICY_MESSAGES } from "@/config/retry-protocol";
 import { EmptyState } from "@/components/ui/feedback";
 import { Modal } from "@/components/ui/modal";
@@ -48,21 +49,28 @@ const categories = [
   {
     id: "new",
     title: "New on RETRY",
-    subtitle: "Fresh off the launchpad",
+    subtitle: "Launched in the last 24 hours",
     icon: Sparkles,
     color: "lime",
   },
   {
-    id: "graduating",
-    title: "Graduating",
-    subtitle: "Close to completing the curve",
+    id: "active",
+    title: "Active",
+    subtitle: "Trading on the bonding curve",
+    icon: Activity,
+    color: "blue",
+  },
+  {
+    id: "near-graduation",
+    title: "Near graduation",
+    subtitle: "80% of the curve or more",
     icon: Rocket,
     color: "blue",
   },
   {
     id: "graduated",
     title: "Graduated",
-    subtitle: "Completed a RETRY curve",
+    subtitle: "Trading on Meteora DAMM v2",
     icon: GraduationCap,
     color: "purple",
   },
@@ -75,15 +83,8 @@ const categories = [
   },
 ] as const;
 type LaunchSort = "newest" | "progress" | "fdv";
-const LAUNCH_COLUMN: Record<LaunchStatus, "new" | "graduating" | "graduated"> =
-  {
-    active: "new",
-    "near-graduation": "graduating",
-    "graduation-ready": "graduating",
-    migrating: "graduating",
-    graduated: "graduated",
-    "needs-attention": "graduating",
-  };
+/** Cards per column before "Show more". */
+const COLUMN_PAGE = 12;
 function matchesLaunch(launch: RetryLaunch, term: string) {
   const query = term.trim().toLowerCase();
   if (!query) return true;
@@ -110,15 +111,18 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
   const [stage, setStage] = useState<Category | "all">("all");
   const [sort, setSort] = useState<TokenSort>("liquidity");
   const [launchSort, setLaunchSort] = useState<LaunchSort>("newest");
-  const { policy } = useMeteora();
+  const { policy } = useMeteora("create");
   const launches = useRetryLaunches();
+  const [pages, setPages] = useState<Partial<Record<Category, number>>>({});
   const visibleLaunches = sortLaunches(
     (launches.data ?? []).filter((launch) => matchesLaunch(launch, search)),
     launchSort,
   );
-  const launchesIn = (column: "new" | "graduating" | "graduated") =>
+  // Columns are recomputed with each read of the pools (every 20 s).
+  const now = Math.floor((launches.dataUpdatedAt || 0) / 1000);
+  const launchesIn = (column: DiscoverCategory) =>
     visibleLaunches.filter(
-      (launch) => LAUNCH_COLUMN[launch.pool.status] === column,
+      (launch) => discoverCategory(launch.pool, now) === column,
     );
   const [filters, setFilters] = useState(false);
   const [minLiquidity, setMinLiquidity] = useState(0);
@@ -379,9 +383,33 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                           </span>
                         </Link>
                       ) : null}
-                      {launchesIn(category.id).map((launch) => (
-                        <LaunchCard key={launch.pool.address} launch={launch} />
-                      ))}
+                      {launchesIn(category.id)
+                        .slice(0, pages[category.id] ?? COLUMN_PAGE)
+                        .map((launch) => (
+                          <LaunchCard
+                            key={launch.pool.address}
+                            launch={launch}
+                          />
+                        ))}
+                      {launchesIn(category.id).length >
+                      (pages[category.id] ?? COLUMN_PAGE) ? (
+                        <button
+                          className="button button-secondary"
+                          onClick={() =>
+                            setPages({
+                              ...pages,
+                              [category.id]:
+                                (pages[category.id] ?? COLUMN_PAGE) +
+                                COLUMN_PAGE,
+                            })
+                          }
+                        >
+                          Show more (
+                          {launchesIn(category.id).length -
+                            (pages[category.id] ?? COLUMN_PAGE)}
+                          )
+                        </button>
+                      ) : null}
                       {launches.isPending && launches.fetchStatus !== "idle" ? (
                         <div className="skeleton" />
                       ) : !launchesIn(category.id).length ? (
@@ -390,10 +418,12 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                             launches.isError
                               ? "Launches unavailable"
                               : category.id === "new"
-                                ? "No RETRY launches yet"
-                                : category.id === "graduating"
-                                  ? "Nothing close to graduating"
-                                  : "Nothing has graduated yet"
+                                ? "Nothing launched today"
+                                : category.id === "active"
+                                  ? "No older launches on the curve"
+                                  : category.id === "near-graduation"
+                                    ? "Nothing close to graduating"
+                                    : "Nothing has graduated yet"
                           }
                         >
                           {launches.isError
@@ -401,10 +431,12 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                             : policy && !policy.enabled
                               ? POLICY_MESSAGES[policy.reason]
                               : category.id === "new"
-                                ? "Launch the first token on this cluster."
-                                : category.id === "graduating"
-                                  ? "Tokens above 80% of the graduation threshold appear here."
-                                  : "Tokens that complete their curve and move to Meteora DAMM v2 appear here."}
+                                ? "Tokens launched in the last 24 hours appear here."
+                                : category.id === "active"
+                                  ? "Launches older than a day that are still on their curve appear here."
+                                  : category.id === "near-graduation"
+                                    ? "Tokens at 80% of the graduation threshold or more, or waiting for their migration, appear here."
+                                    : "Tokens that complete their curve and move to Meteora DAMM v2 appear here."}
                         </EmptyState>
                       ) : null}
                     </>
