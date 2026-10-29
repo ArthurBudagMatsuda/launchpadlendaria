@@ -1,13 +1,13 @@
 # RETRY — Solana launchpad foundation
 
-Aplicação Next.js/React com identidade RETRY preservada, conexão Solana por Wallet Standard e leituras reais de SOL e mints. Devnet é o padrão. Mainnet é somente leitura. Nenhum lançamento, swap, assinatura, custódia ou programa financeiro está implementado.
+Aplicação Next.js/React com identidade RETRY preservada e Wallet Standard. A branch do PR #8 implementa integração **Meteora DBC/DAMM v2 candidata a testes Devnet**, sobre a migração do PR #6. Mainnet permanece bloqueada. Config RETRY e Worker não estão provisionados: funcionalidades implementadas não significam ciclo público já validado.
 
 ## Estado atual
 
-- **Discover:** hero, filtros, busca e navegação preservados. Catálogo vazio e “No featured token yet” até existir um mint Solana revisado. Nenhum ativo substituto foi escolhido automaticamente.
-- **Token:** `/token/?cluster=devnet&mint=...` consulta um mint no cluster selecionado. Mainnet pode ler mercados GeckoTerminal/Dexscreener, candles e atividade pública; Devnet informa ausência de dados de mercado. O gráfico `lightweight-charts` e sua interação foram mantidos. Buy/Sell é apenas visual e o botão de execução está desabilitado.
-- **Portfolio:** endereço da carteira, cluster do RPC, saldo SOL em lamports com precisão inteira e Explorer. Contas SPL, PnL e histórico pessoal ainda não são indexados.
-- **Create:** validação de imagem/metadados e rascunho local preservados. O rascunho antigo compatível é copiado para uma chave Solana versionada, sem apagar o original. Criar token permanece desabilitado.
+- **Discover:** listagem on-chain filtrada pela config RETRY; sem config, estado vazio honesto.
+- **Token:** leituras e preparação de quotes/compra/venda DBC; execução depende de config revisada, simulação e carteira. Gráfico/PnL completos dependem de indexação. Mainnet não executa operações.
+- **Portfolio:** identidade, SOL, holdings e pools RETRY conforme dados on-chain disponíveis; sem atividade inventada.
+- **Create:** rascunho/preview preservados; preparação de lançamento SPL/DBC com compra inicial opcional. Lançamento bloqueado enquanto config e host de metadados faltarem.
 - **Carteiras:** Phantom, Solflare e Backpack por descoberta Wallet Standard. Testes usam carteiras simuladas; validação com extensões reais está pendente.
 
 A aplicação ativa não usa serviços EVM, ERC-20 ou o antigo token Base. O histórico Git e os documentos marcados como históricos preservam a implementação anterior.
@@ -28,6 +28,8 @@ pnpm build:pages
 pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm test:rpc:live
+pnpm test:devnet:readiness
+pnpm test:metadata:bundle
 ```
 
 Em ambientes com Chrome já instalado pode-se definir `PLAYWRIGHT_CHANNEL=chrome` para o teste local. CI usa o Chromium instalado pelo Playwright. Os testes de navegador servem o export sob `/launchpadlendaria/` e simulam Wallet Standard/RPC; não fazem transações.
@@ -36,7 +38,7 @@ Copie `.env.example` para configuração local quando necessário. Todos os `NEX
 
 ## Revisão e publicação
 
-A migração está na branch `migration/retry-solana`, baseada na versão integrada `b5a19d4` de `main`. O trabalho é revisado por Draft PR. CI gera artefatos de teste; esta branch não contém job de publicação pública. Nenhuma alteração foi aplicada ao site público nem ao protocolo em Mainnet.
+A implementação está em `feat/retry-meteora-dbc-mvp`, PR #8 Draft, empilhada sobre `migration/retry-solana`. CI gera artefatos e testa validadores locais; esta branch não publica o site. O teste público financiado é manual e protegido, ainda bloqueado por secret/financiamento e presença do workflow na default branch. Sem merge ou alteração da demonstração pública.
 
 A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histórico paginado do gráfico. Estado atual: revisão técnica com validação manual de extensões pendente. `test:rpc:live` é uma sonda opt-in de contas públicas, não um teste de carteira.
 
@@ -44,6 +46,12 @@ A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histó
 
 ## Documentação atual
 
+- [Relatório de desbloqueio Devnet e infraestrutura](docs/reports/RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md)
+- [Carteira exclusiva e inserção segura do secret](docs/devnet/RETRY_DEVNET_FUNDER_SETUP.md)
+- [Segurança do Actions e bloqueio de dispatch](docs/devnet/RETRY_GITHUB_ACTIONS_SECURITY.md)
+- [Procedimento de testes públicos](docs/devnet/RETRY_PUBLIC_DEVNET_TESTS.md)
+- [Worker, armazenamento e custos](docs/cloudflare/RETRY_METADATA_WORKER_SETUP.md)
+- [Phantom real e preview](docs/testing/RETRY_PHANTOM_REAL_WALLET_TESTS.md)
 - [Relatório completo da migração](docs/reports/RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md)
 - [Revisão do PR #6 e correções](docs/reports/RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md)
 - [Matriz de carteiras reais e simuladas](docs/testing/SOLANA_REAL_WALLET_TEST_MATRIX.md)
@@ -55,4 +63,4 @@ A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histó
 - [Pesquisa de DEX](docs/SOLANA_DEX_RESEARCH.md)
 - [Roadmap](docs/SOLANA_LAUNCHPAD_ROADMAP.md)
 
-Próximo passo: aprovar a economia Solana e os invariantes, depois executar uma prova de integração DEX em ambiente de teste autorizado. A documentação anterior da Base não define parâmetros atuais.
+Próximo passo: proprietário preparar o funder e ambiente protegido; validar ciclo público Devnet, Worker real e Phantom em origem autorizada. Economia candidata não está aprovada para Mainnet. A documentação anterior da Base é histórica.

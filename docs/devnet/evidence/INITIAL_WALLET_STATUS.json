@@ -1,0 +1,21 @@
+{
+  "evidence": "REAL_PUBLIC_DEVNET_WALLET_READ",
+  "at_utc": "2026-10-29T19:15:43.7592683Z",
+  "address": "3r8gEonYHrXEao85oFAu2UzVgT1KsxFmWUZLWBd8G5B3",
+  "rpc": "https://api.devnet.solana.com",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "slot": 516516857,
+  "lamports": 0,
+  "sol": "0.000000000",
+  "environment": "retry-devnet",
+  "secret_name": "RETRY_DEVNET_FUNDER",
+  "secret_existence_verified": true,
+  "faucet": {
+    "requested_lamports": 2000000000,
+    "attempted_at_utc": "2026-10-29T19:15:42.8694297Z",
+    "status": "http_refused",
+    "signature": null,
+    "error_code": 410
+  },
+  "meteora_transactions_sent": 0
+}
