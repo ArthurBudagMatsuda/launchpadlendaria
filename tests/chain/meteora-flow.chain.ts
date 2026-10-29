@@ -642,9 +642,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     });
   });
 
-  it("proves the lock from program state: every graduated position permanently locked, NFTs with the creator and RETRY", async () => {
-    if (!dammOpen)
-      return void log("lock check skipped", { reason: "not graduated" });
+  it("proves the lock from program state: every graduated position permanently locked, NFTs with the creator and RETRY", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     const lock = await verifyLockedLiquidity(context, dammOpen);
     log("lock verification", { ...lock });
     expect(lock.verified).toBe(true);
@@ -663,11 +662,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       );
   });
 
-  it("records the price and reserves across graduation and conserves the supply", async () => {
-    if (!dammOpen || !curveEnd)
-      return void log("graduation economics skipped", {
-        reason: "not graduated",
-      });
+  it("records the price and reserves across graduation and conserves the supply", async (test) => {
+    if (!dammOpen || !curveEnd) return test.skip("not graduated in this run");
     const gap = graduationPriceGap(curveEnd.sqrtPrice, dammOpen.sqrtPrice);
     const read = await readRetryPool(context, pool);
     const dbcAfter = read.pool;
@@ -716,8 +712,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     expect(Math.abs(Number(gap.gapPct))).toBeLessThan(50);
   });
 
-  it("refuses curve quotes and curve trades once the token graduated", async () => {
-    if (!dammOpen) return;
+  it("refuses curve quotes and curve trades once the token graduated", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     await expect(quote("buy", SOL / 10n)).rejects.toBeInstanceOf(QuoteError);
     const read = await readRetryPool(context, pool);
     expect(read.pool.status).toBe("graduated");
@@ -740,9 +736,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     });
   }
 
-  it("buys on DAMM v2 after graduation through the same trade layer and receives exactly the quote", async () => {
-    if (!dammOpen)
-      return void log("DAMM v2 trading skipped", { reason: "not graduated" });
+  it("buys on DAMM v2 after graduation through the same trade layer and receives exactly the quote", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     const q = await dammQuote("buy", SOL / 5n);
     expect(q.venue).toBe("damm-v2");
     const before = await tokenBalance(context, trader.publicKey, mint);
@@ -768,8 +763,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     log("DAMM v2 buy", { quote: prepared.quote });
   });
 
-  it("sells on DAMM v2 and receives at least the quoted minimum in SOL", async () => {
-    if (!dammOpen) return;
+  it("sells on DAMM v2 and receives at least the quoted minimum in SOL", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     const held = await tokenBalance(context, trader.publicKey, mint);
     const q = await dammQuote("sell", held / 20n);
     const before = BigInt(
@@ -807,8 +802,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     });
   });
 
-  it("refuses a DAMM v2 trade for a stale, moved or curve quote, and a substituted pool", async () => {
-    if (!dammOpen) return;
+  it("refuses a DAMM v2 trade for a stale, moved or curve quote, and a substituted pool", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     const q = await dammQuote("buy", SOL / 10n);
     const base = {
       owner: trader.publicKey,
@@ -849,8 +844,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     ).rejects.toBeInstanceOf(TransactionValidationError);
   });
 
-  it("is stopped by DAMM v2 itself when the minimum out is not met", async () => {
-    if (!dammOpen) return;
+  it("is stopped by DAMM v2 itself when the minimum out is not met", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     const q = await dammQuote("buy", SOL / 10n);
     const launch = await readRetryPool(context, pool);
     const { state } = await readDammPool(context, launch.pool);
@@ -878,8 +873,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     expect(failed.logs.join("\n")).toMatch(/ExceededSlippage/);
   });
 
-  it("lets nobody withdraw the locked principal: not the creator, not a stranger, not with another NFT account", async () => {
-    if (!dammOpen) return;
+  it("lets nobody withdraw the locked principal: not the creator, not a stranger, not with another NFT account", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     const lock = await verifyLockedLiquidity(context, dammOpen);
     const mine = lock.positions.find(
       (p) => p.holder === creator.publicKey.toBase58(),
@@ -996,8 +991,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     expect(again.verified).toBe(true);
   });
 
-  it("lets only the position holder claim its LP fees, without touching the locked liquidity", async () => {
-    if (!dammOpen) return;
+  it("lets only the position holder claim its LP fees, without touching the locked liquidity", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
     // A stranger cannot claim the creator's LP fees.
     await expect(
       prepareLpFeeClaim(context, { owner: trader.publicKey, launch: pool }),
