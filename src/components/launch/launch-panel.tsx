@@ -12,6 +12,7 @@ import {
   useMeteora,
   useOperations,
   userMessage,
+  useRetryLaunches,
 } from "@/hooks/use-retry";
 import {
   launchRequestId,
@@ -26,6 +27,11 @@ import {
   metadataEndpoint,
   uploadMetadata,
 } from "@/lib/meteora/metadata-upload";
+import {
+  MAX_LAUNCHES_PER_NAME,
+  MAX_LAUNCHES_PER_TICKER,
+  namingCheck,
+} from "@/lib/meteora/naming";
 import { pendingCreate } from "@/lib/meteora/operations";
 import { DEFAULT_SLIPPAGE_BPS } from "@/lib/meteora/quotes";
 import type { SimulationPreview } from "@/lib/meteora/transactions";
@@ -71,6 +77,10 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
     owner && store && context
       ? pendingCreate(store, context.cluster, owner)
       : undefined;
+  // RETRY's naming rules, checked against the launches already on-chain.
+  const launches = useRetryLaunches();
+  const naming =
+    owner && launches.data ? namingCheck(draft, owner, launches.data) : null;
   // A review belongs to the exact inputs it was built from; any edit drops it.
   const inputsKey = JSON.stringify([
     draft,
@@ -94,7 +104,9 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
           ? "metadata"
           : pending
             ? "pending"
-            : null;
+            : !naming || naming.block
+              ? "naming"
+              : null;
   async function prepare() {
     if (!context || !owner || !buyValid) return;
     setWorking(true);
@@ -256,6 +268,26 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
         <p className="notice-strip">
           Your previous launch is still waiting for the network. It settles on
           its own; reload in a minute.
+        </p>
+      ) : blocked === "naming" ? (
+        <p className="notice-strip" role="status">
+          {naming?.block === "creator-repeat"
+            ? "You already launched a token with this name and ticker. Pick another name or ticker."
+            : naming?.block === "name-limit"
+              ? `${naming.sameName} RETRY launches already use this name, the most RETRY allows (${MAX_LAUNCHES_PER_NAME}). Pick another name.`
+              : naming?.block === "ticker-limit"
+                ? `${naming.sameTicker} RETRY launches already use $${draft.symbol}, the most RETRY allows (${MAX_LAUNCHES_PER_TICKER}). Pick another ticker.`
+                : launches.isError
+                  ? "Could not check which names are already used on RETRY. Try again in a moment."
+                  : "Checking which names are already used on RETRY…"}
+        </p>
+      ) : naming?.sameTicker ? (
+        <p className="form-help">
+          {naming.sameTicker === 1
+            ? "Another RETRY launch"
+            : `${naming.sameTicker} RETRY launches`}{" "}
+          already use ${draft.symbol}. Tickers are not unique on Solana: traders
+          tell tokens apart by their mint address, which RETRY always shows.
         </p>
       ) : null}
       {review ? (

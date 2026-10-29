@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   ArrowDownUp,
@@ -39,6 +39,7 @@ import {
   useRetryLaunches,
   type RetryLaunch,
 } from "@/hooks/use-retry";
+import { namingFlags } from "@/lib/meteora/naming";
 import { discoverCategory, type DiscoverCategory } from "@/lib/meteora/pools";
 import { POLICY_MESSAGES } from "@/config/retry-protocol";
 import { EmptyState } from "@/components/ui/feedback";
@@ -120,6 +121,10 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
   );
   // Columns are recomputed with each read of the pools (every 20 s).
   const now = Math.floor((launches.dataUpdatedAt || 0) / 1000);
+  const naming = useMemo(
+    () => namingFlags(launches.data ?? []),
+    [launches.data],
+  );
   const launchesIn = (column: DiscoverCategory) =>
     visibleLaunches.filter(
       (launch) => discoverCategory(launch.pool, now) === column,
@@ -389,6 +394,7 @@ export function Discover({ initialSearch }: { initialSearch: string }) {
                           <LaunchCard
                             key={launch.pool.address}
                             launch={launch}
+                            naming={naming.get(launch.pool.address)}
                           />
                         ))}
                       {launchesIn(category.id).length >
