@@ -66,7 +66,9 @@ import {
   type TxExpectation,
 } from "@/lib/meteora/transactions";
 import { supportsSigning, walletSigner } from "@/lib/meteora/wallet-signer";
-import { customContext } from "@/lib/meteora/client";
+import { assertCluster, customContext } from "@/lib/meteora/client";
+import { prepareCreateToken } from "@/lib/meteora/create-token";
+import { CLUSTERS } from "@/config/solana";
 import type { Wallet, WalletAccount } from "@wallet-standard/base";
 
 const owner = Keypair.generate().publicKey;
@@ -873,5 +875,63 @@ describe("execution (adversarial)", () => {
     }).catch((cause: unknown) => cause);
     expect(userMessage(error)).toBe("Trading is paused on this DAMM v2 pool.");
     expect(store.list().map((op) => op.status)).toEqual(["failed"]);
+  });
+});
+
+describe("cluster guard (adversarial)", () => {
+  /** An RPC double that answers getGenesisHash and records every call. */
+  const rpcAnswering = (genesis: string) => {
+    const calls: string[] = [];
+    const connection = new Proxy(
+      {},
+      {
+        get: (_, method: string) => async () => {
+          calls.push(method);
+          if (method === "getGenesisHash") return genesis;
+          throw new Error(`unexpected ${method}`);
+        },
+      },
+    );
+    return { connection, calls };
+  };
+
+  it("builds nothing when the RPC answers for another cluster", async () => {
+    const { connection, calls } = rpcAnswering(
+      CLUSTERS["mainnet-beta"].genesis,
+    );
+    const context = customContext(
+      connection as never,
+      config,
+      CLUSTERS.devnet.genesis,
+    );
+    await expect(assertCluster(context)).rejects.toThrow(
+      "RPC cluster does not match the selected environment.",
+    );
+    await expect(
+      prepareCreateToken(context, {
+        name: "Orbit",
+        symbol: "ORBIT",
+        uri: "https://raw.githubusercontent.com/ArthurBudagMatsuda/launchpadlendaria/feat/retry-meteora-dbc-mvp/docs/meteora/devnet-metadata/retry-devnet-test.json",
+        creator: owner,
+        initialBuyLamports: 0n,
+        slippageBps: 100,
+      }),
+    ).rejects.toThrow("RPC cluster does not match");
+    // The genesis hash is the only thing asked: no account was read.
+    expect(new Set(calls)).toEqual(new Set(["getGenesisHash"]));
+    expect(
+      userMessage(
+        new Error("RPC cluster does not match the selected environment."),
+      ),
+    ).toMatch(/different Solana cluster/);
+  });
+
+  it("goes on when the RPC answers with the selected cluster's genesis", async () => {
+    const { connection } = rpcAnswering(CLUSTERS.devnet.genesis);
+    await expect(
+      assertCluster(
+        customContext(connection as never, config, CLUSTERS.devnet.genesis),
+      ),
+    ).resolves.toBeUndefined();
   });
 });
