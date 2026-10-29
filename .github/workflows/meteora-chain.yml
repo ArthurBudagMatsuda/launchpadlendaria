@@ -157,7 +157,7 @@ jobs:
         run: |
           if [ "$HAS_FUNDER" != true ]; then
             echo "::warning::RETRY_DEVNET_FUNDER is not set. The public Devnet RPC faucet is closed (410), so the Devnet steps will be skipped, not faked."
-            echo "Devnet steps skipped: add the RETRY_DEVNET_FUNDER secret (see docs/meteora/OPERATIONAL_RUNBOOK.md)." >> "$GITHUB_STEP_SUMMARY"
+            echo "Devnet steps skipped: add the RETRY_DEVNET_FUNDER secret (see docs/meteora-mvp/OPERATIONAL_RUNBOOK.md)." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Chain flow on Devnet (reuses the app's Devnet config when set)
         run: pnpm test:chain

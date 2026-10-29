@@ -25,7 +25,7 @@ export const RETRY_DBC_CONFIGS: Record<SolanaCluster, RetryDbcConfig | null> = {
   devnet: null,
   // Mainnet stays empty until the owner approves the economics, the fee
   // claimer (treasury) and the security review. See
-  // docs/meteora/MAINNET_DEPLOYMENT_CHECKLIST.md.
+  // docs/meteora-mvp/MAINNET_RELEASE_CHECKLIST.md.
   "mainnet-beta": null,
 };
 

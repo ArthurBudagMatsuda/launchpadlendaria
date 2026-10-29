@@ -58,7 +58,7 @@ flowchart LR
 ## Hospedagem
 
 - O site continua 100% estático no GitHub Pages. Não existe API route.
-- Único serviço extra: o **Worker de metadados** (`infra/metadata-worker/`, Cloudflare Workers + KV, plano gratuito). Ele guarda JSON e imagem endereçados por SHA-256. Ver [CREATE_TOKEN_FLOW.md](CREATE_TOKEN_FLOW.md).
+- Único serviço extra: o **Worker de metadados** (`infra/metadata-worker/`, Cloudflare Workers + KV, plano gratuito). Ele guarda JSON e imagem endereçados por SHA-256. Ver [TOKEN_CREATION.md](TOKEN_CREATION.md).
 - RPC: o público do cluster por padrão, ou `NEXT_PUBLIC_SOLANA_RPC_URL`.
 
 ## Política de execução
