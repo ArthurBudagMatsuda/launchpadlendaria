@@ -55,6 +55,7 @@ const rows = [
     (e) =>
       `curve ${e.curvePriceSol} SOL → DAMM v2 ${e.dammPriceSol} SOL (gap ${e.gapPct}%) · reserve ${sol(e.curveQuoteReserve)} → ${sol(e.dammQuoteReserve)}`,
   ],
+  ["repeated migration refused", (e) => `${e.error} · ${e.signature}`],
   [
     "DAMM v2 buy 0.2 SOL",
     (e) => `change ${sol(e.simulatedBalanceChange)} · ${e.signature}`,

@@ -104,6 +104,15 @@ emit("DBC_POOL_AUTHORITY", {
   address: POOL_AUTHORITY,
   lamports: await connection.getBalance(new PublicKey(POOL_AUTHORITY)),
 });
+// Rent is set per cluster, so the validator's measured costs are converted
+// with each cluster's own rent-exempt minimums (mint and token account sizes).
+const rent = (bytes) => connection.getMinimumBalanceForRentExemption(bytes);
+emit("RENT", {
+  empty: await rent(0),
+  mint82: await rent(82),
+  tokenAccount165: await rent(165),
+  perByte: ((await rent(1000)) - (await rent(0))) / 1000,
+});
 
 if (process.env.GITHUB_STEP_SUMMARY)
   appendFileSync(

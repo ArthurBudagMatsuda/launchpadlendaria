@@ -63,7 +63,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Owner, executable flag, last deploy slot and upgrade authority of each
-      # program, plus the DAMM v2 migration config and DBC's rent float.
+      # program, plus the DAMM v2 migration config, DBC's rent float and the
+      # cluster's rent-exempt minimums.
       - name: Devnet
         run: node tests/chain/verify-programs.mjs https://api.devnet.solana.com devnet --dump
       - name: Mainnet (reads only)
