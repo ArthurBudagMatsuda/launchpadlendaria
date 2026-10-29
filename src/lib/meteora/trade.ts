@@ -39,6 +39,10 @@ export async function prepareTrade(
     reviewed: TradeQuote;
   },
 ): Promise<PreparedTrade> {
+  if (input.reviewed.venue !== "dbc")
+    throw new QuoteError(
+      "This token trades on DAMM v2 now. Refresh the quote.",
+    );
   assertWritable(context);
   await assertCluster(context);
   if (!isQuoteFresh(input.reviewed))

@@ -27,6 +27,10 @@ export const SYSTEM_PROGRAM = new PublicKey("11111111111111111111111111111111");
 export const SPL_TOKEN_PROGRAM = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
 );
+/** DAMM v2 position NFTs are Token-2022 mints. */
+export const TOKEN_2022_PROGRAM = new PublicKey(
+  "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+);
 export const ASSOCIATED_TOKEN_PROGRAM = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
 );
