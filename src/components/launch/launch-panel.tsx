@@ -52,9 +52,9 @@ interface Review {
  * the simulated cost, and a launch already sent cannot be sent again.
  */
 export function LaunchPanel({ draft }: { draft: TokenDraft }) {
-  const { wallet, context, policy } = useMeteora();
+  const { wallet, context, policy } = useMeteora("create");
   const { operations, store } = useOperations();
-  const { state, run, reset, canSign } = useExecute();
+  const { state, run, reset, canSign } = useExecute("create");
   const [initialBuy, setInitialBuy] = useState("0");
   const [stored, setReview] = useState<Review | null>(null);
   const [working, setWorking] = useState(false);

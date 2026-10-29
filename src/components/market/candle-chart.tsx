@@ -21,7 +21,18 @@ import {
   type PriceHigh,
 } from "@/lib/market/chart-series";
 import type { Candle, CandleInterval } from "@/lib/market/types";
-import { usdAmount, usdPrice } from "@/lib/format";
+import { quotePrice, usdAmount, usdPrice } from "@/lib/format";
+
+/**
+ * A candle in USD (market data) or in SOL (RETRY launches, decoded from
+ * Meteora's events). The two never share a chart.
+ */
+export type ChartCandle =
+  Candle | (Omit<Candle, "volumeUsd"> & { volumeSol: number });
+const volumeOf = (candle: ChartCandle) =>
+  "volumeSol" in candle ? candle.volumeSol : candle.volumeUsd;
+const solAmount = (value: number) =>
+  `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 3 }).format(value)} SOL`;
 
 const UP = "#5bd5a3";
 const DOWN = "#f07787";
@@ -76,7 +87,18 @@ function tickLabel(seconds: number, type: TickMarkType) {
   });
 }
 
-const price = (value: number) => usdPrice(String(value));
+const formats = {
+  usd: {
+    price: (value: number) => usdPrice(String(value)),
+    volume: (value: number) => usdAmount(String(value)),
+    label: "USD",
+  },
+  sol: {
+    price: (value: number) => quotePrice(String(value), "SOL"),
+    volume: solAmount,
+    label: "SOL",
+  },
+} as const;
 /**
  * Axis labels for a series whose smallest price step is `step`. The axis pads
  * below the lowest candle, down to zero and below, or to a float a hair above
@@ -84,8 +106,9 @@ const price = (value: number) => usdPrice(String(value));
  * under half a step stay unlabeled: a "$0" tick beside $0.00001 candles read
  * as if the token had been worth nothing.
  */
-const axisPrice = (step: number) => (value: number) =>
-  value < step / 2 ? "" : price(value);
+const axisPrice =
+  (step: number, price: (value: number) => string) => (value: number) =>
+    value < step / 2 ? "" : price(value);
 /** Room above the candles for the legend, which wraps on phones. */
 const priceMargins = (width: number) => ({
   top: width < 560 ? 0.2 : 0.1,
@@ -107,20 +130,24 @@ export default function CandleChart({
   pairLabel,
   ath,
   onReachStart,
+  unit = "usd",
 }: {
   /** Oldest first, one per interval with trades. */
-  candles: readonly Candle[];
+  candles: readonly ChartCandle[];
   interval: CandleInterval;
   mode: "candles" | "line";
   pairLabel: string;
   ath: PriceHigh | null;
   onReachStart?: () => void;
+  /** Quote unit of every price and volume in `candles`. */
+  unit?: "usd" | "sol";
 }) {
+  const { price, volume: volumeText, label } = formats[unit];
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<ChartApi | null>(null);
-  const drawn = useRef<readonly Candle[]>(candles);
+  const drawn = useRef<readonly ChartCandle[]>(candles);
   const placed = useRef(false);
-  const [hovered, setHovered] = useState<Candle | null>(null);
+  const [hovered, setHovered] = useState<ChartCandle | null>(null);
   const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [logScale, setLogScale] = useState(false);
   const reachStart = useRef(onReachStart);
@@ -193,7 +220,10 @@ export default function CandleChart({
       },
       localization: {
         locale: "en-US",
-        priceFormatter: axisPrice(priceStep(drawn.current)),
+        priceFormatter: axisPrice(
+          priceStep(drawn.current),
+          formats[unit].price,
+        ),
         timeFormatter: (time: unknown) => slotTime(Number(time), interval),
       },
     });
@@ -243,13 +273,13 @@ export default function CandleChart({
       api.current = null;
       chart.remove();
     };
-  }, [interval]);
+  }, [interval, unit]);
 
   useEffect(() => {
     const current = api.current;
     if (!current) return;
     drawn.current = candles;
-    const time = (candle: Candle) => candle.time as UTCTimestamp;
+    const time = (candle: ChartCandle) => candle.time as UTCTimestamp;
     current.candles.setData(
       candles.map((candle) => ({
         time: time(candle),
@@ -265,12 +295,12 @@ export default function CandleChart({
     current.volume.setData(
       candles.map((candle) => ({
         time: time(candle),
-        value: candle.volumeUsd,
+        value: volumeOf(candle),
         color: candle.close >= candle.open ? UP_VOLUME : DOWN_VOLUME,
       })),
     );
     const step = priceStep(candles);
-    const formatter = axisPrice(step);
+    const formatter = axisPrice(step, price);
     current.chart.applyOptions({ localization: { priceFormatter: formatter } });
     const priceFormat = { type: "custom" as const, formatter, minMove: step };
     current.candles.applyOptions({ priceFormat });
@@ -281,7 +311,7 @@ export default function CandleChart({
       placed.current = true;
       resetView();
     }
-  }, [candles, interval, resetView]);
+  }, [candles, interval, price, resetView]);
 
   // Also re-applied to the new chart when the interval changes.
   useEffect(() => {
@@ -323,7 +353,7 @@ export default function CandleChart({
   const shown = hovered ?? last ?? null;
   const summary =
     first && last
-      ? `${pairLabel} ${interval} candles in USD from ${slotTime(first.time, interval)} to ${slotTime(last.time, interval)}. Low ${price(Math.min(...candles.map((c) => c.low)))}, high ${price(Math.max(...candles.map((c) => c.high)))}, last close ${price(last.close)}.${ath ? ` All-time high ${price(ath.price)} on ${slotTime(ath.time, "1d")}.` : ""}`
+      ? `${pairLabel} ${interval} candles in ${label} from ${slotTime(first.time, interval)} to ${slotTime(last.time, interval)}. Low ${price(Math.min(...candles.map((c) => c.low)))}, high ${price(Math.max(...candles.map((c) => c.high)))}, last close ${price(last.close)}.${ath ? ` All-time high ${price(ath.price)} on ${slotTime(ath.time, "1d")}.` : ""}`
       : `${pairLabel} ${interval} chart with no candles.`;
   return (
     <>
@@ -351,7 +381,7 @@ export default function CandleChart({
               <dt>C</dt>
               <dd>{price(shown.close)}</dd>
               <dt>Vol</dt>
-              <dd>{usdAmount(String(shown.volumeUsd))}</dd>
+              <dd>{volumeText(volumeOf(shown))}</dd>
             </dl>
           </div>
         ) : null}

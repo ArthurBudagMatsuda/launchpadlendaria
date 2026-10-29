@@ -42,7 +42,7 @@ export function initialBars(width: number, total: number) {
  * price in the series, so a $0.00001 low and a $0.0024 high both keep their
  * digits when zoomed in.
  */
-export function priceStep(candles: readonly Candle[]) {
+export function priceStep(candles: readonly Pick<Candle, "low">[]) {
   const lows = candles.map((candle) => candle.low).filter((low) => low > 0);
   if (!lows.length) return 0.01;
   const step = 10 ** (Math.floor(Math.log10(Math.min(...lows))) - 3);

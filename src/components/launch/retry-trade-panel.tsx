@@ -1,9 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, type Transaction } from "@solana/web3.js";
 import type { PoolConfig, VirtualPool } from "@/lib/meteora/sdk";
 import { Settings2, Zap } from "lucide-react";
+import type { RetryFeature } from "@/config/retry-protocol";
 import { useSolBalance } from "@/components/wallet/solana-provider";
 import { WalletStatus } from "@/components/wallet/solana-status";
 import { Button } from "@/components/ui/button";
@@ -30,35 +31,58 @@ import {
   tokenBalance,
   wrappedSolBalance,
 } from "@/lib/meteora/trade";
+import type { TxExpectation } from "@/lib/meteora/transactions";
 import { OperationState, PolicyNotice } from "./launch-ui";
 
 const SLIPPAGE_OPTIONS = [50, 100, 200, 500, 1000];
 /** Lamports kept back on a max buy for fees and token account rent. */
 const BUY_RESERVE = 10_000_000n;
 
+/** Where a trade executes: the bonding curve or the graduated pool. */
+export interface TradeVenue {
+  feature: RetryFeature;
+  /** The pool the quote and the transaction are for. */
+  address: string;
+  /** Slot of the pool read; quotes refresh with every new read. */
+  slot: number;
+  tradable: boolean;
+  /** Why trading is unavailable, or where it happens, shown above the form. */
+  notice: string | null;
+  feeLabel: string;
+  feeDetail: (quote: TradeQuote) => string;
+  quote: (
+    side: TradeSide,
+    amountIn: bigint,
+    slippageBps: number,
+  ) => Promise<TradeQuote>;
+  prepare: (
+    owner: PublicKey,
+    quote: TradeQuote,
+  ) => Promise<{ tx: Transaction; expect: TxExpectation }>;
+  footnote: string;
+}
+
 /**
- * Buy and sell a RETRY token on its bonding curve. The quote is computed
- * from the pool account read at a known slot, rebuilt right before signing,
- * and the transaction carries its minimum output, so the program refuses
- * any fill worse than the slippage the user chose.
+ * Buy and sell a RETRY token on its venue. The quote is computed from the
+ * pool account read at a known slot, rebuilt right before signing, and the
+ * transaction carries its minimum output, so the program refuses any fill
+ * worse than the slippage the user chose.
  */
-export function RetryTradePanel({
+export function TradeForm({
   pool,
-  raw,
-  config,
   symbol,
+  venue,
 }: {
   pool: RetryPool;
-  raw: VirtualPool;
-  config: PoolConfig;
   symbol: string;
+  venue: TradeVenue;
 }) {
-  const { wallet, context, policy } = useMeteora();
+  const { wallet, context, policy } = useMeteora(venue.feature);
   const balance = useSolBalance();
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(DEFAULT_SLIPPAGE_BPS);
-  const { state, run, reset, canSign } = useExecute();
+  const { state, run, reset, canSign } = useExecute(venue.feature);
   const [prepareError, alertError] = useState<string | null>(null);
   const owner = wallet.status === "connected" ? wallet.address : undefined;
   const mint = useMemo(() => new PublicKey(pool.baseMint), [pool.baseMint]);
@@ -76,32 +100,21 @@ export function RetryTradePanel({
     },
   });
   const amountIn = side === "buy" ? parseSol(amount) : parseTokens(amount);
-  const tradable =
-    !pool.isMigrated &&
-    pool.status !== "graduation-ready" &&
-    pool.status !== "migrating";
   const quote = useQuery({
     queryKey: [
       "retry",
       "quote",
-      pool.address,
-      pool.slot,
+      venue.feature,
+      venue.address,
+      venue.slot,
       side,
       amountIn?.toString(),
       slippageBps,
     ],
-    enabled: Boolean(context && amountIn && amountIn > 0n && tradable),
+    enabled: Boolean(context && amountIn && amountIn > 0n && venue.tradable),
     refetchInterval: 10_000,
     retry: false,
-    queryFn: async (): Promise<TradeQuote> =>
-      quoteTrade({
-        side,
-        pool: { address: pool.address, raw, config, slot: pool.slot },
-        amountIn: amountIn!,
-        slippageBps,
-        currentPoint: await currentPoint(context!, config),
-        context: context!,
-      }),
+    queryFn: () => venue.quote(side, amountIn!, slippageBps),
   });
   const q = quote.data;
   const lamports = balance.data?.lamports ?? null;
@@ -118,24 +131,17 @@ export function RetryTradePanel({
     !isQuoteFresh(q) ||
     insufficient ||
     running ||
-    !tradable;
+    !venue.tradable;
   async function submit() {
     if (!context || !q || !owner) return;
     reset();
     try {
-      const prepared = await prepareTrade(context, {
-        owner: new PublicKey(owner),
-        pool: new PublicKey(pool.address),
-        side: q.side,
-        amountIn: q.amountIn,
-        slippageBps: q.slippageBps,
-        reviewed: q,
-      });
+      const prepared = await venue.prepare(new PublicKey(owner), q);
       const result = await run({
         kind: q.side,
         tx: prepared.tx,
         expect: prepared.expect,
-        pool: pool.address,
+        pool: venue.address,
         mint: pool.baseMint,
         summary:
           q.side === "buy"
@@ -148,7 +154,6 @@ export function RetryTradePanel({
       alertError(userMessage(cause));
     }
   }
-  const fee = q ? splitTradingFee(q.fee) : null;
   return (
     <section className="panel trade-panel" aria-label={`Trade ${symbol}`}>
       <h2>Trade {symbol}</h2>
@@ -159,13 +164,7 @@ export function RetryTradePanel({
           This wallet does not offer transaction signing to web apps.
         </p>
       ) : null}
-      {!tradable ? (
-        <p className="notice-strip">
-          {pool.isMigrated
-            ? "This token graduated. It now trades on Meteora DAMM v2, outside RETRY."
-            : "The curve is complete. Trading resumes on DAMM v2 after graduation."}
-        </p>
-      ) : null}
+      {venue.notice ? <p className="notice-strip">{venue.notice}</p> : null}
       <div className="segmented" aria-label="Trade direction">
         {(["buy", "sell"] as const).map((s) => (
           <button
@@ -303,14 +302,8 @@ export function RetryTradePanel({
           </strong>
         </div>
         <div>
-          <span>Trading fee (1%)</span>
-          <strong
-            title={
-              fee
-                ? `Meteora ${sol(fee.protocol, 6)} · creator ${sol(fee.creator, 6)} · RETRY ${sol(fee.partner, 6)}`
-                : undefined
-            }
-          >
+          <span>{venue.feeLabel}</span>
+          <strong title={q ? venue.feeDetail(q) : undefined}>
             {q ? sol(q.fee, 6) : "—"}
           </strong>
         </div>
@@ -365,11 +358,66 @@ export function RetryTradePanel({
       />
       <p className="tiny">
         Quotes come from the pool account at slot{" "}
-        {pool.slot.toLocaleString("en-US")} and refresh every 10 s. The
+        {venue.slot.toLocaleString("en-US")} and refresh every 10 s. The
         transaction is simulated before your wallet opens, and the program
-        rejects a fill below the minimum. This limits slippage; it does not
-        prevent every form of MEV.
+        rejects a fill below the minimum. {venue.footnote}
       </p>
     </section>
   );
+}
+
+/** Trading on the bonding curve, until the curve completes. */
+export function RetryTradePanel({
+  pool,
+  raw,
+  config,
+  symbol,
+}: {
+  pool: RetryPool;
+  raw: VirtualPool;
+  config: PoolConfig;
+  symbol: string;
+}) {
+  const { context } = useMeteora();
+  const tradable =
+    !pool.isMigrated &&
+    pool.status !== "graduation-ready" &&
+    pool.status !== "migrating" &&
+    pool.status !== "needs-attention";
+  const venue: TradeVenue = {
+    feature: "trade-curve",
+    address: pool.address,
+    slot: pool.slot,
+    tradable,
+    notice: tradable
+      ? null
+      : pool.status === "needs-attention"
+        ? "The curve reports a migration, but its DAMM v2 pool was not found. Trading stays off until the chain shows it."
+        : "The curve is complete. Trading resumes on DAMM v2 after graduation.",
+    feeLabel: "Trading fee (1%)",
+    feeDetail: (q) => {
+      const fee = splitTradingFee(q.fee);
+      return `Meteora ${sol(fee.protocol, 6)} · creator ${sol(fee.creator, 6)} · RETRY ${sol(fee.partner, 6)}`;
+    },
+    quote: async (side, amountIn, slippageBps) =>
+      quoteTrade({
+        side,
+        pool: { address: pool.address, raw, config, slot: pool.slot },
+        amountIn,
+        slippageBps,
+        currentPoint: await currentPoint(context!, config),
+        context: context!,
+      }),
+    prepare: (owner, q) =>
+      prepareTrade(context!, {
+        owner,
+        pool: new PublicKey(pool.address),
+        side: q.side,
+        amountIn: q.amountIn,
+        slippageBps: q.slippageBps,
+        reviewed: q,
+      }),
+    footnote: "This limits slippage; it does not prevent every form of MEV.",
+  };
+  return <TradeForm pool={pool} symbol={symbol} venue={venue} />;
 }

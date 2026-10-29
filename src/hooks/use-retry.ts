@@ -7,11 +7,21 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useInfiniteQuery,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { PublicKey, type Keypair, type Transaction } from "@solana/web3.js";
-import { executionPolicy } from "@/config/retry-protocol";
+import {
+  executionPolicy,
+  POLICY_MESSAGES,
+  type RetryFeature,
+} from "@/config/retry-protocol";
 import { useSolanaWallet } from "@/components/wallet/solana-provider";
-import { meteoraContext } from "@/lib/meteora/client";
+import { meteoraContext, type MeteoraContext } from "@/lib/meteora/client";
 import { userMessage } from "@/lib/meteora/errors";
 import {
   fetchOffchainMetadata,
@@ -39,6 +49,10 @@ import {
   type SimulationPreview,
   type TxExpectation,
 } from "@/lib/meteora/transactions";
+import { fetchActivity, type ActivityPage } from "@/lib/meteora/history";
+// Types only: the DAMM v2 SDK loads on demand, on graduated tokens' pages.
+import type { DammPool } from "@/lib/meteora/damm-v2";
+import type { PoolState } from "@/lib/meteora/damm-sdk";
 import { SPL_TOKEN_PROGRAM } from "@/lib/meteora/programs";
 import { supportsSigning, walletSigner } from "@/lib/meteora/wallet-signer";
 
@@ -47,16 +61,17 @@ export const POOL_REFRESH_MS = 10_000;
 
 /**
  * The Meteora context for the cluster and RPC the wallet provider holds,
- * plus what the app may do there. One source of truth: the provider.
+ * plus what the app may do there (for one feature, when given). One source
+ * of truth: the provider.
  */
-export function useMeteora() {
+export function useMeteora(feature?: RetryFeature) {
   const wallet = useSolanaWallet();
   const config = wallet.config;
   const context = useMemo(
     () => (config ? meteoraContext(config) : null),
     [config],
   );
-  const policy = config ? executionPolicy(config.cluster) : null;
+  const policy = config ? executionPolicy(config.cluster, feature) : null;
   return { wallet, context, policy };
 }
 
@@ -150,20 +165,115 @@ export function useOffchainMetadata(
   });
 }
 
-/** Recent transactions that touched a pool, newest first (signatures only). */
-export function usePoolActivity(pool: string | null) {
+/** Transactions per pool and page of a launch's history. */
+export const HISTORY_PAGE = 20;
+
+/**
+ * A launch's history, decoded from Meteora's events: its DBC pool and, once
+ * graduated, its DAMM v2 pool. Pages go back in time ("load older").
+ */
+export function useLaunchHistory(pool: RetryPool) {
+  const { context } = useMeteora();
+  const damm = pool.status === "graduated" ? pool.dammV2Pool : null;
+  return useInfiniteQuery({
+    queryKey: ["retry", "history", context?.cluster, pool.address, damm],
+    enabled: Boolean(context),
+    initialPageParam: undefined as ActivityPage["before"] | undefined,
+    queryFn: ({ pageParam }) =>
+      fetchActivity(
+        context!,
+        { dbc: pool.address, damm },
+        { limit: HISTORY_PAGE, before: pageParam },
+      ),
+    getNextPageParam: (last) => (last.hasMore ? last.before : undefined),
+    refetchInterval: POOL_REFRESH_MS * 3,
+    retry: 1,
+  });
+}
+
+/**
+ * The DAMM v2 pool a launch graduated to, checked against the launch. The
+ * DAMM v2 SDK is imported here, so pages of tokens still on the curve never
+ * download it.
+ */
+function dammPoolQuery(context: MeteoraContext | null, pool: RetryPool) {
+  return queryOptions({
+    queryKey: ["retry", "damm", context?.cluster, pool.dammV2Pool],
+    enabled: Boolean(context && pool.dammV2Pool && pool.status === "graduated"),
+    staleTime: POOL_REFRESH_MS / 2,
+    refetchInterval: POOL_REFRESH_MS,
+    retry: 1,
+    queryFn: async (): Promise<{ pool: DammPool; state: PoolState }> => {
+      const { readDammPool } = await import("@/lib/meteora/damm-v2");
+      return readDammPool(context!, pool);
+    },
+  });
+}
+
+export function useDammPool(pool: RetryPool) {
+  const { context } = useMeteora();
+  return useQuery(dammPoolQuery(context, pool));
+}
+
+/** The graduated pools of several launches (one query each, shared cache). */
+export function useDammPools(pools: RetryPool[]) {
+  const { context } = useMeteora();
+  return useQueries({
+    queries: pools.map((pool) => dammPoolQuery(context, pool)),
+  });
+}
+
+/** The wallet's LP positions in graduated RETRY pools. */
+export function useLpPositions(owner: string | undefined) {
+  const { context } = useMeteora();
+  const launches = useRetryLaunches();
+  const graduated = (launches.data ?? []).filter(
+    (launch) => launch.pool.status === "graduated",
+  );
+  return useQuery({
+    queryKey: [
+      "retry",
+      "lp-positions",
+      context?.cluster,
+      owner,
+      graduated.length,
+    ],
+    enabled: Boolean(context && owner && launches.data),
+    refetchInterval: LAUNCHES_REFRESH_MS * 3,
+    retry: 1,
+    queryFn: async () => {
+      if (!graduated.length) return [];
+      const { listLpPositions } = await import("@/lib/meteora/damm-v2");
+      return listLpPositions(
+        context!,
+        new PublicKey(owner!),
+        graduated.map((launch) => launch.pool),
+      );
+    },
+  });
+}
+
+/** The graduated liquidity's lock, proven from the positions' state. */
+export function useLockVerification(
+  damm: { pool: DammPool; state: PoolState } | undefined,
+) {
   const { context } = useMeteora();
   return useQuery({
-    queryKey: ["retry", "activity", context?.cluster, pool],
-    enabled: Boolean(context && pool),
-    refetchInterval: POOL_REFRESH_MS * 2,
+    queryKey: [
+      "retry",
+      "lock",
+      context?.cluster,
+      damm?.pool.address,
+      damm?.pool.slot,
+    ],
+    enabled: Boolean(context && damm),
+    staleTime: 30_000,
     retry: 1,
-    queryFn: () =>
-      context!.connection.getSignaturesForAddress(
-        new PublicKey(pool!),
-        { limit: 20 },
-        "confirmed",
-      ),
+    placeholderData: (previous) => previous,
+    queryFn: async () => {
+      const { verifyLockedLiquidity } = await import("@/lib/meteora/damm-v2");
+      return verifyLockedLiquidity(context!, damm!.pool, damm!.state);
+    },
   });
 }
 
@@ -230,8 +340,8 @@ export type ExecutionState =
  * Run one transaction through simulate → wallet signature → send → confirm
  * with the connected Wallet Standard account. One at a time per component.
  */
-export function useExecute() {
-  const { wallet, context, policy } = useMeteora();
+export function useExecute(feature: RetryFeature) {
+  const { wallet, context, policy } = useMeteora(feature);
   const queryClient = useQueryClient();
   const [state, setState] = useState<ExecutionState>({ phase: "idle" });
   const busy = useRef(false);
@@ -245,7 +355,9 @@ export function useExecute() {
       if (!policy?.enabled) {
         setState({
           phase: "error",
-          message: "Execution is not available on this cluster.",
+          message: policy
+            ? POLICY_MESSAGES[policy.reason]
+            : "Execution is not available on this cluster.",
         });
         return null;
       }

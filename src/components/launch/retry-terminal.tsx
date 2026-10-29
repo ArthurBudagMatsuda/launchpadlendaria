@@ -1,6 +1,7 @@
 "use client";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import type { PoolConfig, VirtualPool } from "@/lib/meteora/sdk";
 import { ArrowLeft, Coins } from "lucide-react";
@@ -8,22 +9,33 @@ import { CLUSTERS } from "@/config/solana";
 import { useOnchainToken } from "@/hooks/use-solana-market";
 import {
   POOL_REFRESH_MS,
+  useDammPool,
   useExecute,
+  useLaunchHistory,
   useMeteora,
   useOffchainMetadata,
-  usePoolActivity,
   userMessage,
 } from "@/hooks/use-retry";
-import { CopyAddress, SourceLine } from "@/components/market/primitives";
-import { EmptyState } from "@/components/ui/feedback";
+import {
+  CopyAddress,
+  ErrorNote,
+  SourceLine,
+} from "@/components/market/primitives";
+import { LoadingSkeleton } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
-import { ago, shorten } from "@/lib/format";
+import { shorten } from "@/lib/format";
 import { feeSchedule, prepareCreatorClaim } from "@/lib/meteora/fees";
 import { sol, tokens } from "@/lib/meteora/format";
+import { mergeActivity } from "@/lib/meteora/history";
 import type { OnchainMetadata } from "@/lib/meteora/metadata";
 import type { RetryPool } from "@/lib/meteora/pools";
 import type { SolanaAddress } from "@/lib/solana/address";
 import { GraduationPanel } from "./graduation-panel";
+import {
+  ActivityTable,
+  LaunchChart,
+  type LaunchHistory,
+} from "./launch-history";
 import {
   ExplorerLink,
   LaunchMark,
@@ -31,6 +43,19 @@ import {
   StatusBadge,
 } from "./launch-ui";
 import { RetryTradePanel } from "./retry-trade-panel";
+
+// The DAMM v2 SDK is only downloaded for tokens that graduated.
+const DammTradePanel = dynamic(
+  () => import("./damm-panels").then((m) => m.DammTradePanel),
+  { ssr: false, loading: () => <LoadingSkeleton /> },
+);
+const LpFeesPanel = dynamic(
+  () => import("./damm-panels").then((m) => m.LpFeesPanel),
+  { ssr: false },
+);
+
+const solFigure = (value: string) =>
+  `${Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })} SOL`;
 
 /** Token page for a RETRY launch: everything is read from its DBC pool and mint. */
 export function RetryTerminal({
@@ -51,21 +76,54 @@ export function RetryTerminal({
     cluster: pool.cluster,
     address: pool.baseMint as SolanaAddress,
   }).data;
-  const activity = usePoolActivity(pool.address);
+  const { wallet } = useMeteora();
   const [tab, setTab] = useState<"activity" | "accounts">("activity");
   const symbol = metadata?.symbol ?? "TOKEN";
   const fees = feeSchedule();
-  const stats = [
-    { label: "Price", value: `${Number(pool.priceSol).toPrecision(4)} SOL` },
-    {
-      label: "FDV",
-      value: `${Number(pool.fdvSol).toLocaleString("en-US", { maximumFractionDigits: 2 })} SOL`,
-    },
-    { label: "SOL in curve", value: sol(pool.quoteReserve, 3) },
-    { label: "Tokens in curve", value: tokens(pool.baseReserve) },
-    { label: "Fees charged", value: sol(pool.totalTradingQuoteFee, 4) },
-    { label: "Supply", value: "1,000,000,000 (fixed)" },
-  ];
+  const graduated = pool.status === "graduated";
+  const damm = useDammPool(pool);
+  const graduatedPool = graduated ? damm.data?.pool : undefined;
+  const historyQuery = useLaunchHistory(pool);
+  const items = useMemo(
+    () => mergeActivity(historyQuery.data?.pages ?? []),
+    [historyQuery.data],
+  );
+  const history: LaunchHistory = {
+    items,
+    isPending: historyQuery.isPending,
+    isError: historyQuery.isError,
+    retrievedAt: historyQuery.dataUpdatedAt,
+    hasMore: Boolean(historyQuery.hasNextPage),
+    loadingOlder: historyQuery.isFetchingNextPage,
+    loadOlder: () => void historyQuery.fetchNextPage(),
+    refetch: () => void historyQuery.refetch(),
+  };
+  const stats = graduatedPool
+    ? [
+        {
+          label: "Price",
+          value: `${Number(graduatedPool.priceSol).toPrecision(4)} SOL`,
+        },
+        { label: "FDV", value: solFigure(graduatedPool.fdvSol) },
+        { label: "SOL in pool", value: sol(graduatedPool.quoteReserve, 3) },
+        { label: "Tokens in pool", value: tokens(graduatedPool.baseReserve) },
+        {
+          label: "Trades on",
+          value: `DAMM v2 · ${graduatedPool.feeBps / 100}% fee`,
+        },
+        { label: "Supply", value: "1,000,000,000 (fixed)" },
+      ]
+    : [
+        {
+          label: "Price",
+          value: `${Number(pool.priceSol).toPrecision(4)} SOL`,
+        },
+        { label: "FDV", value: solFigure(pool.fdvSol) },
+        { label: "SOL in curve", value: sol(pool.quoteReserve, 3) },
+        { label: "Tokens in curve", value: tokens(pool.baseReserve) },
+        { label: "Fees charged", value: sol(pool.totalTradingQuoteFee, 4) },
+        { label: "Supply", value: "1,000,000,000 (fixed)" },
+      ];
   return (
     <div className="trade-page">
       <Link href="/" className="back-link">
@@ -140,19 +198,18 @@ export function RetryTerminal({
       </div>
       <SourceLine
         source="solana-rpc"
-        retrievedAt={retrievedAt}
+        retrievedAt={graduatedPool ? damm.dataUpdatedAt : retrievedAt}
         refreshMs={POOL_REFRESH_MS}
-        detail={`Meteora DBC pool state at slot ${pool.slot.toLocaleString("en-US")}`}
+        refreshFailed={graduated && damm.isError}
+        detail={
+          graduatedPool
+            ? `Meteora DAMM v2 pool state at slot ${graduatedPool.slot.toLocaleString("en-US")}`
+            : `Meteora DBC pool state at slot ${pool.slot.toLocaleString("en-US")}`
+        }
       />
       <div className="terminal-grid">
         <div className="terminal-main">
-          <section className="panel chart-panel">
-            <EmptyState title="No price chart yet">
-              RETRY shows the live curve price from the pool account. Candles
-              need an indexer of past trades, which this version does not run,
-              so none are drawn or estimated.
-            </EmptyState>
-          </section>
+          <LaunchChart pool={pool} symbol={symbol} history={history} />
           <section className="panel activity-panel">
             <nav className="portfolio-tabs" aria-label="Token information">
               <button
@@ -169,52 +226,7 @@ export function RetryTerminal({
               </button>
             </nav>
             {tab === "activity" ? (
-              activity.data?.length ? (
-                <div className="table-scroll">
-                  <table className="activity-table">
-                    <caption className="sr-only">
-                      Recent transactions that touched this pool.
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th>Time</th>
-                        <th>Result</th>
-                        <th>Transaction</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activity.data.map((item) => (
-                        <tr key={item.signature}>
-                          <td>
-                            {item.blockTime ? ago(item.blockTime * 1000) : "—"}
-                          </td>
-                          <td className={item.err ? "negative" : "positive"}>
-                            {item.err ? "failed" : "ok"}
-                          </td>
-                          <td>
-                            <ExplorerLink
-                              cluster={pool.cluster}
-                              kind="tx"
-                              value={item.signature}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyState
-                  title={
-                    activity.isError
-                      ? "Activity unavailable"
-                      : "No activity yet"
-                  }
-                >
-                  Transactions that touch this pool, read from Solana RPC.
-                  Amounts are on the explorer.
-                </EmptyState>
-              )
+              <ActivityTable pool={pool} history={history} />
             ) : (
               <dl className="detail-list accounts-list">
                 {[
@@ -224,6 +236,13 @@ export function RetryTerminal({
                   ["Base vault", pool.baseVault],
                   ["SOL vault", pool.quoteVault],
                   ["DAMM v2 config", pool.dammV2Config],
+                  ...(graduatedPool
+                    ? [
+                        ["DAMM v2 pool", graduatedPool.address],
+                        ["DAMM v2 token vault", graduatedPool.tokenAVault],
+                        ["DAMM v2 SOL vault", graduatedPool.tokenBVault],
+                      ]
+                    : []),
                 ].map(([label, value]) => (
                   <div key={label}>
                     <dt>{label}</dt>
@@ -241,13 +260,35 @@ export function RetryTerminal({
           </section>
         </div>
         <aside className="terminal-aside">
-          <RetryTradePanel
-            pool={pool}
-            raw={raw}
-            config={config}
-            symbol={symbol}
-          />
-          <GraduationPanel pool={pool} />
+          {/* Keyed by account: switching wallets starts a clean form. */}
+          {!graduated ? (
+            <RetryTradePanel
+              key={wallet.address ?? "none"}
+              pool={pool}
+              raw={raw}
+              config={config}
+              symbol={symbol}
+            />
+          ) : damm.data ? (
+            <DammTradePanel
+              key={wallet.address ?? "none"}
+              pool={pool}
+              damm={damm.data}
+              symbol={symbol}
+            />
+          ) : damm.isError ? (
+            <section className="panel trade-panel">
+              <h2>Trade {symbol}</h2>
+              <ErrorNote
+                message="The DAMM v2 pool could not be read, or it did not pass RETRY's checks. Trading stays off until it does."
+                onRetry={() => damm.refetch()}
+              />
+            </section>
+          ) : (
+            <LoadingSkeleton />
+          )}
+          <GraduationPanel pool={pool} config={config} damm={damm.data} />
+          {damm.data ? <LpFeesPanel pool={pool} damm={damm.data} /> : null}
           <CreatorFees pool={pool} />
           <section className="panel trade-info">
             <h3>
@@ -318,8 +359,8 @@ export function RetryTerminal({
 
 /** The creator's unclaimed share of trading fees, claimable only by them. */
 function CreatorFees({ pool }: { pool: RetryPool }) {
-  const { wallet, context, policy } = useMeteora();
-  const { state, run, reset, canSign } = useExecute();
+  const { wallet, context, policy } = useMeteora("claim-fees");
+  const { state, run, reset, canSign } = useExecute("claim-fees");
   const [error, setError] = useState<string | null>(null);
   if (wallet.address !== pool.creator) return null;
   async function claim() {
