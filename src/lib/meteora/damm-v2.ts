@@ -11,6 +11,7 @@ import {
   derivePositionNftAccount,
   getPriceFromSqrtPrice,
   getCurrentPoint,
+  getUnClaimLpFee,
   SwapMode,
   swapQuoteExactInput,
   type PoolState,
@@ -305,7 +306,7 @@ export async function prepareDammTrade(
 ): Promise<PreparedDammTrade> {
   if (input.reviewed.venue !== "damm-v2")
     throw new QuoteError("This quote is for the bonding curve. Refresh it.");
-  assertWritable(context);
+  assertWritable(context, "trade-damm");
   await assertCluster(context);
   if (!isQuoteFresh(input.reviewed))
     throw new QuoteError("The quote expired. Review the new quote first.");
@@ -398,9 +399,15 @@ export interface LockedPosition {
   unlockedLiquidity: bigint;
   vestedLiquidity: bigint;
   permanentLockedLiquidity: bigint;
-  /** Unclaimed LP fees the position has already been credited, raw units. */
+  /** LP fees credited to the position at its last update, raw units. */
   feeAPending: bigint;
   feeBPending: bigint;
+  /**
+   * LP fees claimable now (pending plus what the pool accrued since), when
+   * the pool state was given; feeB is SOL in lamports.
+   */
+  feeAClaimable: bigint | null;
+  feeBClaimable: bigint | null;
 }
 
 /** What the program state proves about the graduated liquidity. */
@@ -513,29 +520,34 @@ export function checkLock(
 
 /**
  * Read every position of the graduated pool (getProgramAccounts by pool)
- * and who holds each position NFT, then check the lock.
+ * and who holds each position NFT, then check the lock. With the pool's
+ * state, each position's claimable LP fees are computed too.
  */
 export async function verifyLockedLiquidity(
   context: MeteoraContext,
   dammPool: DammPool,
+  state?: PoolState,
 ): Promise<LockVerification> {
   const client = dammClient(context);
   const address = new PublicKey(dammPool.address);
   const positions = await client.getAllPositionsByPool(address);
   const read: LockedPosition[] = [];
   for (const { publicKey, account } of positions) {
-    const state = account as PositionState;
-    const nft = await nftHolder(context, state.nftMint);
+    const position = account as PositionState;
+    const nft = await nftHolder(context, position.nftMint);
+    const claimable = state ? getUnClaimLpFee(state, position) : null;
     read.push({
       position: publicKey.toBase58(),
-      nftMint: state.nftMint.toBase58(),
+      nftMint: position.nftMint.toBase58(),
       nftAccount: nft?.account ?? null,
       holder: nft?.holder ?? null,
-      unlockedLiquidity: big(state.unlockedLiquidity),
-      vestedLiquidity: big(state.vestedLiquidity),
-      permanentLockedLiquidity: big(state.permanentLockedLiquidity),
-      feeAPending: big(state.feeAPending),
-      feeBPending: big(state.feeBPending),
+      unlockedLiquidity: big(position.unlockedLiquidity),
+      vestedLiquidity: big(position.vestedLiquidity),
+      permanentLockedLiquidity: big(position.permanentLockedLiquidity),
+      feeAPending: big(position.feeAPending),
+      feeBPending: big(position.feeBPending),
+      feeAClaimable: claimable ? big(claimable.feeTokenA) : null,
+      feeBClaimable: claimable ? big(claimable.feeTokenB) : null,
     });
   }
   return checkLock(dammPool, read);
@@ -544,32 +556,6 @@ export async function verifyLockedLiquidity(
 /** Position PDA of a position NFT mint (cp_amm seeds). */
 export const positionOf = (nftMint: PublicKey) =>
   derivePositionAddress(nftMint);
-
-/**
- * Price continuity at graduation: the curve's final marginal price against
- * the DAMM v2 pool's price. Both come from on-chain sqrt prices (Q64.64).
- */
-export function graduationPriceGap(
-  curveSqrtPrice: bigint,
-  dammSqrtPrice: bigint,
-) {
-  const curve = getPriceFromSqrtPrice(
-    new BN(curveSqrtPrice.toString()),
-    RETRY_LAUNCH.decimals,
-    9,
-  );
-  const damm = getPriceFromSqrtPrice(
-    new BN(dammSqrtPrice.toString()),
-    RETRY_LAUNCH.decimals,
-    9,
-  );
-  return {
-    curvePriceSol: curve.toSignificantDigits(8).toString(),
-    dammPriceSol: damm.toSignificantDigits(8).toString(),
-    /** (DAMM − curve) / curve, in percent. */
-    gapPct: damm.div(curve).minus(1).mul(100).toDecimalPlaces(4).toString(),
-  };
-}
 
 /**
  * Build the claim of the LP fees one locked position has earned, for the
@@ -585,11 +571,11 @@ export async function prepareLpFeeClaim(
   position: LockedPosition;
   expect: TxExpectation;
 }> {
-  assertWritable(context);
+  assertWritable(context, "claim-fees");
   await assertCluster(context);
   const launch = await readRetryPool(context, input.launch);
   const { pool, state } = await readDammPool(context, launch.pool);
-  const lock = await verifyLockedLiquidity(context, pool);
+  const lock = await verifyLockedLiquidity(context, pool, state);
   const position = [...lock.positions, ...lock.others].find(
     (p) => p.holder === input.owner.toBase58() && p.nftAccount,
   );
@@ -645,4 +631,71 @@ export async function prepareLpFeeClaim(
       ataMints: [state.tokenAMint, WSOL_MINT],
     },
   };
+}
+
+/** A wallet's LP position in a graduated RETRY pool. */
+export interface WalletLpPosition {
+  dbcPool: string;
+  dammPool: string;
+  position: string;
+  nftAccount: string;
+  permanentLockedLiquidity: bigint;
+  unlockedLiquidity: bigint;
+  vestedLiquidity: bigint;
+  /** SOL claimable now, in lamports (the pools collect fees in SOL). */
+  feeBClaimable: bigint;
+  /** The position's share of its pool's liquidity, percent. */
+  sharePct: string;
+}
+
+/**
+ * The LP positions a wallet holds in graduated RETRY pools: its Token-2022
+ * position NFTs (amount 1), their position accounts, and each pool read and
+ * checked against its launch. Positions in any other pool are left out.
+ */
+export async function listLpPositions(
+  context: MeteoraContext,
+  owner: PublicKey,
+  launches: RetryPool[],
+): Promise<WalletLpPosition[]> {
+  const byPool = new Map(
+    launches
+      .filter((launch) => launch.status === "graduated" && launch.dammV2Pool)
+      .map((launch) => [launch.dammV2Pool!, launch]),
+  );
+  if (!byPool.size) return [];
+  const held = (await dammClient(context).getPositionsByUser(owner)).filter(
+    (p) => byPool.has(p.positionState.pool.toBase58()),
+  );
+  const pools = new Map<string, { pool: DammPool; state: PoolState }>();
+  for (const address of new Set(
+    held.map((p) => p.positionState.pool.toBase58()),
+  ))
+    pools.set(address, await readDammPool(context, byPool.get(address)!));
+  return held.map(({ position, positionNftAccount, positionState }) => {
+    const dammPool = positionState.pool.toBase58();
+    const { pool, state } = pools.get(dammPool)!;
+    const liquidity =
+      big(positionState.permanentLockedLiquidity) +
+      big(positionState.unlockedLiquidity) +
+      big(positionState.vestedLiquidity);
+    return {
+      dbcPool: byPool.get(dammPool)!.address,
+      dammPool,
+      position: position.toBase58(),
+      nftAccount: positionNftAccount.toBase58(),
+      permanentLockedLiquidity: big(positionState.permanentLockedLiquidity),
+      unlockedLiquidity: big(positionState.unlockedLiquidity),
+      vestedLiquidity: big(positionState.vestedLiquidity),
+      feeBClaimable: big(getUnClaimLpFee(state, positionState).feeTokenB),
+      sharePct:
+        pool.liquidity > 0n
+          ? new Decimal(liquidity.toString())
+              .div(pool.liquidity.toString())
+              .mul(100)
+              .toDecimalPlaces(4, Decimal.ROUND_DOWN)
+              .toString()
+          : "0",
+    };
+  });
 }

@@ -53,7 +53,7 @@ export async function prepareCreatorClaim(
   context: MeteoraContext,
   input: { creator: PublicKey; pool: PublicKey },
 ): Promise<{ tx: Transaction; amount: bigint; expect: TxExpectation }> {
-  assertWritable(context);
+  assertWritable(context, "claim-fees");
   await assertCluster(context);
   const read = await readRetryPool(context, input.pool);
   if (!read.raw.poolState.creator.equals(input.creator))

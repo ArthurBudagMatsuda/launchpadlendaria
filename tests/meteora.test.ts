@@ -456,6 +456,10 @@ describe("RETRY curve and config", () => {
     expect(
       configMismatches(as({ ...onchain, creatorTradingFeePercentage: 100 })),
     ).toEqual(["creatorTradingFeePercentage"]);
+    // Slot activation would make "launched in the last 24 hours" meaningless.
+    expect(configMismatches(as({ ...onchain, activationType: 0 }))).toEqual([
+      "activationType",
+    ]);
     expect(
       configMismatches(
         as({

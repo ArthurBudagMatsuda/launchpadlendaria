@@ -30,7 +30,6 @@ import {
   checkLock,
   DAMM_V2_EVENT_AUTHORITY,
   DAMM_V2_POOL_AUTHORITY,
-  graduationPriceGap,
   prepareDammTrade,
   type LockedPosition,
 } from "@/lib/meteora/damm-v2";
@@ -38,10 +37,13 @@ import {
   candlesFromTrades,
   decodeActivity,
   decodeDammSwap,
+  mergeActivity,
   priceFromSqrt,
   type PoolActivity,
 } from "@/lib/meteora/history";
+import { discoverCategory, NEW_LAUNCH_SECONDS } from "@/lib/meteora/pools";
 import { customContext } from "@/lib/meteora/client";
+import { graduationPriceGap } from "@/lib/meteora/graduation";
 import {
   DAMM_V2_PROGRAM,
   DBC_PROGRAM,
@@ -506,6 +508,8 @@ describe("lock verification from position state", () => {
     permanentLockedLiquidity: permanent,
     feeAPending: 0n,
     feeBPending: 0n,
+    feeAClaimable: null,
+    feeBClaimable: null,
   });
   // The figures measured at graduation on the validator.
   const creator = position(411657202295550785824274880615505n, 1n);
@@ -598,5 +602,48 @@ describe("candles from decoded trades", () => {
       { time: 120, open: 2, high: 3, low: 2, close: 3, volumeSol: 1 },
     ]);
     expect(candlesFromTrades([], "damm-v2", 60)).toEqual([]);
+  });
+
+  it("merges history pages newest first, each transaction once", () => {
+    const page = (items: PoolActivity[]) => ({
+      items,
+      before: { dbc: null, damm: null },
+      hasMore: false,
+    });
+    // A graduation transaction touches both pools, so both pages list it.
+    const merged = mergeActivity([
+      page([trade(9, 900, "1", 1n), trade(7, 700, "1", 1n)]),
+      page([trade(8, 800, "1", 1n), trade(7, 700, "1", 1n)]),
+      page([trade(2, 200, "1", 1n)]),
+    ]);
+    expect(merged.map((item) => item.slot)).toEqual([9, 8, 7, 2]);
+    expect(mergeActivity([])).toEqual([]);
+  });
+});
+
+describe("Discover columns from pool state", () => {
+  const now = 1_800_000_000;
+  const launch = (
+    status: Parameters<typeof discoverCategory>[0]["status"],
+    ageSeconds: number,
+  ) => ({ status, activationPoint: BigInt(now - ageSeconds) });
+
+  it("puts a launch in exactly one column", () => {
+    expect(discoverCategory(launch("active", 60), now)).toBe("new");
+    expect(
+      discoverCategory(launch("active", NEW_LAUNCH_SECONDS - 1), now),
+    ).toBe("new");
+    expect(discoverCategory(launch("active", NEW_LAUNCH_SECONDS), now)).toBe(
+      "active",
+    );
+    // Near graduation wins over new: a fresh launch can fill its curve fast.
+    for (const status of [
+      "near-graduation",
+      "graduation-ready",
+      "migrating",
+      "needs-attention",
+    ] as const)
+      expect(discoverCategory(launch(status, 60), now)).toBe("near-graduation");
+    expect(discoverCategory(launch("graduated", 60), now)).toBe("graduated");
   });
 });

@@ -71,7 +71,7 @@ export async function prepareCreateToken(
   raw: CreateTokenInput,
 ): Promise<PreparedCreate> {
   const input = validateCreateInput(raw);
-  const configKey = assertWritable(context);
+  const configKey = assertWritable(context, "create");
   await assertCluster(context);
   const config = decodeConfig(
     context,

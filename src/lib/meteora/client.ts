@@ -6,8 +6,10 @@ import {
   type SolanaConfig,
 } from "@/config/solana";
 import {
-  MAINNET_EXECUTION_ENABLED,
+  featureBlock,
+  POLICY_MESSAGES,
   RETRY_DBC_CONFIGS,
+  type RetryFeature,
 } from "@/config/retry-protocol";
 import { assertSdkProgramIds } from "./programs";
 
@@ -77,10 +79,20 @@ export async function assertCluster(context: MeteoraContext) {
   verified.set(context.connection, Date.now() + 60_000);
 }
 
-/** Writes need a RETRY config on the cluster, and Mainnet stays locked. */
-export function assertWritable(context: MeteoraContext): PublicKey {
-  if (context.cluster === "mainnet-beta" && !MAINNET_EXECUTION_ENABLED)
+/**
+ * Writes need a RETRY config on the cluster and the feature switched on,
+ * and Mainnet stays locked. Checked again here, not only in the UI.
+ */
+export function assertWritable(
+  context: MeteoraContext,
+  feature: RetryFeature,
+): PublicKey {
+  const blocked = featureBlock(context.cluster, feature);
+  if (blocked === "mainnet-locked")
     throw new Error("Mainnet execution is locked.");
+  if (blocked) throw new Error(POLICY_MESSAGES[blocked]);
+  // The config key comes from the context: the app's per-cluster entry, or
+  // the one a script or test created (customContext).
   if (!context.retryConfig)
     throw new Error("The RETRY launch configuration is not deployed.");
   return context.retryConfig;

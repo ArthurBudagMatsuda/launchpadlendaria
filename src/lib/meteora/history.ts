@@ -392,6 +392,15 @@ export async function fetchActivity(
   };
 }
 
+/** Loaded pages as one list: newest first, each transaction once. */
+export function mergeActivity(pages: readonly ActivityPage[]): PoolActivity[] {
+  const seen = new Set<string>();
+  return pages
+    .flatMap((page) => page.items)
+    .filter((item) => !seen.has(item.signature) && seen.add(item.signature))
+    .sort((a, b) => b.slot - a.slot);
+}
+
 export interface SolCandle {
   time: number;
   open: number;

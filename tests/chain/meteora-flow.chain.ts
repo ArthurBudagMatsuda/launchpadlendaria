@@ -18,7 +18,6 @@ import { CpAmm, derivePositionNftAccount } from "@/lib/meteora/damm-sdk";
 import {
   DAMM_V2_POOL_AUTHORITY,
   dammCurrentPoint,
-  graduationPriceGap,
   prepareDammTrade,
   prepareLpFeeClaim,
   quoteDammTrade,
@@ -36,7 +35,11 @@ import { prepareCreateToken } from "@/lib/meteora/create-token";
 import { configMismatches, retryCurve } from "@/lib/meteora/curve";
 import { userMessage } from "@/lib/meteora/errors";
 import { prepareCreatorClaim, splitTradingFee } from "@/lib/meteora/fees";
-import { graduationView, prepareMigration } from "@/lib/meteora/graduation";
+import {
+  graduationPriceGap,
+  graduationView,
+  prepareMigration,
+} from "@/lib/meteora/graduation";
 import { readMetadata } from "@/lib/meteora/metadata";
 import { memoryStore } from "@/lib/meteora/operations";
 import {
@@ -606,7 +609,19 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         reason: "not graduated",
       });
     const gap = graduationPriceGap(curveEnd.sqrtPrice, dammOpen.sqrtPrice);
-    const dbcAfter = (await readRetryPool(context, pool)).pool;
+    const read = await readRetryPool(context, pool);
+    const dbcAfter = read.pool;
+    // The DAMM v2 pool opens at the config's migration price: the token page
+    // shows continuity from the two accounts it already reads.
+    expect(BigInt(read.config.migrationSqrtPrice.toString())).toBe(
+      dammOpen.sqrtPrice,
+    );
+    expect(
+      graduationPriceGap(
+        dbcAfter.sqrtPrice,
+        BigInt(read.config.migrationSqrtPrice.toString()),
+      ),
+    ).toEqual(gap);
     const balance = async (address: string) =>
       (await getAccount(connection, new PublicKey(address), "confirmed"))
         .amount;
@@ -927,10 +942,17 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     await expect(
       prepareLpFeeClaim(context, { owner: trader.publicKey, launch: pool }),
     ).rejects.toThrow(/does not hold an LP position/);
-    const lock = await verifyLockedLiquidity(context, dammOpen);
+    const live = await readDammPool(
+      context,
+      (await readRetryPool(context, pool)).pool,
+    );
+    const lock = await verifyLockedLiquidity(context, live.pool, live.state);
     const mine = lock.positions.find(
       (p) => p.holder === creator.publicKey.toBase58(),
     )!;
+    // The pool collects fees in SOL only (collect fee mode 1).
+    expect(mine.feeAClaimable).toBe(0n);
+    expect(mine.feeBClaimable).toBeGreaterThan(0n);
     const client = new CpAmm(connection);
     const stolen = await client.claimPositionFee({
       owner: trader.publicKey,
@@ -959,22 +981,36 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       owner: creator.publicKey,
       launch: pool,
     });
-    evidence.lpClaimSignature = await run(
-      "creator LP fee claim",
-      creator,
-      prepared,
-    );
+    const claimSignature = await run("creator LP fee claim", creator, prepared);
+    evidence.lpClaimSignature = claimSignature;
     const after = BigInt(
       await connection.getBalance(creator.publicKey, "confirmed"),
     );
-    const again = await verifyLockedLiquidity(context, dammOpen);
+    const landed = await connection.getTransaction(claimSignature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    const networkFee = BigInt(landed?.meta?.fee ?? 0);
+    const liveAfter = await readDammPool(
+      context,
+      (await readRetryPool(context, pool)).pool,
+    );
+    const again = await verifyLockedLiquidity(
+      context,
+      liveAfter.pool,
+      liveAfter.state,
+    );
     const now = again.positions.find((p) => p.position === mine.position)!;
     log("LP fee claim", {
       balanceChange: after - before,
+      claimable: mine.feeBClaimable,
+      networkFee,
       before: mine,
       after: now,
     });
-    expect(after - before).toBeGreaterThan(-10_000n);
+    // Exactly what the page said was claimable arrived, as SOL.
+    expect(after - before + networkFee).toBe(mine.feeBClaimable);
+    expect(now.feeBClaimable).toBe(0n);
     expect(now.permanentLockedLiquidity).toBe(mine.permanentLockedLiquidity);
     expect(again.verified).toBe(true);
   });

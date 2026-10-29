@@ -133,6 +133,8 @@ export function configMismatches(
       bn(expected.migrationQuoteThreshold),
     ],
     ["sqrtStartPrice", bn(onchain.sqrtStartPrice), bn(expected.sqrtStartPrice)],
+    // Timestamp activation: a pool's activation point is a Unix time.
+    ["activationType", bn(onchain.activationType), bn(expected.activationType)],
     [
       "cliffFeeNumerator",
       bn(onchain.poolFees.baseFee.cliffFeeNumerator),
