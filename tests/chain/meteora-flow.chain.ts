@@ -32,6 +32,7 @@ import {
 } from "@/lib/meteora/history";
 import { customContext, type MeteoraContext } from "@/lib/meteora/client";
 import { prepareCreateToken } from "@/lib/meteora/create-token";
+import { mainnetApprovalParameters } from "@/lib/meteora/mainnet-approval";
 import { configMismatches, retryCurve } from "@/lib/meteora/curve";
 import { userMessage } from "@/lib/meteora/errors";
 import { prepareCreatorClaim, splitTradingFee } from "@/lib/meteora/fees";
@@ -270,8 +271,35 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     );
     expect(configMismatches(onchain)).toEqual([]);
     expect(onchain.quoteMint.equals(WSOL_MINT)).toBe(true);
+    // The Mainnet approval sheet states what the program computes from the
+    // curve: the same supply split and graduation price, to the unit.
+    const sheet = mainnetApprovalParameters();
+    expect({
+      soldOnCurve: onchain.swapBaseAmount.toString(),
+      depositedAtGraduation: onchain.migrationBaseThreshold.toString(),
+      migrationSqrtPrice: onchain.migrationSqrtPrice.toString(),
+    }).toEqual({
+      soldOnCurve: sheet.supply.soldOnCurve,
+      depositedAtGraduation: sheet.supply.depositedAtGraduation,
+      migrationSqrtPrice: sheet.curve.migrationSqrtPrice,
+    });
     feeClaimer = onchain.feeClaimer;
     evidence.partner = feeClaimer.toBase58();
+    // A config paying anyone but the recorded fee claimer is refused.
+    await expect(
+      prepareCreateToken(
+        { ...context, feeClaimer: Keypair.generate().publicKey },
+        {
+          name: "RETRY Devnet Test",
+          symbol: "RTEST",
+          uri: env.metadataUri,
+          creator: creator.publicKey,
+          initialBuyLamports: 0n,
+          slippageBps: 100,
+        },
+      ),
+    ).rejects.toThrow("does not match");
+    context = { ...context, feeClaimer };
   });
 
   it("launches a token with an atomic first buy, fixed supply and no mint or freeze authority", async () => {

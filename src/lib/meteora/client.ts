@@ -24,6 +24,11 @@ export interface MeteoraContext {
   client: DynamicBondingCurveClient;
   /** RETRY DBC config key for this cluster, or null when none is deployed. */
   retryConfig: PublicKey | null;
+  /**
+   * Fee claimer the config must pay (RETRY's treasury on Mainnet), from the
+   * same reviewed entry. Null when a script or test brings its own config.
+   */
+  feeClaimer: PublicKey | null;
   /** Genesis hash the RPC must answer before any write. */
   genesis: string;
 }
@@ -45,6 +50,7 @@ export function meteoraContext(config: SolanaConfig): MeteoraContext {
       connection,
       client: new DynamicBondingCurveClient(connection, "confirmed"),
       retryConfig: retry ? new PublicKey(retry.address) : null,
+      feeClaimer: retry ? new PublicKey(retry.feeClaimer) : null,
       genesis: CLUSTERS[config.cluster].genesis,
     };
     contexts.set(key, context);
@@ -58,6 +64,7 @@ export function customContext(
   retryConfig: PublicKey | null,
   genesis: string,
   cluster: SolanaCluster = "devnet",
+  feeClaimer: PublicKey | null = null,
 ): MeteoraContext {
   assertSdkProgramIds();
   return {
@@ -65,6 +72,7 @@ export function customContext(
     connection,
     client: new DynamicBondingCurveClient(connection, "confirmed"),
     retryConfig,
+    feeClaimer,
     genesis,
   };
 }

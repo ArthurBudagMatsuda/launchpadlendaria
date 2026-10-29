@@ -78,7 +78,13 @@ export async function prepareCreateToken(
     await context.connection.getAccountInfo(configKey, "confirmed"),
   );
   const mismatches = configMismatches(config);
-  if (mismatches.length || !config.quoteMint.equals(WSOL_MINT))
+  if (
+    mismatches.length ||
+    !config.quoteMint.equals(WSOL_MINT) ||
+    // The partner share of every fee goes to this key, and so does one of
+    // the two locked LP positions: it must be the one the owner approved.
+    (context.feeClaimer && !config.feeClaimer.equals(context.feeClaimer))
+  )
     throw new CreateTokenError(
       "The on-chain RETRY config does not match this app.",
     );

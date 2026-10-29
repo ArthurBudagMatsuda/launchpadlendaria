@@ -5,3 +5,5 @@ pnpm-lock.yaml
 next-env.d.ts
 packages/retry-web3
 examples
+# Generated from code by tests/mainnet-approval.test.ts
+docs/meteora-mvp/MAINNET_APPROVAL.md

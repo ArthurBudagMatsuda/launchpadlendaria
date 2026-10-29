@@ -36,6 +36,25 @@ export const RETRY_DBC_CONFIGS: Record<SolanaCluster, RetryDbcConfig | null> = {
  */
 export const MAINNET_EXECUTION_ENABLED = false;
 
+/** The owner's sign-off on one exact set of Mainnet parameters. */
+export interface MainnetApproval {
+  /** SHA-256 printed on docs/meteora-mvp/MAINNET_APPROVAL.md. */
+  parametersSha256: string;
+  approvedBy: string;
+  /** ISO date. */
+  approvedAt: string;
+  /** Where the owner gave it: a PR review or message link. */
+  reference: string;
+}
+
+/**
+ * Recorded in a reviewed PR once the owner approves the parameter sheet.
+ * tests/mainnet-approval.test.ts refuses Mainnet execution unless this
+ * matches the parameters the code would use, so changing any of them after
+ * the approval locks Mainnet again until it is approved anew.
+ */
+export const MAINNET_APPROVAL: MainnetApproval | null = null;
+
 /**
  * What RETRY can do, one switch per capability. Reading on-chain state is
  * always on; every capability that signs a transaction is listed here.
