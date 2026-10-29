@@ -67,6 +67,8 @@ let context: MeteoraContext;
 let configKey: PublicKey;
 let pool: PublicKey;
 let mint: PublicKey;
+/** The config's fee claimer: this run's partner, or whoever created a reused config. */
+let feeClaimer: PublicKey;
 const partner = Keypair.generate();
 const creator = Keypair.generate();
 const trader = Keypair.generate();
@@ -231,6 +233,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     );
     expect(configMismatches(onchain)).toEqual([]);
     expect(onchain.quoteMint.equals(WSOL_MINT)).toBe(true);
+    feeClaimer = onchain.feeClaimer;
+    evidence.partner = feeClaimer.toBase58();
   });
 
   it("launches a token with an atomic first buy, fixed supply and no mint or freeze authority", async () => {
@@ -515,7 +519,7 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       owners.push(holder);
     }
     expect(owners.sort()).toEqual(
-      [partner.publicKey.toBase58(), creator.publicKey.toBase58()].sort(),
+      [feeClaimer.toBase58(), creator.publicKey.toBase58()].sort(),
     );
     log("graduated", { dammV2Pool: prepared.dammV2Pool, pool: after.pool });
   });
