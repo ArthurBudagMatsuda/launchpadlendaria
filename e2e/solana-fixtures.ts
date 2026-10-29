@@ -1,5 +1,17 @@
 import type { Page } from "@playwright/test";
 import { getAddressEncoder, address } from "@solana/kit";
+import { RETRY_DBC_CONFIGS } from "../src/config/retry-protocol";
+import configAccount from "../docs/devnet/evidence/PUBLIC_CONFIG_ACCOUNT.json" with { type: "json" };
+export const READ_ONLY_RPC_METHODS = new Set([
+  "getGenesisHash",
+  "getBalance",
+  "getAccountInfo",
+  "getProgramAccounts",
+  "getSlot",
+  "getTokenAccountsByOwner",
+  "getMultipleAccounts",
+  "getSignaturesForAddress",
+]);
 export const ALICE = "11111111111111111111111111111111";
 export const BOB = "So11111111111111111111111111111111111111112";
 export async function solanaFixture(
@@ -21,6 +33,18 @@ export async function solanaFixture(
       calls.push(body.method);
       if (options.failRpc)
         return route.fulfill({ status: 503, body: "Unavailable" });
+      if (!READ_ONLY_RPC_METHODS.has(body.method))
+        return route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: body.id,
+            error: {
+              code: -32601,
+              message: "Unexpected method in read-only fixture",
+            },
+          }),
+        });
       const mainnet = route.request().url().includes("mainnet");
       const result =
         body.method === "getGenesisHash"
@@ -39,30 +63,48 @@ export async function solanaFixture(
                     : 2500000000,
               }
             : body.method === "getAccountInfo"
-              ? {
-                  context: { slot: 123 },
-                  value: {
-                    owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-                    lamports: 1461600,
-                    executable: false,
-                    rentEpoch: 0,
-                    data: {
-                      program: "spl-token",
-                      space: 82,
-                      parsed: {
-                        type: "mint",
-                        info: {
-                          decimals: 9,
-                          supply: "1000000000000000000",
-                          isInitialized: true,
-                          mintAuthority: null,
-                          freezeAuthority: null,
+              ? body.params[0] === RETRY_DBC_CONFIGS.devnet?.address
+                ? configAccount
+                : {
+                    context: { slot: 123 },
+                    value: {
+                      owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                      lamports: 1461600,
+                      executable: false,
+                      rentEpoch: 0,
+                      data: {
+                        program: "spl-token",
+                        space: 82,
+                        parsed: {
+                          type: "mint",
+                          info: {
+                            decimals: 9,
+                            supply: "1000000000000000000",
+                            isInitialized: true,
+                            mintAuthority: null,
+                            freezeAuthority: null,
+                          },
                         },
                       },
                     },
-                  },
-                }
-              : null;
+                  }
+              : body.method === "getProgramAccounts" ||
+                  body.method === "getSignaturesForAddress"
+                ? []
+                : body.method === "getSlot"
+                  ? 123
+                  : body.method === "getTokenAccountsByOwner"
+                    ? { context: { slot: 123 }, value: [] }
+                    : body.method === "getMultipleAccounts"
+                      ? {
+                          context: { slot: 123 },
+                          value: (body.params[0] as string[]).map((key) =>
+                            key === RETRY_DBC_CONFIGS.devnet?.address
+                              ? configAccount.value
+                              : null,
+                          ),
+                        }
+                      : null;
       return route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({ jsonrpc: "2.0", id: body.id, result }),
