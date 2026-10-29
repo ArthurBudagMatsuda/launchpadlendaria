@@ -139,9 +139,23 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
   beforeAll(async () => {
     connection = connect();
     const genesis = await connection.getGenesisHash();
+    evidence.genesis = genesis;
     if (env.mode === "devnet") expect(genesis).toBe(DEVNET_GENESIS);
     funder = devnetFunder(genesis);
-    if (funder) evidence.funder = funder.publicKey.toBase58();
+    if (funder) {
+      evidence.funder = funder.publicKey.toBase58();
+      evidence.budgetSol = env.budget;
+      evidence.graduationRequested = env.graduation;
+      const available = await connection.getBalanceAndContext(funder.publicKey);
+      evidence.funderInitialBalance = {
+        lamports: available.value,
+        slot: available.context.slot,
+      };
+      if (available.value < 1_400_020_000)
+        throw new Error(
+          "The Devnet funder needs at least 1.40002 test SOL before any funding transfer.",
+        );
+    }
     // Devnet: enough for config, launch, trades and claim. Graduation needs
     // ~10 SOL more and is topped up only when the test wallet has it.
     const need =
@@ -166,6 +180,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         ? "Devnet test wallet too low"
         : "Devnet RPC faucet refused and no funded test wallet was given";
       writeEvidence(evidence);
+      if (env.mode === "devnet")
+        throw new Error("Devnet funding failed; chain flow was not validated.");
       return;
     }
     await transferSol(
@@ -184,9 +200,19 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
 
   afterAll(async () => {
     // Devnet: hand the leftover test SOL back so the test wallet lasts.
-    if (!funder) return;
-    for (const key of [partner, creator, trader])
-      await refund(connection, key, funder.publicKey);
+    try {
+      if (funder) {
+        for (const key of [partner, creator, trader])
+          await refund(connection, key, funder.publicKey);
+        const balance = await connection.getBalanceAndContext(funder.publicKey);
+        evidence.funderFinalBalance = {
+          lamports: balance.value,
+          slot: balance.context.slot,
+        };
+      }
+    } finally {
+      writeEvidence(evidence);
+    }
   });
 
   it("creates the RETRY config with createConfig2 (or reuses it) and it matches the reviewed parameters", async () => {
@@ -378,7 +404,12 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     log("slippage guard", { message: userMessage(error) });
   });
 
-  it("completes the curve with a partial fill and stops quoting", async () => {
+  it("completes the curve with a partial fill and stops quoting", async (test) => {
+    if (env.mode === "devnet" && !env.graduation) {
+      evidence.graduation =
+        "skipped: explicit graduation authorization not given";
+      test.skip();
+    }
     const read = await readRetryPool(context, pool);
     const missing = read.pool.migrationQuoteThreshold - read.pool.quoteReserve;
     const balance = BigInt(
@@ -403,7 +434,7 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         missing,
       });
       evidence.graduation = "skipped: not enough test SOL from the faucet";
-      return;
+      test.skip();
     }
     // Offer more than needed: the program fills up to the threshold and the rest stays.
     const q = await quote("buy", missing + SOL / 5n);
@@ -428,11 +459,12 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     log("curve complete", { ...after.pool });
   });
 
-  it("migrates to DAMM v2 with permanently locked liquidity (manual, permissionless)", async () => {
+  it("migrates to DAMM v2 with permanently locked liquidity (manual, permissionless)", async (test) => {
     const read = await readRetryPool(context, pool);
     if (!graduationView(read.pool).canMigrate) {
       log("migration skipped", { reason: "curve not complete" });
-      return;
+      evidence.migration = "skipped: curve not complete";
+      test.skip();
     }
     const dammConfig = new PublicKey(read.pool.dammV2Config);
     const dammConfigInfo = await connection.getAccountInfo(dammConfig);
@@ -447,7 +479,7 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       });
       evidence.migration =
         "skipped: DAMM v2 config not present on this validator";
-      return;
+      test.skip();
     }
     const float = await connection.getBalance(DBC_POOL_AUTHORITY, "confirmed");
     log("pool authority rent float", { lamports: float });
@@ -457,7 +489,7 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
         prepareMigration(context, { payer: trader.publicKey, pool }),
       ).rejects.toThrow(/migration rent float is empty/);
       evidence.migration = "blocked: DBC pool authority holds no SOL here";
-      return;
+      test.skip();
     }
     const before = BigInt(
       await connection.getBalance(trader.publicKey, "confirmed"),

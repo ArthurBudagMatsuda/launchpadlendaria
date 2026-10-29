@@ -8,8 +8,14 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
-import { getBase58Encoder } from "@solana/kit";
 import type { TransactionSigner } from "@/lib/meteora/transactions";
+import {
+  DEVNET_GENESIS,
+  devnetBudget,
+  parseDevnetFunder,
+  reserveDevnetFunding,
+} from "./devnet-safety";
+export { DEVNET_GENESIS };
 
 /**
  * Chain tests run against a real Solana cluster: a local validator loaded
@@ -36,11 +42,18 @@ export const env = {
   devnetConfig: process.env.RETRY_DEVNET_CONFIG || null,
   useAppConfig: process.env.RETRY_CHAIN_USE_APP_CONFIG === "1",
   funder: process.env.RETRY_DEVNET_FUNDER?.trim() || null,
+  graduation: process.env.RETRY_CHAIN_GRADUATION === "1",
+  budget: process.env.RETRY_DEVNET_MAX_SPEND_SOL ?? "2",
 };
 
-export const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
-
 export function connect() {
+  if (env.mode !== "local" && env.mode !== "devnet")
+    throw new Error("Only local and devnet chain modes are allowed.");
+  if (
+    env.mode === "local" &&
+    !["localhost", "127.0.0.1", "[::1]"].includes(new URL(env.rpc).hostname)
+  )
+    throw new Error("Local chain tests require a loopback RPC.");
   return new Connection(env.rpc, { commitment: "confirmed" });
 }
 
@@ -58,27 +71,20 @@ export function keypairSigner(keypair: Keypair): TransactionSigner {
   };
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 /**
  * The Devnet test wallet that pays for a Devnet run. The public RPC faucet
  * is closed on Devnet (410), so SOL comes from faucet.solana.com by hand.
  * Only used once the RPC has answered with the Devnet genesis hash.
  */
 export function devnetFunder(genesis: string) {
-  if (env.mode !== "devnet" || !env.funder) return null;
-  if (genesis !== DEVNET_GENESIS)
-    throw new Error("The funder key is only ever used on Devnet.");
-  const secret = env.funder.startsWith("[")
-    ? Uint8Array.from(JSON.parse(env.funder) as number[])
-    : Uint8Array.from(getBase58Encoder().encode(env.funder));
-  return Keypair.fromSecretKey(secret);
+  return parseDevnetFunder(env.mode, genesis, env.funder);
 }
 
+let grossFunding = 0;
+
 /**
- * Fund a fresh test key. Locally the validator mints SOL freely. On Devnet
- * the funder pays when it is set; otherwise the public faucet is asked in
- * 1 SOL steps, stopping at the first refusal. Returns the balance reached.
+ * Fund a fresh test key. Only the loopback validator may mint test SOL.
+ * Public Devnet requires the disposable funder and cumulative budget.
  */
 export async function fund(
   connection: Connection,
@@ -90,6 +96,11 @@ export async function fund(
     const available = await connection.getBalance(funder.publicKey);
     const lamports = Math.round(sol * LAMPORTS_PER_SOL);
     if (available >= lamports + 10_000) {
+      grossFunding = reserveDevnetFunding(
+        grossFunding,
+        lamports,
+        devnetBudget(env.budget),
+      );
       const signature = await transferSol(connection, funder, key, lamports);
       log("funded by test wallet", { key: key.toBase58(), sol, signature });
     } else {
@@ -101,7 +112,11 @@ export async function fund(
     }
     return connection.getBalance(key, "confirmed");
   }
-  const step = env.mode === "local" ? sol : 1;
+  if (env.mode !== "local")
+    throw new Error(
+      "Devnet tests require a funded disposable key; no automatic airdrops.",
+    );
+  const step = sol;
   let asked = 0;
   while (asked < sol) {
     try {
@@ -123,7 +138,6 @@ export async function fund(
       });
       break;
     }
-    if (env.mode === "devnet") await sleep(1_500);
   }
   return connection.getBalance(key, "confirmed");
 }
@@ -136,9 +150,19 @@ export async function refund(
 ) {
   const balance = await connection.getBalance(from.publicKey, "confirmed");
   if (balance <= 5_000) return null;
-  return transferSol(connection, from, to, balance - 5_000).catch(
-    (cause) => (log("refund failed", { error: String(cause) }), null),
-  );
+  try {
+    const signature = await transferSol(connection, from, to, balance - 5_000);
+    log("refund", {
+      from: from.publicKey.toBase58(),
+      to: to.toBase58(),
+      lamports: balance - 5_000,
+      signature,
+    });
+    return signature;
+  } catch (cause) {
+    log("refund failed", { error: String(cause) });
+    return null;
+  }
 }
 
 export async function transferSol(
