@@ -1,6 +1,7 @@
 import { Buffer } from "buffer";
 import {
   PublicKey,
+  SendTransactionError,
   Transaction,
   VersionedTransaction,
   type Connection,
@@ -400,7 +401,12 @@ export async function execute(input: ExecuteInput) {
         error: message,
         updatedAt: Date.now(),
       });
-      throw new SimulationError(message, []);
+      // DBC and DAMM v2 reuse error numbers; the program's own log line
+      // names the error, so the message is about the program that failed.
+      throw new SimulationError(
+        message,
+        cause instanceof SendTransactionError ? (cause.logs ?? []) : [],
+      );
     }
   }
   input.onStage?.("confirming");

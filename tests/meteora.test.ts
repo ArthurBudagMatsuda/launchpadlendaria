@@ -4,6 +4,7 @@ import {
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
+  SendTransactionError,
   SystemProgram,
   Transaction,
   TransactionInstruction,
@@ -837,5 +838,40 @@ describe("execution (adversarial)", () => {
     ).rejects.toThrow("A required signature is missing.");
     expect(sent).toEqual([]);
     expect(store.list()).toEqual([]);
+  });
+
+  it("names the failing program's own error when the RPC preflight refuses a send", async () => {
+    const store = memoryStore();
+    const { connection } = rpc(store);
+    // DAMM v2's PoolDisabled is 6003; the same number is another DBC error.
+    connection.sendRawTransaction = async () => {
+      throw new SendTransactionError({
+        action: "send",
+        signature: "",
+        transactionMessage:
+          "Transaction simulation failed: Error processing Instruction 0: custom program error: 0x1773",
+        logs: [
+          "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG invoke [1]",
+          "Program log: AnchorError occurred. Error Code: PoolDisabled. Error Number: 6003. Error Message: Pool disabled.",
+        ],
+      });
+    };
+    const error = await execute({
+      context: customContext(connection as never, null, "x"),
+      tx: wrapTx(),
+      signer: {
+        publicKey: payer.publicKey,
+        signTransaction: async (tx) => {
+          const signed = copy(tx);
+          signed.partialSign(payer);
+          return signed;
+        },
+      },
+      expect: wrapExpectation,
+      record,
+      store,
+    }).catch((cause: unknown) => cause);
+    expect(userMessage(error)).toBe("Trading is paused on this DAMM v2 pool.");
+    expect(store.list().map((op) => op.status)).toEqual(["failed"]);
   });
 });
