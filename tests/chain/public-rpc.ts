@@ -43,14 +43,23 @@ export function publicRpcTransport(
         }
         if (response.status !== 429 || !readOnly || attempt >= 2)
           return response;
-        const seconds = Number(response.headers.get("retry-after"));
+        const retryAfter = response.headers.get("retry-after");
+        const seconds = Number(retryAfter);
+        const hintedDelay = retryAfter
+          ? Number.isFinite(seconds)
+            ? seconds * 1000
+            : Date.parse(retryAfter) - Date.now()
+          : 0;
+        // Fail closed instead of retrying earlier than a long server limit.
+        if (Number.isFinite(hintedDelay) && hintedDelay > 30_000)
+          return response;
         await response.body?.cancel();
         await pause(
           Math.min(
             30_000,
             Math.max(
               1000 * (attempt + 1),
-              Number.isFinite(seconds) ? seconds * 1000 : 0,
+              Number.isFinite(hintedDelay) ? hintedDelay : 0,
             ),
           ),
         );

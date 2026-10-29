@@ -6,6 +6,24 @@ const request = (method: string) => ({
   body: JSON.stringify({ method }),
 });
 describe("public Devnet test transport", () => {
+  it("does not retry sooner than a server limit longer than the retry budget", async () => {
+    let calls = 0;
+    const transport = publicRpcTransport({
+      fetcher: async () => {
+        calls++;
+        return new Response("limited", {
+          status: 429,
+          headers: { "retry-after": "120" },
+        });
+      },
+      pause: async () => {},
+    });
+    expect(
+      (await transport("https://api.devnet.solana.com", request("getBalance")))
+        .status,
+    ).toBe(429);
+    expect(calls).toBe(1);
+  });
   it("serializes concurrent RPC requests with a spacing boundary", async () => {
     const events: string[] = [];
     const transport = publicRpcTransport({

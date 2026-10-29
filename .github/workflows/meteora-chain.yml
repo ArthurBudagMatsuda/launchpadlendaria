@@ -171,7 +171,8 @@ jobs:
       - name: Public Devnet readiness (read-only, no key)
         run: pnpm test:devnet:readiness
       - name: Chain flow on Devnet (reuses the app's Devnet config when set)
-        run: pnpm test:chain
+        # Direct runner: no package-manager auto-install or lifecycle with the key.
+        run: node node_modules/vitest/vitest.mjs run --config vitest.chain.config.ts
         env:
           RETRY_CHAIN_MODE: devnet
           RETRY_CHAIN_RPC: ${{ env.DEVNET_RPC }}

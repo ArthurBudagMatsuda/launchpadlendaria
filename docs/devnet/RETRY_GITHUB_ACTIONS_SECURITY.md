@@ -21,12 +21,12 @@ O workflow anterior liberava o funder por dispatch **ou texto `[devnet]` no comm
 
 `main` não contém `.github/workflows/meteora-chain.yml`. Aparecer na API por ter rodado via push não comprova dispatch. A [documentação GitHub](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow) exige o arquivo na default branch para o gatilho manual.
 
-Não foi usado push com chave, rerun privilegiado, repository_dispatch, troca da default branch ou merge para contornar. Alternativa imediata: execução local pessoal do proprietário, com checkout revisado e chave descartável; [procedimento](RETRY_PUBLIC_DEVNET_TESTS.md). Disponibilizar o workflow na default branch exige decisão separada. `main` e site público permanecem intactos.
+Não foi usado push com chave, rerun privilegiado, repository_dispatch, troca da default branch ou merge para contornar. Alternativa executada com autorização: teste local com backup DPAPI, checkout revisado e chave descartável; [procedimento](RETRY_PUBLIC_DEVNET_TESTS.md). Disponibilizar o workflow na default branch exige decisão separada. `main` e site público permanecem intactos.
 
-## Ações administrativas necessárias
+## Configuração administrativa e manutenção
 
-1. Criar `retry-devnet` com reviewer e branch policy; confirmar disponibilidade dos controles no plano. Não reutilizar `github-pages`.
-2. Inserir o secret no environment. Se surgir secret homônimo no repositório, migrar para o escopo protegido e remover a cópia ampla com autorização do proprietário.
+1. **Concluído:** `retry-devnet` criado com reviewer, branch policy e sem bypass; `github-pages` preservado.
+2. **Concluído:** secret inserido criptografado no environment. Nenhuma cópia criada no nível amplo do repositório. Não sobrescrever uma carteira já financiada.
 3. Aprovar apenas SHA revisada: colaboradores capazes de alterar código/workflows confiáveis podem tentar exfiltrar chaves. Environment reduz o risco, não torna código arbitrário seguro. Usar chave descartável de baixo saldo, sem autoridade de produção.
 
 Após autorização explícita, o agente criou somente `retry-devnet` e o secret criptografado, verificando reviewer/branch policy/ausência de bypass. `github-pages` e a main não foram alterados. Nenhum job privilegiado foi autoaprovado. O bloqueio de dispatch permanece; teste público pode usar a alternativa local protegida.

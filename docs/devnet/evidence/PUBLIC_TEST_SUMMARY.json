@@ -1,0 +1,41 @@
+{
+  "evidence": "OBSERVED_PUBLIC_DEVNET_VITEST_RESULTS",
+  "cluster": "devnet",
+  "rpc": "https://api.devnet.solana.com",
+  "funder": "3r8gEonYHrXEao85oFAu2UzVgT1KsxFmWUZLWBd8G5B3",
+  "attempts": [
+    {
+      "source_commit": "e83cf8b",
+      "result": "FAILED_RPC_AND_DEPENDENT_CASES",
+      "passed": 5,
+      "failed": 3,
+      "skipped": 2,
+      "duration_seconds": 41.62,
+      "primary_failure": "getAccountInfo failed during buy preparation after HTTP 429 and fetch failure",
+      "dependent_failures": [
+        "sell half had no tokens after the failed buy",
+        "oversell setup could not quote a meaningful amount from an empty holding"
+      ],
+      "artifact": "SMOKE_ATTEMPT_1_RPC_FAILURE.json",
+      "funder_initial_lamports": 2500000000,
+      "funder_final_lamports": 2372300840
+    },
+    {
+      "source_commit": "423321221fc8f75abc7e0baeeedc2ffe9e0e5113",
+      "result": "SMOKE_PASSED_GRADUATION_NOT_AUTHORIZED",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 2,
+      "duration_seconds": 120.71,
+      "skipped_cases": ["complete the curve", "migrate to DAMM v2"],
+      "artifact": "SMOKE_DEVNET_CONFIRMED.json",
+      "funder_initial_lamports": 2372300840,
+      "funder_final_lamports": 2013648909
+    }
+  ],
+  "net_consumed_lamports_total": 486351091,
+  "gross_funding_lamports_per_attempt": 1400000000,
+  "funding_limit_lamports_per_attempt": 2000000000,
+  "real_wallet_extension_tested": false,
+  "mainnet_transactions_sent": 0
+}

@@ -101,21 +101,31 @@ async function main() {
       );
       if (key.publicKey.toBase58() !== publicData.address)
         fail("Protected backup does not match the public funder.");
-      const result = spawnSync("cmd.exe", ["/d", "/c", "pnpm test:chain"], {
-        cwd: root,
-        windowsHide: true,
-        stdio: "inherit",
-        env: {
-          ...process.env,
-          RETRY_CHAIN_MODE: "devnet",
-          RETRY_CHAIN_RPC: rpc,
-          RETRY_CHAIN_USE_APP_CONFIG: "1",
-          RETRY_CHAIN_EVIDENCE: "evidence-devnet.json",
-          RETRY_DEVNET_MAX_SPEND_SOL: "2",
-          RETRY_CHAIN_GRADUATION: "0",
-          RETRY_DEVNET_FUNDER: secret.toString("utf8"),
+      // Do not launch an installer or package lifecycle hook with the key.
+      const result = spawnSync(
+        process.execPath,
+        [
+          path.join(root, "node_modules/vitest/vitest.mjs"),
+          "run",
+          "--config",
+          "vitest.chain.config.ts",
+        ],
+        {
+          cwd: root,
+          windowsHide: true,
+          stdio: "inherit",
+          env: {
+            ...process.env,
+            RETRY_CHAIN_MODE: "devnet",
+            RETRY_CHAIN_RPC: rpc,
+            RETRY_CHAIN_USE_APP_CONFIG: "1",
+            RETRY_CHAIN_EVIDENCE: "evidence-devnet.json",
+            RETRY_DEVNET_MAX_SPEND_SOL: "2",
+            RETRY_CHAIN_GRADUATION: "0",
+            RETRY_DEVNET_FUNDER: secret.toString("utf8"),
+          },
         },
-      });
+      );
       if (result.error || result.status !== 0)
         fail(
           "The public Devnet smoke test failed; inspect its public evidence.",

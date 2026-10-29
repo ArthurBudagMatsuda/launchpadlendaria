@@ -1,13 +1,13 @@
 # RETRY — Solana launchpad foundation
 
-Aplicação Next.js/React com identidade RETRY preservada e Wallet Standard. A branch do PR #8 implementa integração **Meteora DBC/DAMM v2 candidata a testes Devnet**, sobre a migração do PR #6. Mainnet permanece bloqueada. Config RETRY e Worker não estão provisionados: funcionalidades implementadas não significam ciclo público já validado.
+Aplicação Next.js/React com identidade RETRY preservada e Wallet Standard. A branch do PR #8 implementa integração **Meteora DBC/DAMM v2 candidata a testes Devnet**, sobre a migração do PR #6. Mainnet permanece bloqueada. Config Devnet criada e smoke público aprovado (8 testes, 2 skips de graduação/migração); Worker e Phantom reais continuam pendentes.
 
 ## Estado atual
 
 - **Discover:** listagem on-chain filtrada pela config RETRY; sem config, estado vazio honesto.
 - **Token:** leituras e preparação de quotes/compra/venda DBC; execução depende de config revisada, simulação e carteira. Gráfico/PnL completos dependem de indexação. Mainnet não executa operações.
 - **Portfolio:** identidade, SOL, holdings e pools RETRY conforme dados on-chain disponíveis; sem atividade inventada.
-- **Create:** rascunho/preview preservados; preparação de lançamento SPL/DBC com compra inicial opcional. Lançamento bloqueado enquanto config e host de metadados faltarem.
+- **Create:** rascunho/preview preservados; preparação de lançamento SPL/DBC com compra inicial opcional. Config Devnet registrada; lançamento bloqueado enquanto host de metadados faltar.
 - **Carteiras:** Phantom, Solflare e Backpack por descoberta Wallet Standard. Testes usam carteiras simuladas; validação com extensões reais está pendente.
 
 A aplicação ativa não usa serviços EVM, ERC-20 ou o antigo token Base. O histórico Git e os documentos marcados como históricos preservam a implementação anterior.
@@ -38,7 +38,7 @@ Copie `.env.example` para configuração local quando necessário. Todos os `NEX
 
 ## Revisão e publicação
 
-A implementação está em `feat/retry-meteora-dbc-mvp`, PR #8 Draft, empilhada sobre `migration/retry-solana`. CI gera artefatos e testa validadores locais; esta branch não publica o site. O teste público financiado é manual e protegido, ainda bloqueado por secret/financiamento e presença do workflow na default branch. Sem merge ou alteração da demonstração pública.
+A implementação está em `feat/retry-meteora-dbc-mvp`, PR #8 Draft, empilhada sobre `migration/retry-solana`. CI gera artefatos e testa validadores locais; esta branch não publica o site. O teste público financiado é manual e protegido, com secret/financiamento configurados; dispatch bloqueado pela ausência do workflow na default branch. O smoke público foi executado localmente com chave protegida. Sem merge ou alteração da demonstração pública.
 
 A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histórico paginado do gráfico. Estado atual: revisão técnica com validação manual de extensões pendente. `test:rpc:live` é uma sonda opt-in de contas públicas, não um teste de carteira.
 
@@ -63,4 +63,4 @@ A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histó
 - [Pesquisa de DEX](docs/SOLANA_DEX_RESEARCH.md)
 - [Roadmap](docs/SOLANA_LAUNCHPAD_ROADMAP.md)
 
-Próximo passo: proprietário preparar o funder e ambiente protegido; validar ciclo público Devnet, Worker real e Phantom em origem autorizada. Economia candidata não está aprovada para Mainnet. A documentação anterior da Base é histórica.
+Próximo passo: preparar conta/autorizar o Worker real, depois validar Phantom em origem autorizada. Funder, environment secret e smoke público Devnet estão configurados/validados; graduação pública permanece pendente. Economia candidata não está aprovada para Mainnet. A documentação anterior da Base é histórica.

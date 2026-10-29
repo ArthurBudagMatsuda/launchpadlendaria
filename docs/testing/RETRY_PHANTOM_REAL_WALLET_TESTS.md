@@ -19,7 +19,7 @@ pnpm preview:pages
 
 Abrir `http://127.0.0.1:4188/launchpadlendaria/` em navegador real com extensão oficial e conta descartável do operador. O servidor atende somente loopback, enquanto o processo estiver ativo; não é URL de internet nem acessível por celular remoto.
 
-Sem config RETRY e Worker reais, criação permanece bloqueada. `MAINNET_EXECUTION_ENABLED=false` continua constante. Não importar o funder CI na extensão/frontend/build.
+A config Devnet foi criada e registrada; o Worker real ainda falta, mantendo o lançamento pelo navegador bloqueado. `MAINNET_EXECUTION_ENABLED=false` continua constante. Não importar o funder CI na extensão/frontend/build.
 
 ## Procedimento humano
 
@@ -45,7 +45,7 @@ Sem config RETRY e Worker reais, criação permanece bloqueada. `MAINNET_EXECUTI
 | P11 Rejeição       | Desconectada com mensagem correta                   | Pendente             | Não executado                         |
 | P12 Conta          | Endereço/saldo atualizam juntos                     | Pendente             | Não executado                         |
 | P13 RPC falho      | Indisponibilidade, não zero fictício                | Pendente real        | Simulação apenas no CI                |
-| P14 Create         | Rascunho/preview, bloqueio sem infraestrutura       | Pendente real        | Config/Worker faltam                  |
+| P14 Create         | Rascunho/preview, bloqueio sem infraestrutura       | Pendente real        | Worker real e extensão faltam         |
 | P15 Prévia Meteora | Simulação/custo antes de aprovar                    | Pendente             | Recursos + autorização do operador    |
 
 Versão Phantom, SO e navegador **reais**: não utilizados/não registrados. Não inferir instalação/suporte por mocks. Mobile e coexistência com Solflare/Backpack permanecem na [matriz geral](SOLANA_REAL_WALLET_TEST_MATRIX.md).
