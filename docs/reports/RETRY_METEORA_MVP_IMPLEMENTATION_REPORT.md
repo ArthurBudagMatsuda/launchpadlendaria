@@ -4,7 +4,7 @@ Data: **28/10/2026**. Branch: **`feat/retry-meteora-dbc-mvp`**, empilhada sobre 
 
 Este relatório só registra o que foi realmente executado. Onde algo depende de um passo que não pôde ser feito, está marcado como **pendente** ou **bloqueado**, com o motivo.
 
-> **Atualização de 29/10/2026.** Depois deste relatório, a Devnet pública foi desbloqueada pelo proprietário: carteira de teste no environment protegido `retry-devnet`, config RETRY de Devnet `8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N` registrada no app (commit `4233212`) e, segundo as evidências publicadas, smoke público com 8 testes aprovados e 2 pulados (graduação e migração, não autorizadas). O job de Devnet agora roda só por dispatch manual com aprovação, não mais por commit com `[devnet]`. Conferido pelo CI: o validador clona essa config da Devnet pública e passa o fluxo completo com ela, incluindo a migração ([execução](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40945281913)). As seções 1, 7, 29, 33, 37 e 40 descrevem o estado de 28/10. Detalhes e evidências: [RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md](RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md) e [docs/devnet/evidence/](../devnet/evidence/).
+> **Atualização de 29/10/2026.** Depois deste relatório, a Devnet pública foi desbloqueada pelo proprietário: carteira de teste no environment protegido `retry-devnet`, config RETRY de Devnet `8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N` registrada no app (commit `4233212`) e, segundo as evidências publicadas, smoke público com 8 testes aprovados e 2 pulados (graduação e migração, não autorizadas). O job de Devnet agora roda só por dispatch manual com aprovação, não mais por commit com `[devnet]`. Conferido pelo CI: o validador clona essa config da Devnet pública e passa o fluxo completo com ela, incluindo a migração ([execução](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40945281913)). As seções 1, 7, 29, 33, 37 e 40 descrevem o estado de 28/10. Os custos das seções 11, 14, 22 e 24 foram corrigidos na mesma data, porque o validador cobra aluguel cerca de 37% mais caro que a Devnet e a Mainnet. Detalhes e evidências: [RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md](RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md) e [docs/devnet/evidence/](../devnet/evidence/).
 
 ## 1. Resumo executivo
 
@@ -77,10 +77,10 @@ SPL Token clássico (não Token-2022), sem transfer fee, sem transfer hook. Auto
 
 ## 11. Custos de lançamento
 
-Medidos por simulação e saldo real:
+Medidos por simulação e saldo real. O validador local cobra 6.960 lamports de aluguel por byte, e a Devnet e a Mainnet cobram 5.080 (lido no CI em 29/10/2026), então os valores do validador superestimam o aluguel em cerca de 37%. Os valores da Devnet pública vêm do smoke de 29/10/2026.
 
-- Criar + primeira compra de 0,1 SOL: 0,127038080 SOL (programas das fixtures do SDK, no container) e 0,126536960 SOL (binários da Mainnet, Actions), mais 0,00001 SOL de taxa de rede (2 assinaturas). Sem a compra, ≈ 0,0265–0,0270 SOL de aluguel e taxas.
-- Criar a config (uma vez por cluster, pago pelo parceiro): **0,008194960 SOL** no total (aluguel da conta de config mais 0,00001 SOL de taxa de rede), medido nos dois binários.
+- Criar + primeira compra de 0,1 SOL: **0,122070080 SOL na Devnet pública**, mais 0,00001 SOL de taxa de rede (2 assinaturas). Sem a compra, 0,02207008 SOL: 0,01207008 de aluguel e 0,01 da taxa da Metaplex na criação dos metadados. No validador: 0,126536960 SOL (binários da Mainnet) e 0,127038080 SOL (fixtures do SDK).
+- Criar a config (uma vez por cluster, pago pelo parceiro): **0,00598408 SOL** na Devnet pública (0,00597408 de aluguel lido na conta on-chain, mais 0,00001 de taxa de rede). No validador: 0,008194960 SOL.
 - A tela mostra o custo simulado antes de pedir a assinatura.
 
 ## 12. Criação de tokens
@@ -93,7 +93,7 @@ Worker Cloudflare (`infra/metadata-worker/`) com JSON e imagem endereçados por 
 
 ## 14. Compra
 
-`swap2` com `PartialFill`, quote revalidada antes de montar, mínimo de saída gravado na instrução. Medido: 0,5 SOL comprou exatamente a quantidade cotada (130.564.541,249646396 tokens), impacto de preço 15,58%, variação de saldo 0,502039280 SOL (inclui 0,00203928 de aluguel da conta do token).
+`swap2` com `PartialFill`, quote revalidada antes de montar, mínimo de saída gravado na instrução. Medido: 0,5 SOL comprou exatamente a quantidade cotada (130.564.541,249646396 tokens), impacto de preço 15,58%, variação de saldo 0,501488440 SOL na Devnet pública, que inclui 0,00148844 de aluguel da conta do token (0,502039280 SOL no validador).
 
 ## 15. Venda
 
@@ -127,7 +127,7 @@ Status e progresso do estado on-chain (seção [GRADUATION_AND_LOCKING.md](../me
 
 ## 22. DAMM v2
 
-Migração `migration_damm_v2` executada com sucesso no validador com os binários de Devnet e de Mainnet ([execução 40769483758](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40769483758)): `isMigrated = 1`, status `graduated`, pool DAMM v2 criada e pertencente ao programa cp-amm, config pública FixedBps100 (`Hv8L…cjp`). Custo da migração para quem envia: **0,032518200 SOL** no total (0,000015 SOL de taxa de rede para 3 assinaturas, e o resto é o aluguel das contas novas do DAMM v2), entre 279 mil e 285 mil compute units conforme a execução.
+Migração `migration_damm_v2` executada com sucesso no validador com os binários de Devnet e de Mainnet ([execução 40769483758](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40769483758)): `isMigrated = 1`, status `graduated`, pool DAMM v2 criada e pertencente ao programa cp-amm, config pública FixedBps100 (`Hv8L…cjp`). Custo da migração para quem envia, no validador: 0,032518200 SOL no total (0,000015 SOL de taxa de rede para 3 assinaturas, e o resto é o aluguel das contas novas do DAMM v2), entre 279 mil e 285 mil compute units conforme a execução. Com o aluguel da Devnet e da Mainnet, a estimativa é de **≈ 0,0237386 SOL**; ainda não foi medido num cluster público.
 
 ## 23. Liquidity locking
 
@@ -135,7 +135,7 @@ Config: 50% parceiro + 50% criador, ambos `permanentLocked`. O teste lê as duas
 
 ## 24. Anti-spam
 
-Medidas simples, **não on-chain**: limite de uploads de metadados por IP por hora no Worker (10 por padrão), validação de campos e imagem, recusa de origens desconhecidas, bloqueio de envio duplicado no app. Qualquer pessoa pode criar uma pool DBC diretamente com a config RETRY fora do app; o programa não impede. O custo de criação (≈ 0,027 SOL) é o principal freio econômico.
+Medidas simples, **não on-chain**: limite de uploads de metadados por IP por hora no Worker (10 por padrão), validação de campos e imagem, recusa de origens desconhecidas, bloqueio de envio duplicado no app. Qualquer pessoa pode criar uma pool DBC diretamente com a config RETRY fora do app; o programa não impede. O custo de criação (≈ 0,022 SOL na Devnet pública, dos quais 0,01 é a taxa da Metaplex) é o principal freio econômico.
 
 ## 25. Limitações do cap por carteira
 
