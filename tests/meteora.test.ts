@@ -1,3 +1,4 @@
+import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   ComputeBudgetProgram,
@@ -56,6 +57,7 @@ import {
   type TradeQuote,
 } from "@/lib/meteora/quotes";
 import {
+  execute,
   reconcile,
   TransactionValidationError,
   validateSigned,
@@ -716,5 +718,124 @@ describe("operations and reconciliation", () => {
       [sig("5")]: "sent",
       [sig("6")]: "expired",
     });
+  });
+});
+
+describe("execution (adversarial)", () => {
+  const payer = Keypair.generate();
+  const payerWsol = getAssociatedTokenAddressSync(
+    WSOL_MINT,
+    payer.publicKey,
+    true,
+  );
+  /** Wrap 0.001 SOL into the payer's own WSOL account: allowed as is. */
+  const wrapTx = () =>
+    new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: payerWsol,
+        lamports: 1_000_000,
+      }),
+      createSyncNativeInstruction(payerWsol),
+    );
+  const wrapExpectation: TxExpectation = {
+    owner: payer.publicKey,
+    dbc: [],
+    accounts: {},
+    ataMints: [],
+  };
+  /** A test double of the RPC calls execute makes; it records each send. */
+  function rpc(store: ReturnType<typeof memoryStore>) {
+    const sent: { stored: string[] }[] = [];
+    const connection = {
+      getLatestBlockhash: async () => ({
+        blockhash: Keypair.generate().publicKey.toBase58(),
+        lastValidBlockHeight: 100,
+      }),
+      getBalance: async () => 1_000_000_000,
+      getFeeForMessage: async () => ({ value: 5_000 }),
+      simulateTransaction: async () => ({
+        value: {
+          err: null,
+          logs: [],
+          unitsConsumed: 450,
+          accounts: [{ lamports: 1_000_000_000 - 1_005_000 }],
+        },
+      }),
+      sendRawTransaction: async () => {
+        sent.push({ stored: store.list().map((op) => op.status) });
+        return "sent";
+      },
+      getSignatureStatuses: async () => ({
+        value: [{ confirmationStatus: "confirmed", slot: 7, err: null }],
+      }),
+      getBlockHeight: async () => 50,
+    };
+    return { connection, sent };
+  }
+  const record = {
+    cluster: "devnet" as const,
+    kind: "buy" as const,
+    owner: payer.publicKey.toBase58(),
+    pool: pool.toBase58(),
+    mint: mint.toBase58(),
+    summary: "Wrap",
+  };
+  const copy = (tx: Transaction) =>
+    Transaction.from(
+      tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
+    );
+
+  it("stores the signature before sending, then confirms from chain state", async () => {
+    const store = memoryStore();
+    const { connection, sent } = rpc(store);
+    const { result, preview } = await execute({
+      context: customContext(connection as never, null, "x"),
+      tx: wrapTx(),
+      signer: {
+        publicKey: payer.publicKey,
+        signTransaction: async (tx) => {
+          const signed = copy(tx);
+          signed.partialSign(payer);
+          return signed;
+        },
+      },
+      expect: wrapExpectation,
+      record,
+      store,
+    });
+    expect(sent).toEqual([{ stored: ["sent"] }]);
+    expect(result).toEqual({ status: "confirmed", slot: 7 });
+    expect(preview.balanceChange).toBe(-1_000_000n);
+    expect(store.list().map((op) => op.status)).toEqual(["confirmed"]);
+  });
+
+  it("sends nothing when the wallet signs with another account (account switched while signing)", async () => {
+    const store = memoryStore();
+    const { connection, sent } = rpc(store);
+    // A real Ed25519 signature, by a key that is not the fee payer's.
+    const other = generateKeyPairSync("ed25519");
+    await expect(
+      execute({
+        context: customContext(connection as never, null, "x"),
+        tx: wrapTx(),
+        signer: {
+          publicKey: payer.publicKey,
+          signTransaction: async (tx) => {
+            const signed = copy(tx);
+            signed.addSignature(
+              payer.publicKey,
+              sign(null, signed.serializeMessage(), other.privateKey),
+            );
+            return signed;
+          },
+        },
+        expect: wrapExpectation,
+        record,
+        store,
+      }),
+    ).rejects.toThrow("A required signature is missing.");
+    expect(sent).toEqual([]);
+    expect(store.list()).toEqual([]);
   });
 });
