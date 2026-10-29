@@ -19,7 +19,7 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { getBase58Decoder } from "@solana/kit";
-import { CpAmmIdl, cpAmmCoder } from "@/lib/meteora/damm-sdk";
+import { CpAmmIdl, cpAmmCoder, type PoolState } from "@/lib/meteora/damm-sdk";
 import {
   ANCHOR_EVENT_IX_TAG,
   DAMM_V2_EVENTS,
@@ -31,6 +31,7 @@ import {
   DAMM_V2_EVENT_AUTHORITY,
   DAMM_V2_POOL_AUTHORITY,
   prepareDammTrade,
+  validateDammPool,
   type LockedPosition,
 } from "@/lib/meteora/damm-v2";
 import {
@@ -41,7 +42,16 @@ import {
   priceFromSqrt,
   type PoolActivity,
 } from "@/lib/meteora/history";
-import { discoverCategory, NEW_LAUNCH_SECONDS } from "@/lib/meteora/pools";
+import { deriveDbcPoolAddress } from "@/lib/meteora/sdk";
+import { retryCurve } from "@/lib/meteora/curve";
+import {
+  decodeConfig,
+  decodePool,
+  discoverCategory,
+  NEW_LAUNCH_SECONDS,
+  validateRetryPool,
+  type RetryPool,
+} from "@/lib/meteora/pools";
 import { customContext } from "@/lib/meteora/client";
 import { graduationPriceGap } from "@/lib/meteora/graduation";
 import {
@@ -645,5 +655,148 @@ describe("Discover columns from pool state", () => {
     ] as const)
       expect(discoverCategory(launch(status, 60), now)).toBe("near-graduation");
     expect(discoverCategory(launch("graduated", 60), now)).toBe("graduated");
+  });
+});
+
+describe("pool identity (adversarial)", () => {
+  const config = context.retryConfig!;
+  const canonical = deriveDbcPoolAddress(WSOL_MINT, mint, config);
+  const expected = retryCurve();
+  /** A PoolConfig as the DBC program stores the RETRY parameters. */
+  const onchainConfig = (overrides: object = {}) =>
+    ({
+      ...expected,
+      poolFees: { ...expected.poolFees, dynamicFee: { initialized: 0 } },
+      transferFeeFlag: 0,
+      preMigrationTokenSupply: expected.tokenSupply!.preMigrationTokenSupply,
+      postMigrationTokenSupply: expected.tokenSupply!.postMigrationTokenSupply,
+      migrationFeePercentage: expected.migrationFee.feePercentage,
+      quoteMint: WSOL_MINT,
+      ...overrides,
+    }) as unknown as Parameters<typeof validateRetryPool>[3];
+  const virtualPool = (overrides: object = {}) =>
+    ({
+      poolState: { config, baseMint: mint, ...overrides },
+    }) as unknown as Parameters<typeof validateRetryPool>[2];
+
+  it("takes a DBC pool as a RETRY launch only at its canonical address, from the RETRY config", () => {
+    expect(() =>
+      validateRetryPool(context, canonical, virtualPool(), onchainConfig()),
+    ).not.toThrow();
+    // A look-alike pool account anywhere else (fake pool, same fields).
+    expect(() =>
+      validateRetryPool(
+        context,
+        Keypair.generate().publicKey,
+        virtualPool(),
+        onchainConfig(),
+      ),
+    ).toThrow("canonical DBC PDA");
+    // A pool of the same mint created from another partner's config.
+    expect(() =>
+      validateRetryPool(
+        context,
+        canonical,
+        virtualPool({ config: attacker }),
+        onchainConfig(),
+      ),
+    ).toThrow("not created from the RETRY config");
+    // A fake mint presented for a real pool's address.
+    expect(() =>
+      validateRetryPool(
+        context,
+        canonical,
+        virtualPool({ baseMint: attacker }),
+        onchainConfig(),
+      ),
+    ).toThrow("canonical DBC PDA");
+    expect(() =>
+      validateRetryPool(
+        context,
+        canonical,
+        virtualPool(),
+        onchainConfig({ quoteMint: attacker }),
+      ),
+    ).toThrow("not quoted in SOL");
+    expect(() =>
+      validateRetryPool(
+        context,
+        canonical,
+        virtualPool(),
+        onchainConfig({ creatorTradingFeePercentage: 100 }),
+      ),
+    ).toThrow("differs from the reviewed parameters");
+  });
+
+  it("decodes pools and configs only from accounts the DBC program owns", () => {
+    const foreign = {
+      owner: attacker,
+      data: Buffer.alloc(1_000),
+      executable: false,
+      lamports: 1,
+    };
+    expect(() => decodePool(context, foreign)).toThrow(
+      "not owned by Meteora DBC",
+    );
+    expect(() => decodeConfig(context, foreign)).toThrow(
+      "not owned by Meteora DBC",
+    );
+    expect(() => decodePool(context, null)).toThrow("not found");
+  });
+
+  it("takes a DAMM v2 pool only as the one the launch graduated into", () => {
+    const launch = {
+      dammV2Pool: dammPool.toBase58(),
+      baseMint: mint.toBase58(),
+    } as RetryPool;
+    const state = (overrides: object = {}) =>
+      ({
+        tokenAMint: mint,
+        tokenBMint: WSOL_MINT,
+        tokenAFlag: 0,
+        tokenBFlag: 0,
+        ...overrides,
+      }) as unknown as PoolState;
+    expect(() =>
+      validateDammPool(launch, dammPool, DAMM_V2_PROGRAM, state()),
+    ).not.toThrow();
+    expect(() => validateDammPool(launch, dammPool, attacker, state())).toThrow(
+      "not owned by Meteora DAMM v2",
+    );
+    expect(() =>
+      validateDammPool(launch, attacker, DAMM_V2_PROGRAM, state()),
+    ).toThrow("not the graduated pool");
+    expect(() =>
+      validateDammPool(
+        { ...launch, dammV2Pool: null },
+        dammPool,
+        DAMM_V2_PROGRAM,
+        state(),
+      ),
+    ).toThrow("not the graduated pool");
+    expect(() =>
+      validateDammPool(
+        launch,
+        dammPool,
+        DAMM_V2_PROGRAM,
+        state({ tokenAMint: attacker }),
+      ),
+    ).toThrow("does not pair this token with SOL");
+    expect(() =>
+      validateDammPool(
+        launch,
+        dammPool,
+        DAMM_V2_PROGRAM,
+        state({ tokenBMint: attacker }),
+      ),
+    ).toThrow("does not pair this token with SOL");
+    expect(() =>
+      validateDammPool(
+        launch,
+        dammPool,
+        DAMM_V2_PROGRAM,
+        state({ tokenAFlag: 1 }),
+      ),
+    ).toThrow("unexpected token program");
   });
 });

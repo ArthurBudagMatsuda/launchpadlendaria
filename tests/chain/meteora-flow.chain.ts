@@ -719,6 +719,34 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     expect(read.pool.status).toBe("graduated");
   });
 
+  it("refuses a second migration: RETRY does not build it and the program rejects it", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
+    await expect(
+      prepareMigration(context, { payer: trader.publicKey, pool }),
+    ).rejects.toThrow("already graduated");
+    // Built with the SDK directly, as anyone could, and sent without preflight.
+    const read = await readRetryPool(context, pool);
+    const again = await context.client.migration.migrateToDammV2({
+      payer: trader.publicKey,
+      pool,
+      dammConfig: new PublicKey(read.pool.dammV2Config),
+    });
+    const failed = await sendExpectingFailure(connection, again.transaction, [
+      trader,
+      again.firstPositionNftKeypair,
+      again.secondPositionNftKeypair,
+    ]);
+    log("repeated migration refused", {
+      ...failed,
+      logs: failed.logs.slice(-3),
+    });
+    expect(failed.error).toBeTruthy();
+    // Nothing moved: same graduated pool, same locked liquidity.
+    const after = (await readDammPool(context, read.pool)).pool;
+    expect(after.liquidity).toBe(dammOpen.liquidity);
+    expect(after.permanentLockLiquidity).toBe(dammOpen.permanentLockLiquidity);
+  });
+
   async function dammQuote(
     side: TradeQuote["side"],
     amountIn: bigint,
