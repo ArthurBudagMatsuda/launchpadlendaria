@@ -49,7 +49,7 @@ export async function uploadMetadata(
   const response = await fetcher(`${endpoint}/v1/metadata`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    credentials: "omit",
+    credentials: "include",
     referrerPolicy: "no-referrer",
     body: JSON.stringify({
       name: draft.name.trim(),
@@ -64,6 +64,10 @@ export async function uploadMetadata(
   if (response.status === 429)
     throw new MetadataUploadError(
       "Too many uploads from this connection. Try again later.",
+    );
+  if (response.status === 401 || response.status === 403)
+    throw new MetadataUploadError(
+      "Sign in to the authorized metadata test service before uploading.",
     );
   if (!response.ok)
     throw new MetadataUploadError("The metadata host refused this token.");

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import worker, { type Env, type KV } from "../infra/metadata-worker/src/index";
+import {
+  createMetadataWorker,
+  type Env,
+  type KV,
+} from "../infra/metadata-worker/src/index";
+import { accessFixture, rateLimitFixture } from "./fixtures/cloudflare-access";
 import { uploadMetadata } from "@/lib/meteora/metadata-upload";
 import { emptyDraft } from "@/lib/validation";
+const access = await accessFixture();
+const worker = createMetadataWorker(access.fetcher);
 
 // Unit tests of the Worker's logic with an in-memory KV (a test double, not
 // Cloudflare). Deployment itself is covered by infra/metadata-worker/README.md.
@@ -51,7 +58,9 @@ function setup(limit = "10") {
     METADATA: memoryKv(),
     PUBLIC_URL: "https://meta.retry.test",
     ALLOWED_ORIGINS: `${ORIGIN},http://127.0.0.1:3000`,
-    UPLOADS_PER_HOUR: limit,
+    ACCESS_TEAM_DOMAIN: access.issuer,
+    ACCESS_AUDIENCE: access.audience,
+    UPLOAD_RATE_LIMITER: rateLimitFixture(Number(limit)),
   };
   // Route the app's fetches straight into the Worker.
   const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -59,12 +68,18 @@ function setup(limit = "10") {
     const headers = new Headers(request.headers);
     headers.set("origin", ORIGIN);
     headers.set("cf-connecting-ip", "203.0.113.7");
+    headers.set("cf-access-jwt-assertion", access.token);
     return worker.fetch(new Request(request, { headers }), env);
   }) as typeof fetch;
   return { env, fetcher };
 }
 
-const post = (env: Env, body: unknown, origin = ORIGIN) =>
+const post = (
+  env: Env,
+  body: unknown,
+  origin = ORIGIN,
+  assertion: string | null = access.token,
+) =>
   worker.fetch(
     new Request("https://meta.retry.test/v1/metadata", {
       method: "POST",
@@ -72,6 +87,7 @@ const post = (env: Env, body: unknown, origin = ORIGIN) =>
         origin,
         "content-type": "application/json",
         "cf-connecting-ip": "203.0.113.9",
+        ...(assertion ? { "cf-access-jwt-assertion": assertion } : {}),
       },
       body: JSON.stringify(body),
     }),
@@ -116,11 +132,135 @@ describe("metadata worker", () => {
     expect((await post(env, { ...draft, image: fake })).status).toBe(422);
   });
 
-  it("limits uploads per IP per hour", async () => {
+  it("limits authorized uploads through the binding", async () => {
     const { env } = setup("2");
     expect((await post(env, draft)).status).toBe(201);
     expect((await post(env, draft)).status).toBe(201);
     expect((await post(env, draft)).status).toBe(429);
+  });
+
+  it("fails closed without Access configuration or the rate binding", async () => {
+    const { env } = setup();
+    expect(
+      (await post({ ...env, ACCESS_AUDIENCE: undefined }, draft)).status,
+    ).toBe(503);
+    expect(
+      (await post({ ...env, UPLOAD_RATE_LIMITER: undefined }, draft)).status,
+    ).toBe(503);
+  });
+
+  it("does not treat an allowed or forged Origin as authentication", async () => {
+    const { env } = setup();
+    expect((await post(env, draft, ORIGIN, null)).status).toBe(401);
+    expect((await post(env, draft, ORIGIN, "fake.jwt.value")).status).toBe(401);
+    expect((env.METADATA as ReturnType<typeof memoryKv>).size()).toBe(0);
+  });
+
+  it("rejects expired tokens, another issuer and another audience", async () => {
+    const { env } = setup();
+    for (const token of [
+      await access.issue({ expiration: 1 }),
+      await access.issue({ issuer: "https://attacker.example" }),
+      await access.issue({ audience: "other-app" }),
+    ])
+      expect((await post(env, draft, ORIGIN, token)).status).toBe(401);
+  });
+
+  it("rejects an invalid cryptographic signature", async () => {
+    const { env } = setup();
+    const parts = access.token.split(".");
+    parts[2] = (parts[2][0] === "A" ? "B" : "A") + parts[2].slice(1);
+    expect((await post(env, draft, ORIGIN, parts.join("."))).status).toBe(401);
+  });
+
+  it("uses credentialed CORS only for the explicit origin, including preflight", async () => {
+    const { env } = setup();
+    const request = (origin: string) =>
+      worker.fetch(
+        new Request("https://meta.retry.test/v1/metadata", {
+          method: "OPTIONS",
+          headers: { origin, "access-control-request-method": "POST" },
+        }),
+        env,
+      );
+    const allowed = await request(ORIGIN);
+    expect(allowed.status).toBe(204);
+    expect(allowed.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+    expect(allowed.headers.get("access-control-allow-credentials")).toBe(
+      "true",
+    );
+    expect((await request("https://evil.example")).status).toBe(403);
+  });
+
+  it("returns controlled errors for malformed JSON, null and malformed base64", async () => {
+    const { env } = setup();
+    expect((await post(env, null)).status).toBe(400);
+    expect((await post(env, [])).status).toBe(400);
+    expect(
+      (await post(env, { ...draft, image: "data:image/png;base64,A" })).status,
+    ).toBe(422);
+    const response = await worker.fetch(
+      new Request("https://meta.retry.test/v1/metadata", {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+          "cf-access-jwt-assertion": access.token,
+        },
+        body: "{",
+      }),
+      env,
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("bounds a streamed body in bytes without trusting content-length", async () => {
+    const { env } = setup();
+    const response = await worker.fetch(
+      new Request("https://meta.retry.test/v1/metadata", {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+          "cf-access-jwt-assertion": access.token,
+        },
+        body: "x".repeat(3_000_001),
+      }),
+      env,
+    );
+    expect(response.status).toBe(413);
+    expect((env.METADATA as ReturnType<typeof memoryKv>).size()).toBe(0);
+  });
+
+  it("rejects executable types, short PNG signatures and credentials in links", async () => {
+    const { env } = setup();
+    for (const changed of [
+      { image: "data:image/svg+xml;base64,PHN2Zy8+" },
+      {
+        image: `data:image/png;base64,${Buffer.from([137, 80, 78, 71, 0, 0, 0, 0]).toString("base64")}`,
+      },
+      { website: "https://user:password@example.com" },
+      { website: "javascript:alert(1)" },
+    ])
+      expect((await post(env, { ...draft, ...changed })).status).toBe(422);
+  });
+
+  it("returns controlled storage failures without exposing the cause", async () => {
+    const { env } = setup();
+    env.METADATA.put = async () => {
+      throw new Error("PRIVATE_STORAGE_DETAIL");
+    };
+    const response = await post(env, draft);
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("PRIVATE_STORAGE_DETAIL");
+  });
+
+  it("does not claim an upload worked when the network fails", async () => {
+    await expect(
+      uploadMetadata(draft, "https://meta.retry.test", async () => {
+        throw new Error("network unavailable");
+      }),
+    ).rejects.toThrow(/network unavailable/);
   });
 
   it("serves 404 for unknown or malformed paths", async () => {

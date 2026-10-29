@@ -4,6 +4,8 @@ Data: **28/10/2026**. Branch: **`feat/retry-meteora-dbc-mvp`**, empilhada sobre 
 
 Este relatório só registra o que foi realmente executado. Onde algo depende de um passo que não pôde ser feito, está marcado como **pendente** ou **bloqueado**, com o motivo.
 
+> **Atualização de 29/10/2026.** Depois deste relatório, a Devnet pública foi desbloqueada pelo proprietário: carteira de teste no environment protegido `retry-devnet`, config RETRY de Devnet `8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N` registrada no app (commit `4233212`) e, segundo as evidências publicadas, smoke público com 8 testes aprovados e 2 pulados (graduação e migração, não autorizadas). O job de Devnet agora roda só por dispatch manual com aprovação, não mais por commit com `[devnet]`. Conferido pelo CI: o validador clona essa config da Devnet pública e passa o fluxo completo com ela, incluindo a migração ([execução](https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/40945281913)). As seções 1, 7, 29, 33, 37 e 40 descrevem o estado de 28/10. Detalhes e evidências: [RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md](RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md) e [docs/devnet/evidence/](../devnet/evidence/).
+
 ## 1. Resumo executivo
 
 A RETRY agora tem um MVP funcional sobre o Meteora DBC, sem programa próprio:

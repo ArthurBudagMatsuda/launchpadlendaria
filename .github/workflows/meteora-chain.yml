@@ -7,8 +7,8 @@ name: RETRY Meteora on-chain tests
 #    and repays), so the full flow including graduation runs for free.
 #  - devnet: the same flow on Solana Devnet. The public RPC faucet is closed
 #    on Devnet, so it needs the RETRY_DEVNET_FUNDER secret: a throwaway test
-#    wallet funded at faucet.solana.com. It runs on manual dispatch, or on a
-#    push whose commit message contains [devnet].
+#    wallet funded at faucet.solana.com. Public Devnet is manual-only,
+#    on the reviewed implementation branch, behind the retry-devnet environment.
 # Nothing here sends a transaction to Mainnet, touches GitHub Pages, or
 # prints a secret.
 on:
@@ -24,6 +24,23 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/meteora-chain.yml"
   workflow_dispatch:
+    inputs:
+      run_public_devnet:
+        description: "Run transactions using disposable Devnet SOL (requires protected environment approval)"
+        type: boolean
+        default: false
+      reviewed_sha:
+        description: "Full reviewed commit SHA; must match the selected branch head"
+        type: string
+      graduation:
+        description: "Explicitly authorize completing the 10 SOL curve and migrating on Devnet"
+        type: boolean
+        default: false
+      funding_budget_sol:
+        description: "Maximum gross funding transfers, in test SOL (12 only for graduation)"
+        type: choice
+        options: ["2", "12"]
+        default: "2"
 permissions:
   contents: read
 concurrency:
@@ -140,33 +157,48 @@ jobs:
           retention-days: 30
   devnet:
     name: Solana Devnet (test wallet)
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[devnet]')
+    if: github.event_name == 'workflow_dispatch' && inputs.run_public_devnet == true && github.repository == 'ArthurBudagMatsuda/launchpadlendaria' && github.ref == 'refs/heads/feat/retry-meteora-dbc-mvp'
+    environment: retry-devnet
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Require the reviewed commit, explicit budget and funded test key
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          ACTUAL_SHA: ${{ github.sha }}
+          GRADUATION: ${{ inputs.graduation }}
+          BUDGET: ${{ inputs.funding_budget_sol }}
+          HAS_FUNDER: ${{ secrets.RETRY_DEVNET_FUNDER != '' }}
+        run: |
+          test "$REVIEWED_SHA" = "$ACTUAL_SHA" || { echo "::error::The full reviewed SHA must match the selected branch head."; exit 1; }
+          test "$HAS_FUNDER" = true || { echo "::error::RETRY_DEVNET_FUNDER is missing. No public Devnet test was executed."; exit 1; }
+          if [ "$GRADUATION" = true ]; then
+            test "$BUDGET" = 12 || { echo "::error::Graduation requires explicit selection of the 12 test SOL gross funding limit."; exit 1; }
+          else
+            test "$BUDGET" = 2 || { echo "::error::The smoke test is limited to 2 test SOL gross funding."; exit 1; }
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Check for the Devnet test wallet
-        env:
-          HAS_FUNDER: ${{ secrets.RETRY_DEVNET_FUNDER != '' }}
-        run: |
-          if [ "$HAS_FUNDER" != true ]; then
-            echo "::warning::RETRY_DEVNET_FUNDER is not set. The public Devnet RPC faucet is closed (410), so the Devnet steps will be skipped, not faked."
-            echo "Devnet steps skipped: add the RETRY_DEVNET_FUNDER secret (see docs/meteora-mvp/OPERATIONAL_RUNBOOK.md)." >> "$GITHUB_STEP_SUMMARY"
-          fi
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Public Devnet readiness (read-only, no key)
+        run: pnpm test:devnet:readiness
       - name: Chain flow on Devnet (reuses the app's Devnet config when set)
-        run: pnpm test:chain
+        # Direct runner: no package-manager auto-install or lifecycle with the key.
+        run: node node_modules/vitest/vitest.mjs run --config vitest.chain.config.ts
         env:
           RETRY_CHAIN_MODE: devnet
           RETRY_CHAIN_RPC: ${{ env.DEVNET_RPC }}
           RETRY_CHAIN_USE_APP_CONFIG: "1"
           RETRY_CHAIN_EVIDENCE: evidence-devnet.json
           RETRY_DEVNET_FUNDER: ${{ secrets.RETRY_DEVNET_FUNDER }}
+          RETRY_DEVNET_MAX_SPEND_SOL: ${{ inputs.funding_budget_sol }}
+          RETRY_CHAIN_GRADUATION: ${{ inputs.graduation && '1' || '0' }}
           RETRY_METADATA_URI: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docs/meteora/devnet-metadata/retry-devnet-test.json
       - if: always()
         run: |

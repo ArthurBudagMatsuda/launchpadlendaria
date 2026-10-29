@@ -13,3 +13,9 @@ coverage/
 test-results/
 playwright-report/
 market-data-verification.json
+evidence-*.json
+devnet-readiness.json
+# Defensive exclusions only: keypairs must be kept outside the checkout.
+*funder*.json
+*keypair*.json
+.wrangler/

@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { ALICE, BOB, solanaFixture } from "./solana-fixtures";
+import {
+  ALICE,
+  BOB,
+  READ_ONLY_RPC_METHODS,
+  solanaFixture,
+} from "./solana-fixtures";
 const root = "/launchpadlendaria";
 test("copy confirmation follows the account being copied", async ({ page }) => {
   await solanaFixture(page);
@@ -302,10 +307,8 @@ for (const name of ["Phantom", "Solflare", "Backpack"])
     await page.getByRole("button", { name: "Disconnect", exact: true }).click();
     await expect(page.locator(".portfolio-connect")).toBeVisible();
     expect(
-      calls.every((method) =>
-        ["getGenesisHash", "getBalance"].includes(method),
-      ),
-    ).toBe(true);
+      calls.filter((method) => !READ_ONLY_RPC_METHODS.has(method)),
+    ).toEqual([]);
   });
 test("rejection and RPC failure have honest user states", async ({ page }) => {
   await solanaFixture(page, { reject: true });
@@ -365,11 +368,9 @@ test("mint lookup preserves terminal and disabled trade, rejects EVM address and
     `${root}/token/base/0x1111111111111111111111111111111111111111/`,
   );
   expect(response?.status()).toBe(404);
-  expect(
-    calls.every((method) =>
-      ["getGenesisHash", "getBalance", "getAccountInfo"].includes(method),
-    ),
-  ).toBe(true);
+  expect(calls.filter((method) => !READ_ONLY_RPC_METHODS.has(method))).toEqual(
+    [],
+  );
 });
 
 test("launching stays locked on Mainnet and without a metadata host, with nothing signed", async ({
@@ -398,7 +399,7 @@ test("launching stays locked on Mainnet and without a metadata host, with nothin
   await expect(
     page.getByText("1,000,000,000 · fixed, 9 decimals"),
   ).toBeVisible();
-  // This build has no metadata host (and, until deployed, no Devnet config).
+  // Devnet config is registered; the metadata host is deliberately not set.
   await expect(
     page.getByRole("button", { name: /Review launch cost/ }),
   ).toBeDisabled();

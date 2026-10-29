@@ -32,12 +32,14 @@ Trocar `--url` por `https://api.mainnet-beta.solana.com` testa os binários da M
 
 O faucet público por RPC da Devnet está fechado: `requestAirdrop` respondeu `410 Gone: The RPC faucet is closed on this cluster. Request test SOL at https://faucet.solana.com` no Actions. Para rodar na Devnet:
 
-1. Criar uma carteira **só de teste**, nova, sem relação com carteiras pessoais. Exemplo: `solana-keygen new --no-bip39-passphrase -o devnet-funder.json` numa máquina confiável, ou uma conta nova no Phantom usada apenas para isso.
-2. Pegar SOL de teste para o endereço dela em <https://faucet.solana.com> (login com GitHub). Cerca de 2 SOL bastam para config, lançamento, compra, venda e saque. Graduar na Devnet exige cerca de 11 SOL na carteira.
-3. No GitHub: Settings → Secrets and variables → Actions → New repository secret. Nome `RETRY_DEVNET_FUNDER`, valor: o conteúdo do JSON (array de 64 números) ou a chave privada em base58 exportada da carteira de teste.
-4. Actions → "RETRY Meteora on-chain tests" → Run workflow, na branch `feat/retry-meteora-dbc-mvp`.
-5. O job "Solana Devnet" confere o genesis hash da Devnet antes de usar a chave, cria a config RETRY de Devnet (se ainda não houver), lança o token de teste, negocia, saca e devolve o SOL que sobrar para a carteira de teste. O arquivo `evidence-devnet.json` (artefato do job) traz endereços e assinaturas.
-6. Copiar `config`, `partner` e `configSignature` da evidência para `RETRY_DBC_CONFIGS.devnet` em `src/config/retry-protocol.ts` (`feeClaimerKind: "ephemeral-test-key"`). A partir daí o app libera o lançamento na Devnet, e o job do validador clona essa config.
+Procedimento revisado em 29/10/2026, que substitui o anterior:
+
+1. Proprietário gera pessoalmente uma chave descartável **fora do checkout**, sem exportar a Phantom pessoal: [carteira e secret](../devnet/RETRY_DEVNET_FUNDER_SETUP.md). Fornecer ao agente somente o endereço público.
+2. Financiar no faucet oficial, respeitando limites. Smoke exige saldo inicial mínimo de 1,40002 SOL e teto bruto de 2 SOL. Graduação tem autorização separada, threshold de 10 SOL e teto bruto de 12 SOL; não é garantia de suficiência/custo.
+3. Configurar environment `retry-devnet` protegido por reviewer e branch policy; inserir `RETRY_DEVNET_FUNDER` diretamente como environment secret. [Proteções e bloqueio de dispatch](../devnet/RETRY_GITHUB_ACTIONS_SECURITY.md).
+4. O workflow ainda não está na `main`, portanto não presumir que "Run workflow" está disponível. Não fazer merge para contornar. Usar [alternativa local pessoal do proprietário](../devnet/RETRY_PUBLIC_DEVNET_TESTS.md), ou decidir separadamente como disponibilizar workflow revisado na default branch.
+5. Quando dispatch estiver legitimamente disponível: selecionar a branch, SHA revisada, opção explícita Devnet e orçamento. Push com `[devnet]` não libera a chave. Secret/saldo ausentes falham; graduação não executada é skip real.
+6. Conferir genesis, config, mint, pool, signatures, custos e refunds no artefato. Só então registrar config/partner/configSignature verificados no app (`feeClaimerKind: "ephemeral-test-key"`). Nenhuma chave efêmera vira treasury de produção.
 
 A chave da carteira de teste nunca vai para o repositório, para o frontend ou para `NEXT_PUBLIC_*`.
 

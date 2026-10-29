@@ -20,6 +20,8 @@
     "test:chain": "vitest run --config vitest.chain.config.ts",
     "test:chain:browser": "playwright test --config playwright.chain.config.ts",
     "test:rpc:live": "vitest run --config vitest.live.config.ts",
+    "test:devnet:readiness": "vitest run --config vitest.live.config.ts tests/live/devnet-readiness.probe.ts",
+    "test:metadata:bundle": "node scripts/check-metadata-worker.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -38,6 +40,7 @@
     "buffer": "6.0.3",
     "clsx": "^2.1.1",
     "decimal.js": "10.6.0",
+    "jose": "6.2.14",
     "lightweight-charts": "^5.2.1",
     "lucide-react": "^1.61.0",
     "next": "^16.4.3",
@@ -58,9 +61,11 @@
     "eslint": "^10.13.0",
     "eslint-config-next": "^16.4.3",
     "jsdom": "29.1.1",
+    "libsodium-wrappers": "0.8.4",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "4.156.0"
   }
 }

@@ -1,0 +1,14 @@
+{
+  "repository": "ArthurBudagMatsuda/launchpadlendaria",
+  "environment": "retry-devnet",
+  "secretName": "RETRY_DEVNET_FUNDER",
+  "secretExists": true,
+  "address": "3r8gEonYHrXEao85oFAu2UzVgT1KsxFmWUZLWBd8G5B3",
+  "rpc": "https://api.devnet.solana.com",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "balanceLamports": 2013648909,
+  "slot": 516525291,
+  "protectedLocalBackup": true,
+  "checked_at_utc": "2026-10-29T19:49:25.6065759Z",
+  "sol": "2.013648909"
+}

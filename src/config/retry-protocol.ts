@@ -22,7 +22,14 @@ export interface RetryDbcConfig {
 }
 
 export const RETRY_DBC_CONFIGS: Record<SolanaCluster, RetryDbcConfig | null> = {
-  devnet: null,
+  devnet: {
+    address: "8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N",
+    feeClaimer: "DbvhT2t9yBY4nNsXZLjDhf7Aa13x3TsA83RdxQDhNAqD",
+    createdBy:
+      "5rKrTaNcbnwmysG9VpHRyeQ9zrbkY6cU2UUYckcNeKvv1TcnGWvvqovf19B2jR1F76G2VgastRkkbbNSrnXeasPK",
+    createdAt: "2026-10-29T19:26:06.000Z",
+    feeClaimerKind: "ephemeral-test-key",
+  },
   // Mainnet stays empty until the owner approves the economics, the fee
   // claimer (treasury) and the security review. See
   // docs/meteora-mvp/MAINNET_RELEASE_CHECKLIST.md.
