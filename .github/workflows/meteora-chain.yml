@@ -13,15 +13,18 @@ name: RETRY Meteora on-chain tests
 # prints a secret.
 on:
   push:
+    # The browser flow drives the whole app (Create, token page, Portfolio,
+    # Discover, wallet provider), so any source change runs it.
     paths:
-      - "src/lib/meteora/**"
-      - "src/config/retry-protocol.ts"
-      - "src/components/launch/**"
+      - "src/**"
       - "tests/chain/**"
       - "e2e/chain/**"
       - "infra/metadata-worker/**"
+      - "playwright.chain.config.ts"
+      - "vitest.chain.config.ts"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/meteora-chain.yml"
   workflow_dispatch:
     inputs:
