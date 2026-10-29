@@ -1,14 +1,15 @@
-# Fluxo de compra e venda
+# Compra e venda na bonding curve
 
-Tela: terminal do token RETRY (`src/components/launch/retry-terminal.tsx` e `retry-trade-panel.tsx`). Código: `src/lib/meteora/quotes.ts`, `trade.ts`, `transactions.ts`.
+Tela: terminal do token RETRY (`src/components/launch/retry-terminal.tsx` e `retry-trade-panel.tsx`). Código: `src/lib/meteora/quotes.ts`, `trade.ts`, `transactions.ts`. Este documento cobre a curva; quotes, validade e slippage das duas fontes estão em [QUOTE_AND_SLIPPAGE.md](QUOTE_AND_SLIPPAGE.md), e a negociação depois da graduação em [DAMM_V2_TRADING.md](DAMM_V2_TRADING.md).
 
 ## Quote
 
 - Lida do estado atual da pool (`VirtualPool` + `PoolConfig`) com `swapQuote2` do SDK, que reproduz a matemática do programa.
 - Atualizada a cada 10 segundos e no momento de revisar.
-- Mostra: quantidade recebida, mínimo garantido, taxa (e a divisão Meteora/criador/RETRY), preço à vista, preço de execução e impacto de preço.
+- Mostra: quantidade recebida, mínimo garantido, taxa ("Trading fee (1%)", com a divisão Meteora/criador/RETRY), preço à vista, preço de execução e impacto de preço.
 - Compra que completaria a curva: o programa preenche só até o threshold (`PartialFill`) e devolve o resto. A tela avisa e mostra quanto SOL será usado.
-- Pool completa ou graduada: não há quote; a tela aponta para a graduação.
+- Pool completa: não há quote; a tela diz "The curve is complete. Trading resumes on DAMM v2 after graduation." e aponta para a graduação.
+- Pool graduada: o mesmo formulário passa a cotar e negociar na pool DAMM v2 do lançamento.
 
 ## Slippage
 
@@ -48,3 +49,5 @@ Mesmo executor de todas as operações (`execute`): simulação → assinatura n
 | Venda acima do saldo        | recusada antes de assinar                                                                                                                                                                                           |
 | Slippage violado            | recusado pelo programa na simulação; mensagem de slippage                                                                                                                                                           |
 | Compra que completa a curva | preenchimento parcial até 10 SOL; quotes seguintes recusadas                                                                                                                                                        |
+
+Medido no validador com os programas clonados da Devnet e da Mainnet (os mesmos valores nas duas variantes). Na Devnet pública, no smoke do PR #8: compra de 0,5 SOL com variação de 0,501488440 SOL (o aluguel da conta nova é menor lá), mesma divisão da taxa e impacto de 15,58%; venda de metade com +0,261505003 SOL; venda acima do saldo e slippage recusados sem envio. Pela tela, compra, venda e a compra que completa a curva rodam no teste do navegador contra o validador. Assinaturas em [DEVNET_E2E_RESULTS.md](DEVNET_E2E_RESULTS.md).
