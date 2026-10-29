@@ -5,7 +5,14 @@ import {
   LAMPORTS_PER_SOL,
   Transaction,
 } from "@solana/web3.js";
-import worker, { type KV } from "../../infra/metadata-worker/src/index";
+import {
+  createMetadataWorker,
+  type KV,
+} from "../../infra/metadata-worker/src/index";
+import {
+  accessFixture,
+  rateLimitFixture,
+} from "../../tests/fixtures/cloudflare-access";
 
 // The whole RETRY flow in a real browser against a real validator running
 // Meteora's programs: launch with a first buy, buy, sell, portfolio. Only two
@@ -44,6 +51,9 @@ function memoryKv(): KV {
 
 async function setup(page: Page, owner: Keypair) {
   const kv = memoryKv();
+  const access = await accessFixture();
+  const worker = createMetadataWorker(access.fetcher);
+  const limiter = rateLimitFixture(20);
   const signed: string[] = [];
   await page.route(/127\.0\.0\.1:8899/, async (route) => {
     const body = route.request().postData() ?? "";
@@ -83,6 +93,7 @@ async function setup(page: Page, owner: Keypair) {
           ...request.headers(),
           origin: "http://127.0.0.1:4175",
           "cf-connecting-ip": "198.51.100.1",
+          "cf-access-jwt-assertion": access.token,
         },
         body: request.method() === "POST" ? request.postData() : undefined,
       }),
@@ -90,7 +101,9 @@ async function setup(page: Page, owner: Keypair) {
         METADATA: kv,
         PUBLIC_URL: METADATA,
         ALLOWED_ORIGINS: "http://127.0.0.1:4175",
-        UPLOADS_PER_HOUR: "20",
+        ACCESS_TEAM_DOMAIN: access.issuer,
+        ACCESS_AUDIENCE: access.audience,
+        UPLOAD_RATE_LIMITER: limiter,
       },
     );
     await route.fulfill({
