@@ -159,6 +159,36 @@ export async function transferSol(
   });
 }
 
+/**
+ * Send a transaction that is meant to fail, so the refusal is recorded by
+ * the cluster itself, not only by a simulation: preflight is skipped on
+ * purpose (it would reject it before it lands) and the landed transaction's
+ * error and logs are returned. Only for adversarial tests with test keys.
+ */
+export async function sendExpectingFailure(
+  connection: Connection,
+  tx: Transaction,
+  signers: Keypair[],
+) {
+  const latest = await connection.getLatestBlockhash("confirmed");
+  tx.feePayer = signers[0].publicKey;
+  tx.recentBlockhash = latest.blockhash;
+  tx.sign(...signers);
+  const signature = await connection.sendRawTransaction(tx.serialize(), {
+    skipPreflight: true,
+  });
+  await connection.confirmTransaction({ signature, ...latest }, "confirmed");
+  const landed = await connection.getTransaction(signature, {
+    commitment: "confirmed",
+    maxSupportedTransactionVersion: 0,
+  });
+  return {
+    signature,
+    error: landed?.meta?.err ? JSON.stringify(landed.meta.err) : null,
+    logs: landed?.meta?.logMessages ?? [],
+  };
+}
+
 const records: Record<string, unknown>[] = [];
 /** One line per fact, grep-able in CI logs as RETRY_CHAIN {...}. */
 export function log(step: string, data: Record<string, unknown>) {

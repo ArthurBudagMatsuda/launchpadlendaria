@@ -46,12 +46,38 @@ const rows = [
       `holder ${e.holder} · permanent ${e.permanent} · unlocked ${e.unlocked} · vested ${e.vested}`,
   ],
   [
+    "lock verification",
+    (e) =>
+      `verified ${e.verified} · locked ${e.lockedPct}% · unlocked ${e.unlocked} · vested ${e.vested}`,
+  ],
+  [
+    "graduation economics",
+    (e) =>
+      `curve ${e.curvePriceSol} SOL → DAMM v2 ${e.dammPriceSol} SOL (gap ${e.gapPct}%) · reserve ${sol(e.curveQuoteReserve)} → ${sol(e.dammQuoteReserve)}`,
+  ],
+  [
+    "DAMM v2 buy 0.2 SOL",
+    (e) => `change ${sol(e.simulatedBalanceChange)} · ${e.signature}`,
+  ],
+  [
+    "DAMM v2 sell",
+    (e) =>
+      e.signature
+        ? `change ${sol(e.simulatedBalanceChange)} · ${e.signature}`
+        : `received ${sol(e.balanceChange)}, minimum ${sol(e.quote?.minimumAmountOut)}`,
+  ],
+  ["DAMM v2 slippage guard", (e) => `refused ${e.error} · ${e.signature}`],
+  ["withdrawal refused", (e) => `${e.label}: ${e.error} · ${e.signature}`],
+  ["fee claim refused", (e) => `${e.label}: ${e.error} · ${e.signature}`],
+  ["LP fee claim", (e) => `creator received ${sol(e.balanceChange)}`],
+  [
     "creator claim",
     (e) =>
       e.signature
         ? `claimed ${sol(e.simulatedBalanceChange)} · ${e.signature}`
         : null,
   ],
+  ["history", (e) => `${e.count} transactions: ${e.kinds.join(", ")}`],
 ];
 const lines = [];
 for (const [step, format] of rows)
@@ -62,8 +88,11 @@ for (const [step, format] of rows)
 for (const key of ["migration", "graduation", "skipped"])
   if (evidence[key]) lines.push(`${key}: ${evidence[key]}`);
 
-// GitHub keeps 10 notices per step; group them in three.
-const groups = [lines.slice(0, 5), lines.slice(5, 10), lines.slice(10)];
+// GitHub keeps 10 notices per step; group the lines into at most 10.
+const size = Math.max(5, Math.ceil(lines.length / 10));
+const groups = [];
+for (let i = 0; i < lines.length; i += size)
+  groups.push(lines.slice(i, i + size));
 groups.forEach((group, i) => {
   if (group.length)
     console.log(`::notice title=${label} (${i + 1})::${group.join("%0A")}`);
