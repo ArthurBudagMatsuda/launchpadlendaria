@@ -1,0 +1,25 @@
+{
+  "evidence": "OWNER_REPORTED_PHANTOM_CONNECTION_AND_VERIFIED_PUBLIC_BALANCE",
+  "at": "2026-11-03T18:16:39.834Z",
+  "url": "https://retry-solana-devnet-beta.pages.dev/",
+  "cluster": "devnet",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "address": "Z8WdA8JSjtbvNfGLF9aMTbb6DS94eHnMMEE4k55ZDZ7",
+  "ownerReportedBalanceSol": 0,
+  "rpcLamports": 0,
+  "slot": 518302931,
+  "connection": "reported by owner; extension interaction not directly observed by agent",
+  "extensionVersion": null,
+  "signatureCount": 0,
+  "transactionsSent": 0,
+  "mode": "read-only",
+  "ownerConfirmedReadOnlyFlows": [
+    "refresh",
+    "Portfolio",
+    "disconnect",
+    "reconnect",
+    "same address and 0 SOL"
+  ],
+  "browserVersion": null,
+  "validation": "owner report; balance independently verified by public RPC; no transaction signing tested"
+}

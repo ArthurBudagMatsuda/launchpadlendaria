@@ -1,0 +1,608 @@
+{
+  "mode": "local",
+  "rpc": "http://127.0.0.1:8899",
+  "at": "2026-11-03T17:56:55.283Z",
+  "partner": "DbvhT2t9yBY4nNsXZLjDhf7Aa13x3TsA83RdxQDhNAqD",
+  "creator": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+  "trader": "HMbRob1PtW2scY2HJ72iZbH3ze8WSzfquiCLuzYfRRW1",
+  "genesis": "CGmyW7SsK9PX14f1RwaaXt2RSfyYWyZYVA2Tgvqf9ZRH",
+  "config": "8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N",
+  "createSignature": "2ci8f4tJZGMxBHHfz2ouv9ymdJHFthYwmt8Kk5Nux7geXxp3NSheN2pbutLrkSRzM1Nd1KAxch2W7Ukv7b6ZRqNm",
+  "pool": "BCQ1iCJdkBLxxz3oGdARRTzYqGrvqZimsedMSVhTC1pu",
+  "mint": "CRBaam943SEa4xr96VFN9RmHxx4vEScvoyfPXGgmcgUU",
+  "buySignature": "VAN3Up8VQzKb66RGJftaE25jbT3uCPYjzdhCLYyzcmTFqPHeCjvaQHBMphYxFwtZr8HnzvpWt6pfQeoBYcgSCRG",
+  "sellSignature": "4b3V8v5SYSiGVZS9W3Vf3Mk7EKy5Rcg7fvMvah9vsbJCngaCkYcC2Zvq7ZMqhxg91F4fXSuTtdZ5PLCsjE8AKeu6",
+  "completeSignature": "ALsZwoLiFk6AqdeAZ7Mkufh8QKTj5RSTN3M8XuBqjHzJ3oR6ZWtwsm7cx4RCmip3hbgWcPQJgEJYUegZDhcjsrX",
+  "migrateSignature": "46kxNUhe2w9qqQJFazZ2oaRvsGZnvj2zpw7hpahntsjt8b9RmkkX7kfgWBCuGQyNTmZBhZTUzDwa6rtL1QLfVZzz",
+  "dammV2Pool": "8GEjq7xdWUq5MfeP2KfWf8ukRQWfnD58Vci4fD6A6j1G",
+  "graduationEconomics": {
+    "curvePriceSol": "5e-8",
+    "dammPriceSol": "5e-8",
+    "gapPct": "0",
+    "curveQuoteReserve": "10000000001",
+    "curveBaseReserve": "200000208254179588",
+    "dammQuoteReserve": "9980000000",
+    "dammBaseReserve": "199600207817670594",
+    "dbcQuoteVaultAfter": "126319714",
+    "dbcBaseVaultAfter": "400000436508994",
+    "creatorHeld": "30766226884943507",
+    "traderHeld": "769233564860876905"
+  },
+  "dammBuySignature": "JvCJirQjTRrwJpte47Kxq9pygHM2TfEfYh6gSgJxRbvSUtJatdSdCLHyjUC4YvJAfgPSEDD8zuf9kTf673P79BJ",
+  "dammSellSignature": "2DyjVHj1URDXLmLf9rC9dmPvaW5zQv5NoBpHgUYNkGcBn7BeJbzFvS2fScA8DUmBXzZd6fgbhfuu5ZNzZiUHSpFt",
+  "lpClaimSignature": "5CJmB6BTcynBKts4q2ZcCTnHtn3HPPtm9r2ZLZwYQntKn6PBvG4ydrSaaBcX1gVMWcyjQxAVyGvMZwyHifRy6hcs",
+  "claimSignature": "5JRQCRgQKT51SsC73EoSHZaj2Xrex9Yt4yiG8PaRZbQUxg9NaKWeNZuWacjEpmGR8RSX6L4KV6uXoVoCyrp9Yufi",
+  "steps": [
+    {
+      "step": "funded",
+      "key": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+      "lamports": 40000000000
+    },
+    {
+      "step": "funded",
+      "key": "HMbRob1PtW2scY2HJ72iZbH3ze8WSzfquiCLuzYfRRW1",
+      "lamports": 40000000000
+    },
+    {
+      "step": "config reused",
+      "config": "8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N"
+    },
+    {
+      "step": "create + first buy",
+      "signature": "2ci8f4tJZGMxBHHfz2ouv9ymdJHFthYwmt8Kk5Nux7geXxp3NSheN2pbutLrkSRzM1Nd1KAxch2W7Ukv7b6ZRqNm",
+      "status": "confirmed",
+      "simulatedBalanceChange": "-126536960",
+      "networkFee": "10000",
+      "units": 223397
+    },
+    {
+      "step": "metadata",
+      "mint": "CRBaam943SEa4xr96VFN9RmHxx4vEScvoyfPXGgmcgUU",
+      "name": "RETRY Devnet Test",
+      "symbol": "RTEST",
+      "uri": "https://raw.githubusercontent.com/ArthurBudagMatsuda/launchpadlendaria/908e540f021d6c9362e1cb2115ce42921568e07d/docs/meteora/devnet-metadata/retry-devnet-test.json",
+      "updateAuthority": "11111111111111111111111111111111",
+      "isMutable": false
+    },
+    {
+      "step": "pool after create",
+      "cluster": "devnet",
+      "address": "BCQ1iCJdkBLxxz3oGdARRTzYqGrvqZimsedMSVhTC1pu",
+      "config": "8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N",
+      "creator": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+      "baseMint": "CRBaam943SEa4xr96VFN9RmHxx4vEScvoyfPXGgmcgUU",
+      "baseVault": "J6TmWZw5LTqvhmquE8F3EaVMPBa9KukmTdDVd8RStvC1",
+      "quoteVault": "E66qzDbJDcswPTyDJRAQe5zC19bEnV2HdpNtcgrZsm3x",
+      "baseReserve": "969233773115056493",
+      "quoteReserve": "99000000",
+      "sqrtPrice": "1061831377573595",
+      "migrationQuoteThreshold": "10000000000",
+      "progressBps": 99,
+      "priceSol": "3.31338e-9",
+      "fdvSol": "3.3134",
+      "totalSupply": "1000000000000000000",
+      "isMigrated": false,
+      "migrationProgress": 0,
+      "finishCurveTimestamp": 0,
+      "activationPoint": "1793728597",
+      "creatorQuoteFee": "400000",
+      "partnerQuoteFee": "400000",
+      "totalTradingQuoteFee": "800000",
+      "dammV2Config": "Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp",
+      "dammV2Pool": null,
+      "status": "active",
+      "slot": 22
+    },
+    {
+      "step": "buy 0.5 SOL",
+      "signature": "VAN3Up8VQzKb66RGJftaE25jbT3uCPYjzdhCLYyzcmTFqPHeCjvaQHBMphYxFwtZr8HnzvpWt6pfQeoBYcgSCRG",
+      "status": "confirmed",
+      "simulatedBalanceChange": "-502039280",
+      "networkFee": "5000",
+      "units": 92331
+    },
+    {
+      "step": "buy fee split",
+      "fee": "5000000",
+      "protocol": "1000000",
+      "creator": "2000000",
+      "partner": "2000000",
+      "quote": {
+        "venue": "dbc",
+        "side": "buy",
+        "pool": "BCQ1iCJdkBLxxz3oGdARRTzYqGrvqZimsedMSVhTC1pu",
+        "amountIn": "500000000",
+        "amountInUsed": "500000000",
+        "amountLeft": "0",
+        "amountOut": "130564541249646396",
+        "minimumAmountOut": "129258895837149932",
+        "slippageBps": 100,
+        "fee": "5000000",
+        "protocolFee": "1000000",
+        "spotPriceSol": "3.31338e-9",
+        "executionPriceSol": "3.82952e-9",
+        "priceImpactPct": "15.58",
+        "completesCurve": false,
+        "slot": 22,
+        "quotedAt": 1793728599507
+      }
+    },
+    {
+      "step": "sell half",
+      "signature": "4b3V8v5SYSiGVZS9W3Vf3Mk7EKy5Rcg7fvMvah9vsbJCngaCkYcC2Zvq7ZMqhxg91F4fXSuTtdZ5PLCsjE8AKeu6",
+      "status": "confirmed",
+      "simulatedBalanceChange": "261505003",
+      "networkFee": "5000",
+      "units": 65638
+    },
+    {
+      "step": "slippage guard",
+      "message": "The price moved beyond your slippage limit, so nothing was traded. Review the new quote."
+    },
+    {
+      "step": "complete curve",
+      "signature": "ALsZwoLiFk6AqdeAZ7Mkufh8QKTj5RSTN3M8XuBqjHzJ3oR6ZWtwsm7cx4RCmip3hbgWcPQJgEJYUegZDhcjsrX",
+      "status": "confirmed",
+      "simulatedBalanceChange": "-9767824717",
+      "networkFee": "5000",
+      "units": 73546
+    },
+    {
+      "step": "curve complete",
+      "cluster": "devnet",
+      "address": "BCQ1iCJdkBLxxz3oGdARRTzYqGrvqZimsedMSVhTC1pu",
+      "config": "8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N",
+      "creator": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+      "baseMint": "CRBaam943SEa4xr96VFN9RmHxx4vEScvoyfPXGgmcgUU",
+      "baseVault": "J6TmWZw5LTqvhmquE8F3EaVMPBa9KukmTdDVd8RStvC1",
+      "quoteVault": "E66qzDbJDcswPTyDJRAQe5zC19bEnV2HdpNtcgrZsm3x",
+      "baseReserve": "200000208254179588",
+      "quoteReserve": "10000000001",
+      "sqrtPrice": "4124817371235594",
+      "migrationQuoteThreshold": "10000000000",
+      "progressBps": 10000,
+      "priceSol": "5e-8",
+      "fdvSol": "50",
+      "totalSupply": "1000000000000000000",
+      "isMigrated": false,
+      "migrationProgress": 2,
+      "finishCurveTimestamp": 1793728601,
+      "activationPoint": "1793728597",
+      "creatorQuoteFee": "42527885",
+      "partnerQuoteFee": "42527886",
+      "totalTradingQuoteFee": "85055771",
+      "dammV2Config": "Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp",
+      "dammV2Pool": null,
+      "status": "graduation-ready",
+      "slot": 33
+    },
+    {
+      "step": "pool authority rent float",
+      "lamports": 99426635387
+    },
+    {
+      "step": "migrate to DAMM v2",
+      "signature": "46kxNUhe2w9qqQJFazZ2oaRvsGZnvj2zpw7hpahntsjt8b9RmkkX7kfgWBCuGQyNTmZBhZTUzDwa6rtL1QLfVZzz",
+      "status": "confirmed",
+      "simulatedBalanceChange": "-32503200",
+      "networkFee": "15000",
+      "units": 285423
+    },
+    {
+      "step": "migration cost",
+      "lamports": "32518200"
+    },
+    {
+      "step": "locked position",
+      "position": "891f3ZLUhhpupGgF5cSVyVYyH5V9CFJ1BSDRx4qNJoAi",
+      "holder": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+      "unlocked": "1",
+      "vested": "0",
+      "permanent": "411657202295550785824274880615505"
+    },
+    {
+      "step": "locked position",
+      "position": "HhCceeA1XhkUF3cY3r8CFcDC6axo52kdzuWvCv3aDMHC",
+      "holder": "DbvhT2t9yBY4nNsXZLjDhf7Aa13x3TsA83RdxQDhNAqD",
+      "unlocked": "0",
+      "vested": "0",
+      "permanent": "411657202213054352498513200089599"
+    },
+    {
+      "step": "graduated",
+      "dammV2Pool": "8GEjq7xdWUq5MfeP2KfWf8ukRQWfnD58Vci4fD6A6j1G",
+      "pool": {
+        "cluster": "devnet",
+        "address": "BCQ1iCJdkBLxxz3oGdARRTzYqGrvqZimsedMSVhTC1pu",
+        "config": "8Mfndt2X3CB3zVZyLmxtRxdQTSwk7uqXfFFuso3gUA6N",
+        "creator": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+        "baseMint": "CRBaam943SEa4xr96VFN9RmHxx4vEScvoyfPXGgmcgUU",
+        "baseVault": "J6TmWZw5LTqvhmquE8F3EaVMPBa9KukmTdDVd8RStvC1",
+        "quoteVault": "E66qzDbJDcswPTyDJRAQe5zC19bEnV2HdpNtcgrZsm3x",
+        "baseReserve": "200000208254179588",
+        "quoteReserve": "10000000001",
+        "sqrtPrice": "4124817371235594",
+        "migrationQuoteThreshold": "10000000000",
+        "progressBps": 10000,
+        "priceSol": "5e-8",
+        "fdvSol": "50",
+        "totalSupply": "1000000000000000000",
+        "isMigrated": true,
+        "migrationProgress": 3,
+        "finishCurveTimestamp": 1793728601,
+        "activationPoint": "1793728597",
+        "creatorQuoteFee": "42527885",
+        "partnerQuoteFee": "42527886",
+        "totalTradingQuoteFee": "85055771",
+        "dammV2Config": "Hv8Lmzmnju6m7kcokVKvwqz7QPmdX9XfKjJsXz8RXcjp",
+        "dammV2Pool": "8GEjq7xdWUq5MfeP2KfWf8ukRQWfnD58Vci4fD6A6j1G",
+        "status": "graduated",
+        "slot": 36
+      },
+      "dammOpen": {
+        "address": "8GEjq7xdWUq5MfeP2KfWf8ukRQWfnD58Vci4fD6A6j1G",
+        "dbcPool": "BCQ1iCJdkBLxxz3oGdARRTzYqGrvqZimsedMSVhTC1pu",
+        "baseMint": "CRBaam943SEa4xr96VFN9RmHxx4vEScvoyfPXGgmcgUU",
+        "tokenAVault": "HYyQLbcsrFSehXA9AR8WwTAQeC827MuRVGbSvXsCkpX9",
+        "tokenBVault": "AMTYgTS4TMX9wDRFoiuGGKijYCXsTbsc47yEVuo1Gy9m",
+        "baseReserve": "199600207817670594",
+        "quoteReserve": "9980000000",
+        "sqrtPrice": "4124817371235594",
+        "liquidity": "823314404508605138322788080705105",
+        "permanentLockLiquidity": "823314404508605138322788080705104",
+        "priceSol": "5e-8",
+        "fdvSol": "50",
+        "feeBps": 100,
+        "protocolFeePercent": 20,
+        "collectFeeMode": 1,
+        "enabled": true,
+        "activationPoint": "1793728603",
+        "activationType": 1,
+        "slot": 36
+      }
+    },
+    {
+      "step": "lock verification",
+      "positions": [
+        {
+          "position": "891f3ZLUhhpupGgF5cSVyVYyH5V9CFJ1BSDRx4qNJoAi",
+          "nftMint": "7xZTK8E5MTaq1x81KBf5Upru2LYFGAPy4vPjZigwoiK7",
+          "nftAccount": "FuqRt3bKN9v51WBJMx68qFzA3yNrqEbfE6AJsUXmDh9X",
+          "holder": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+          "unlockedLiquidity": "1",
+          "vestedLiquidity": "0",
+          "permanentLockedLiquidity": "411657202295550785824274880615505",
+          "feeAPending": "0",
+          "feeBPending": "0",
+          "feeAClaimable": null,
+          "feeBClaimable": null
+        },
+        {
+          "position": "HhCceeA1XhkUF3cY3r8CFcDC6axo52kdzuWvCv3aDMHC",
+          "nftMint": "85u6tMbNQ6D7QcqX7uj5RqcdnM1K86rxVcY3whvhxaqa",
+          "nftAccount": "HSeyzASyaG5eupCemcpHYjcqaea7Rc2MdQUY35wFKVJr",
+          "holder": "DbvhT2t9yBY4nNsXZLjDhf7Aa13x3TsA83RdxQDhNAqD",
+          "unlockedLiquidity": "0",
+          "vestedLiquidity": "0",
+          "permanentLockedLiquidity": "411657202213054352498513200089599",
+          "feeAPending": "0",
+          "feeBPending": "0",
+          "feeAClaimable": null,
+          "feeBClaimable": null
+        }
+      ],
+      "others": [],
+      "totalLiquidity": "823314404508605138322788080705105",
+      "permanentLocked": "823314404508605138322788080705104",
+      "unlocked": "1",
+      "vested": "0",
+      "lockedPct": "99.999999",
+      "fullyLocked": false,
+      "verified": true
+    },
+    {
+      "step": "graduation economics",
+      "curvePriceSol": "5e-8",
+      "dammPriceSol": "5e-8",
+      "gapPct": "0",
+      "curveQuoteReserve": "10000000001",
+      "curveBaseReserve": "200000208254179588",
+      "dammQuoteReserve": "9980000000",
+      "dammBaseReserve": "199600207817670594",
+      "dbcQuoteVaultAfter": "126319714",
+      "dbcBaseVaultAfter": "400000436508994",
+      "creatorHeld": "30766226884943507",
+      "traderHeld": "769233564860876905"
+    },
+    {
+      "step": "repeated migration refused",
+      "signature": "oBimjJUXFbiSqh3ei5jzW1Daib9fBwRZSEuU3Ar6s9dR7e7QLhXG7rn8WhsgATmMtpDXQH5jZhjoJC9UuwFrLCH",
+      "error": "{\"InstructionError\":[0,{\"Custom\":6022}]}",
+      "logs": [
+        "Program log: AnchorError thrown in programs/dynamic-bonding-curve/src/instructions/migration/dynamic_amm_v2/migrate_damm_v2_initialize_pool.rs:544. Error Code: NotPermitToDoThisAction. Error Number: 6022. Error Message: Not permit to do this action.",
+        "Program dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN consumed 13953 of 600000 compute units",
+        "Program dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN failed: custom program error: 0x1786"
+      ]
+    },
+    {
+      "step": "DAMM v2 buy 0.2 SOL",
+      "signature": "JvCJirQjTRrwJpte47Kxq9pygHM2TfEfYh6gSgJxRbvSUtJatdSdCLHyjUC4YvJAfgPSEDD8zuf9kTf673P79BJ",
+      "status": "confirmed",
+      "simulatedBalanceChange": "-200000000",
+      "networkFee": "5000",
+      "units": 59806
+    },
+    {
+      "step": "DAMM v2 buy",
+      "quote": {
+        "venue": "damm-v2",
+        "side": "buy",
+        "pool": "8GEjq7xdWUq5MfeP2KfWf8ukRQWfnD58Vci4fD6A6j1G",
+        "amountIn": "200000000",
+        "amountInUsed": "200000000",
+        "amountLeft": "0",
+        "amountOut": "3882963332725380",
+        "minimumAmountOut": "3844133699398126",
+        "slippageBps": 100,
+        "fee": "2000000",
+        "protocolFee": "400000",
+        "spotPriceSol": "5e-8",
+        "executionPriceSol": "5.15071e-8",
+        "priceImpactPct": "3.01",
+        "completesCurve": false,
+        "slot": 38,
+        "quotedAt": 1793728606310
+      }
+    },
+    {
+      "step": "DAMM v2 sell",
+      "signature": "2DyjVHj1URDXLmLf9rC9dmPvaW5zQv5NoBpHgUYNkGcBn7BeJbzFvS2fScA8DUmBXzZd6fgbhfuu5ZNzZiUHSpFt",
+      "status": "confirmed",
+      "simulatedBalanceChange": "1661650052",
+      "networkFee": "5000",
+      "units": 56008
+    },
+    {
+      "step": "DAMM v2 sell",
+      "quote": {
+        "venue": "damm-v2",
+        "side": "sell",
+        "pool": "8GEjq7xdWUq5MfeP2KfWf8ukRQWfnD58Vci4fD6A6j1G",
+        "amountIn": "38655826409680114",
+        "amountInUsed": "38655826409680114",
+        "amountLeft": "0",
+        "amountOut": "1661650052",
+        "minimumAmountOut": "1645033551",
+        "slippageBps": 100,
+        "fee": "17038550",
+        "protocolFee": "3407710",
+        "spotPriceSol": "5.20036e-8",
+        "executionPriceSol": "4.29858e-8",
+        "priceImpactPct": "17.34",
+        "completesCurve": false,
+        "slot": 41,
+        "quotedAt": 1793728607870
+      },
+      "balanceChange": "1661645052"
+    },
+    {
+      "step": "DAMM v2 slippage guard",
+      "signature": "3uugbq8xntmHrRKJa3eCYKYyd7MDY4UGFTzrjwuVVkyjWm7QAGxTGCh9WsdMhofzuDxDFRuJfcSfuB7sXbabshZY",
+      "error": "{\"InstructionError\":[4,{\"Custom\":6002}]}",
+      "logs": [
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]",
+        "Program log: CreateIdempotent",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: GetAccountDataSize",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 997649 compute units",
+        "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program log: Initialize the associated token account",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: InitializeImmutableOwner",
+        "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 991170 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program log: Instruction: InitializeAccount3",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3158 of 987341 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 19100 of 1003000 compute units",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]",
+        "Program log: CreateIdempotent",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 5838 of 983900 compute units",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+        "Program 11111111111111111111111111111111 invoke [1]",
+        "Program 11111111111111111111111111111111 success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]",
+        "Program log: Instruction: SyncNative",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3045 of 977912 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG invoke [1]",
+        "Program log: Instruction: Swap2",
+        "Program log: AnchorError thrown in programs/cp-amm/src/instructions/swap/swap_exact_in.rs:45. Error Code: ExceededSlippage. Error Number: 6002. Error Message: Exceeded slippage tolerance.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 9463 of 974867 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x1772"
+      ]
+    },
+    {
+      "step": "withdrawal refused",
+      "label": "creator removes its locked liquidity",
+      "signature": "5Xd66rhtS6mYhUqeGTufN5GNeg2XEMa2Kuhjs2vjYTW3NncWRFvuAx4CtaoZXuJG7h2vnX3n6ncZxQvQWCpdmVFf",
+      "error": "{\"InstructionError\":[2,{\"Custom\":6023}]}",
+      "logs": [
+        "Program log: Instruction: RemoveLiquidity",
+        "Program log: AnchorError thrown in programs/cp-amm/src/instructions/ix_remove_liquidity.rs:123. Error Code: InsufficientLiquidity. Error Number: 6023. Error Message: Insufficient liquidity.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 14879 of 569062 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x1787"
+      ]
+    },
+    {
+      "step": "withdrawal refused",
+      "label": "creator removes more than its unlocked remainder",
+      "signature": "31LLhE5Ai9uxAtwvFmn2GfGszwvgQ4cyD43LbP7BrK5n6EUfuufBjc294BRXSG7XR4CJZ29krafbN6QMNzBin9s1",
+      "error": "{\"InstructionError\":[2,{\"Custom\":6023}]}",
+      "logs": [
+        "Program log: Instruction: RemoveLiquidity",
+        "Program log: AnchorError thrown in programs/cp-amm/src/instructions/ix_remove_liquidity.rs:123. Error Code: InsufficientLiquidity. Error Number: 6023. Error Message: Insufficient liquidity.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 14878 of 569062 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x1787"
+      ]
+    },
+    {
+      "step": "withdrawal refused",
+      "label": "stranger removes RETRY's locked liquidity",
+      "signature": "4DXNcgxGzUQhwCA75Yvi7zUAz8Yvbgfew1NVnqoxytmt7X7mEwukUd5sSnPL5j4mG29tTGeswiKSuR9RDYQPp2qe",
+      "error": "{\"InstructionError\":[2,{\"Custom\":6053}]}",
+      "logs": [
+        "Program log: Instruction: RemoveLiquidity",
+        "Program log: AnchorError occurred. Error Code: InvalidAuthority. Error Number: 6053. Error Message: Invalid authority to do that action.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 14135 of 575062 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x17a5"
+      ]
+    },
+    {
+      "step": "withdrawal refused",
+      "label": "stranger removes everything from the creator's position",
+      "signature": "3MAiUiwwGSMYMP91FFduXP9i5drCuEGrBqMmxrYV2edWw8tLJAuoNmDebYrkQehRGfoNNnvJvS459Z64awW1m5GK",
+      "error": "{\"InstructionError\":[2,{\"Custom\":6053}]}",
+      "logs": [
+        "Program log: Instruction: RemoveAllLiquidity",
+        "Program log: AnchorError occurred. Error Code: InvalidAuthority. Error Number: 6053. Error Message: Invalid authority to do that action.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 14130 of 575062 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x17a5"
+      ]
+    },
+    {
+      "step": "withdrawal refused",
+      "label": "creator closes its locked position",
+      "signature": "2a9zKTHu3C1gUy31RjMqSGYaotKvyCnufTKy5ETjpSZheEMgckdQqzk8M1ZRaUDxZ8hPdYDPiTRroPnxTNts3iS3",
+      "error": "{\"InstructionError\":[0,{\"Custom\":6039}]}",
+      "logs": [
+        "Program log: Instruction: ClosePosition",
+        "Program log: AnchorError thrown in programs/cp-amm/src/instructions/ix_close_position.rs:56. Error Code: PositionIsNotEmpty. Error Number: 6039. Error Message: Position is not empty.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 7918 of 200000 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x1797"
+      ]
+    },
+    {
+      "step": "rounding remainder withdrawal simulation",
+      "position": "891f3ZLUhhpupGgF5cSVyVYyH5V9CFJ1BSDRx4qNJoAi",
+      "rawLiquidityRequested": "1",
+      "error": {
+        "InstructionError": [
+          2,
+          {
+            "Custom": 6006
+          }
+        ]
+      },
+      "logs": [
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 23600 of 592662 compute units",
+        "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG invoke [1]",
+        "Program log: Instruction: RemoveLiquidity",
+        "Program log: AnchorError thrown in programs/cp-amm/src/instructions/ix_remove_liquidity.rs:136. Error Code: AmountIsZero. Error Number: 6006. Error Message: Amount is zero.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 16740 of 569062 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x1776"
+      ],
+      "submitted": false
+    },
+    {
+      "step": "fee claim refused",
+      "label": "stranger claims the creator's LP fees",
+      "signature": "QF6D2nK9UQDapcer9JW4hmcNyz1NaV6XUJrADhVRrVGxS4vVc1vM9gBK49ECohrYd6USYsx8nZxWRaAruKRv7je",
+      "error": "{\"InstructionError\":[2,{\"Custom\":6053}]}",
+      "logs": [
+        "Program log: Instruction: ClaimPositionFee",
+        "Program log: AnchorError occurred. Error Code: InvalidAuthority. Error Number: 6053. Error Message: Invalid authority to do that action.",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG consumed 13773 of 775062 compute units",
+        "Program cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG failed: custom program error: 0x17a5"
+      ]
+    },
+    {
+      "step": "creator LP fee claim",
+      "signature": "5CJmB6BTcynBKts4q2ZcCTnHtn3HPPtm9r2ZLZwYQntKn6PBvG4ydrSaaBcX1gVMWcyjQxAVyGvMZwyHifRy6hcs",
+      "status": "confirmed",
+      "simulatedBalanceChange": "7615420",
+      "networkFee": "5000",
+      "units": 58215
+    },
+    {
+      "step": "LP fee claim",
+      "balanceChange": "7610420",
+      "claimable": "7615420",
+      "networkFee": "5000",
+      "before": {
+        "position": "891f3ZLUhhpupGgF5cSVyVYyH5V9CFJ1BSDRx4qNJoAi",
+        "nftMint": "7xZTK8E5MTaq1x81KBf5Upru2LYFGAPy4vPjZigwoiK7",
+        "nftAccount": "FuqRt3bKN9v51WBJMx68qFzA3yNrqEbfE6AJsUXmDh9X",
+        "holder": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+        "unlockedLiquidity": "1",
+        "vestedLiquidity": "0",
+        "permanentLockedLiquidity": "411657202295550785824274880615505",
+        "feeAPending": "0",
+        "feeBPending": "0",
+        "feeAClaimable": "0",
+        "feeBClaimable": "7615420"
+      },
+      "after": {
+        "position": "891f3ZLUhhpupGgF5cSVyVYyH5V9CFJ1BSDRx4qNJoAi",
+        "nftMint": "7xZTK8E5MTaq1x81KBf5Upru2LYFGAPy4vPjZigwoiK7",
+        "nftAccount": "FuqRt3bKN9v51WBJMx68qFzA3yNrqEbfE6AJsUXmDh9X",
+        "holder": "4BRUgdMt2cUUELoVZL6zQbTJ9ZtUPBMGiZdcM24GHqgZ",
+        "unlockedLiquidity": "1",
+        "vestedLiquidity": "0",
+        "permanentLockedLiquidity": "411657202295550785824274880615505",
+        "feeAPending": "0",
+        "feeBPending": "0",
+        "feeAClaimable": "0",
+        "feeBClaimable": "0"
+      }
+    },
+    {
+      "step": "creator claim",
+      "signature": "5JRQCRgQKT51SsC73EoSHZaj2Xrex9Yt4yiG8PaRZbQUxg9NaKWeNZuWacjEpmGR8RSX6L4KV6uXoVoCyrp9Yufi",
+      "status": "confirmed",
+      "simulatedBalanceChange": "42527885",
+      "networkFee": "5000",
+      "units": 48144
+    },
+    {
+      "step": "creator claim",
+      "claimed": "42527885",
+      "balanceChange": "42522885"
+    },
+    {
+      "step": "history",
+      "count": 17,
+      "kinds": [
+        "claim/dbc",
+        "claim/damm-v2",
+        "other/-",
+        "other/-",
+        "other/-",
+        "other/-",
+        "other/-",
+        "other/-",
+        "other/-",
+        "sell/damm-v2",
+        "buy/damm-v2",
+        "graduate/dbc",
+        "graduate/dbc",
+        "buy/dbc",
+        "sell/dbc",
+        "buy/dbc",
+        "create/dbc"
+      ]
+    },
+    {
+      "step": "candles",
+      "curve": 1
+    }
+  ]
+}

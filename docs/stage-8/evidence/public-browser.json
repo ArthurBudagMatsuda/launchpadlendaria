@@ -1,0 +1,114 @@
+{
+  "evidence": "PUBLIC_PREVIEW_READ_ONLY_BROWSER",
+  "at": "2026-11-03T18:17:22.057Z",
+  "url": "https://retry-solana-devnet-beta.pages.dev",
+  "sourceCommit": "1c5127a35eaf67515d06afe13378a8ae0e15e646",
+  "browser": "156.0.8078.80",
+  "noWalletKeys": true,
+  "mockedRpc": false,
+  "version": {
+    "sourceCommit": "1c5127a35eaf67515d06afe13378a8ae0e15e646",
+    "dirty": false,
+    "cluster": "devnet",
+    "mainnetExecution": false,
+    "metadata": null,
+    "capabilities": "read-only",
+    "builtAt": "2026-11-03T18:11:00.793Z"
+  },
+  "negatives": [
+    {
+      "method": "GET",
+      "path": "/v1/metadata",
+      "status": 401,
+      "cacheControl": "no-store"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/metadata",
+      "status": 503,
+      "cacheControl": "no-store"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/metadata",
+      "status": 403,
+      "cacheControl": "no-store"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/m/not-a-hash.json",
+      "status": 404,
+      "cacheControl": "no-store"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/m/%2e%2e/not-public",
+      "status": 404,
+      "cacheControl": "no-store"
+    }
+  ],
+  "results": [
+    {
+      "viewport": "desktop",
+      "realLaunches": 2,
+      "routes": [
+        {
+          "route": "/create/",
+          "status": 200
+        },
+        {
+          "route": "/portfolio/",
+          "status": 200
+        },
+        {
+          "route": "/token/?cluster=devnet&mint=6WwkimyJfjEbeh7wSXYRZ6e26pmEyPLWwTUt9fTY1nUz",
+          "status": 200
+        }
+      ],
+      "walletModal": true,
+      "phantomExtension": "not installed in this fresh automation profile",
+      "pageErrors": [],
+      "assetFailures": [],
+      "mainnetRequests": 0,
+      "rpcMethods": [
+        "getAccountInfo",
+        "getProgramAccounts",
+        "getSlot",
+        "getMultipleAccounts"
+      ],
+      "rpcStatuses": [200, 200, 200, 200, 200],
+      "solanaWrites": 0
+    },
+    {
+      "viewport": "mobile",
+      "realLaunches": 2,
+      "routes": [
+        {
+          "route": "/create/",
+          "status": 200
+        },
+        {
+          "route": "/portfolio/",
+          "status": 200
+        },
+        {
+          "route": "/token/?cluster=devnet&mint=6WwkimyJfjEbeh7wSXYRZ6e26pmEyPLWwTUt9fTY1nUz",
+          "status": 200
+        }
+      ],
+      "walletModal": true,
+      "phantomExtension": "not installed in this fresh automation profile",
+      "pageErrors": [],
+      "assetFailures": [],
+      "mainnetRequests": 0,
+      "rpcMethods": [
+        "getAccountInfo",
+        "getProgramAccounts",
+        "getSlot",
+        "getMultipleAccounts"
+      ],
+      "rpcStatuses": [200, 200, 200, 200, 200],
+      "solanaWrites": 0
+    }
+  ]
+}

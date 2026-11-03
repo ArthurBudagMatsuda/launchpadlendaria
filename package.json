@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:beta:e2e": "playwright test --config playwright.beta.config.ts",
+    "test:beta:public-readonly": "node scripts/verify-public-beta.mjs",
     "test:chain": "vitest run --config vitest.chain.config.ts",
     "test:chain:browser": "playwright test --config playwright.chain.config.ts",
     "test:rpc:live": "vitest run --config vitest.live.config.ts",

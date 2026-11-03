@@ -59,6 +59,46 @@ const queries = [
     "access/organizations",
     (r) => ({ authDomain: r.auth_domain }),
   ],
+  [
+    "metadataWorkerSettings",
+    "workers/scripts/retry-metadata-devnet-beta/settings",
+    (r) => ({
+      bindings: r.bindings?.map((v) => ({
+        name: v.name,
+        type: v.type,
+        service: v.service,
+        namespaceId: v.namespace_id,
+      })),
+    }),
+  ],
+  [
+    "metadataWorkerPublicRoutes",
+    "workers/scripts/retry-metadata-devnet-beta/subdomain",
+    (r) => ({ enabled: r.enabled, previewsEnabled: r.previews_enabled }),
+  ],
+  [
+    "betaDeployment",
+    "pages/projects/retry-solana-devnet-beta",
+    (r) => ({
+      name: r.name,
+      subdomain: r.subdomain,
+      productionBranch: r.production_branch,
+      sourceType: r.source?.type ?? "direct-upload",
+      deployment: {
+        id: (r.canonical_deployment ?? r.latest_deployment)?.id,
+        url: (r.canonical_deployment ?? r.latest_deployment)?.url,
+        environment: (r.canonical_deployment ?? r.latest_deployment)
+          ?.environment,
+        commit: (r.canonical_deployment ?? r.latest_deployment)
+          ?.deployment_trigger?.metadata?.commit_hash,
+        status: (r.canonical_deployment ?? r.latest_deployment)?.latest_stage
+          ?.status,
+      },
+      serviceBindings: Object.keys(
+        r.deployment_configs?.production?.services ?? {},
+      ),
+    }),
+  ],
 ];
 const evidence = {
   at: new Date().toISOString(),
