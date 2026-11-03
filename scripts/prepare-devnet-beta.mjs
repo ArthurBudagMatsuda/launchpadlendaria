@@ -5,10 +5,11 @@ import { validateBetaSettings } from "../infra/devnet-beta/config.ts";
 const settingsPath = process.argv[2];
 if (!settingsPath)
   throw new Error(
-    "Usage: node scripts/prepare-devnet-beta.mjs <public-settings.json> [--check]. No deploy is performed.",
+    "Usage: node scripts/prepare-devnet-beta.mjs <public-settings.json> [--check] [--read-only]. No deploy is performed.",
   );
 const config = validateBetaSettings(
   JSON.parse(await readFile(settingsPath, "utf8")),
+  { readOnly: process.argv.includes("--read-only") },
 );
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dir = path.join(root, ".qa/devnet-beta-config");
@@ -22,6 +23,8 @@ if (!process.argv.includes("--check")) {
         account_id: config.accountId,
         main: path.join(root, "infra/metadata-worker/src/index.ts"),
         compatibility_date: "2026-10-23",
+        workers_dev: false,
+        preview_urls: false,
         vars: {
           PUBLIC_URL: config.publicOrigin,
           ALLOWED_ORIGINS: config.publicOrigin,

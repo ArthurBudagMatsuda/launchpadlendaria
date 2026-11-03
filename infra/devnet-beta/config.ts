@@ -9,7 +9,10 @@ export interface BetaSettings {
   accessTeamDomain: string;
   accessAudience: string;
 }
-export function validateBetaSettings(value: unknown): BetaSettings {
+export function validateBetaSettings(
+  value: unknown,
+  options: { readOnly?: boolean } = {},
+): BetaSettings {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Expected public deployment settings.");
   const data = value as Record<string, unknown>;
@@ -53,7 +56,12 @@ export function validateBetaSettings(value: unknown): BetaSettings {
     throw new Error(
       "PUBLIC_URL must be the real, stable HTTPS hostname of the isolated Pages beta project.",
     );
-  if (
+  if (options.readOnly) {
+    if (config.accessTeamDomain !== "" || config.accessAudience !== "")
+      throw new Error(
+        "Read-only deployment requires empty Access settings so uploads fail closed.",
+      );
+  } else if (
     !/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(
       config.accessTeamDomain,
     ) ||
