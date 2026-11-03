@@ -2,7 +2,13 @@ import { writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { RETRY_DBC_CONFIGS } from "@/config/retry-protocol";
-import { RETRY_LAUNCH, retryCurve } from "@/lib/meteora/curve";
+import {
+  RETRY_LAUNCH,
+  retryCurve,
+  configMismatches,
+} from "@/lib/meteora/curve";
+import { customContext } from "@/lib/meteora/client";
+import { decodeConfig } from "@/lib/meteora/pools";
 import {
   assertSdkProgramIds,
   DBC_PROGRAM,
@@ -36,7 +42,21 @@ it("checks public Devnet programs and prerequisites without a signing key", asyn
     ...programs,
     dammConfig,
     DBC_POOL_AUTHORITY,
+    new PublicKey(RETRY_DBC_CONFIGS.devnet!.address),
   ]);
+  const decodedConfig = decodeConfig(
+    customContext(
+      connection,
+      new PublicKey(RETRY_DBC_CONFIGS.devnet!.address),
+      DEVNET_GENESIS,
+    ),
+    accounts.value[6],
+  );
+  const mismatches = configMismatches(decodedConfig);
+  expect(mismatches).toEqual([]);
+  expect(decodedConfig.feeClaimer.toBase58()).toBe(
+    RETRY_DBC_CONFIGS.devnet!.feeClaimer,
+  );
   const funderAddress = process.env.RETRY_DEVNET_FUNDER_ADDRESS;
   const balance = funderAddress
     ? await connection.getBalanceAndContext(new PublicKey(funderAddress))
@@ -63,6 +83,12 @@ it("checks public Devnet programs and prerequisites without a signing key", asyn
       lamports: accounts.value[5]?.lamports ?? 0,
     },
     retryConfig: RETRY_DBC_CONFIGS.devnet,
+    retryConfigRead: {
+      owner: accounts.value[6]?.owner.toBase58(),
+      mismatches,
+      feeClaimer: decodedConfig.feeClaimer.toBase58(),
+      thresholdLamports: decodedConfig.migrationQuoteThreshold.toString(),
+    },
     thresholdLamports: retryCurve().migrationQuoteThreshold.toString(),
     funder: balance
       ? {

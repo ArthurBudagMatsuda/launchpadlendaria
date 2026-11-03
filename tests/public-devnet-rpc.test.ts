@@ -6,6 +6,42 @@ const request = (method: string) => ({
   body: JSON.stringify({ method }),
 });
 describe("public Devnet test transport", () => {
+  it("bounds the queue and recovers the slot after a rejected request", async () => {
+    let finish!: (value: Response) => void;
+    const transport = publicRpcTransport({
+      maxQueue: 1,
+      pause: async () => {},
+      fetcher: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    });
+    const first = transport(
+      "https://api.devnet.solana.com",
+      request("getBalance"),
+    );
+    await Promise.resolve();
+    await expect(
+      transport("https://api.devnet.solana.com", request("getBalance")),
+    ).rejects.toThrow(/busy/);
+    finish(new Response("{}"));
+    expect((await first).ok).toBe(true);
+  });
+  it("times out a hung send without retrying even if a transport ignores abort", async () => {
+    let calls = 0;
+    const transport = publicRpcTransport({
+      timeoutMs: 10,
+      pause: async () => {},
+      fetcher: async () => {
+        calls++;
+        return new Promise(() => {});
+      },
+    });
+    await expect(
+      transport("https://api.devnet.solana.com", request("sendTransaction")),
+    ).rejects.toThrow(/timed out/);
+    expect(calls).toBe(1);
+  });
   it("does not retry sooner than a server limit longer than the retry budget", async () => {
     let calls = 0;
     const transport = publicRpcTransport({

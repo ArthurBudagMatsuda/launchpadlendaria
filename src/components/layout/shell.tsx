@@ -11,6 +11,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Header } from "./header";
+import { isDevnetBeta } from "@/config/devnet-beta";
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/\/$/, "") || "/";
   const [help, setHelp] = useState(false);
@@ -20,6 +21,15 @@ export function Shell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <Header />
+      {isDevnetBeta() ? (
+        <div className="beta-notice" role="note">
+          <strong>Solana Devnet Beta — Test Tokens Only</strong>
+          <span>
+            Experimental launches. Test SOL has no monetary value. Mainnet is
+            disabled.
+          </span>
+        </div>
+      ) : null}
       <aside className="rail" aria-label="Quick navigation">
         <div className="rail-top">
           {[

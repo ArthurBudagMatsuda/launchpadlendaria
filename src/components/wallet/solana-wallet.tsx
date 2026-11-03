@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { ArrowUpRight, Copy, LogOut, Wallet } from "lucide-react";
 import { CLUSTERS, explorerUrl, type SolanaCluster } from "@/config/solana";
+import { isDevnetBeta } from "@/config/devnet-beta";
 import { Modal } from "@/components/ui/modal";
 import { shorten } from "@/lib/format";
 import { useSolanaWallet, useSolBalance } from "./solana-provider";
@@ -25,7 +26,7 @@ export function NetworkIndicator({ className = "" }: { className?: string }) {
       >
         {!wallet.config ? <option value="">Configuration error</option> : null}
         <option value="devnet">Devnet</option>
-        <option value="mainnet-beta">Mainnet</option>
+        {!isDevnetBeta() ? <option value="mainnet-beta">Mainnet</option> : null}
       </select>
     </label>
   );

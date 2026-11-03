@@ -38,7 +38,7 @@ createServer(async (req, res) => {
   } catch {
     path = "";
   }
-  if (path === "/" || path === basePath) {
+  if (basePath && (path === "/" || path === basePath)) {
     res.writeHead(301, { Location: `${basePath}/` }).end();
     return;
   }

@@ -12,6 +12,7 @@ import {
   type RetryFeature,
 } from "@/config/retry-protocol";
 import { assertSdkProgramIds } from "./programs";
+import { publicRpcTransport } from "@/lib/solana/public-rpc-transport";
 
 /**
  * Everything a Meteora operation needs, derived from the one SolanaConfig
@@ -43,6 +44,11 @@ export function meteoraContext(config: SolanaConfig): MeteoraContext {
     const connection = new Connection(config.rpcUrl, {
       commitment: "confirmed",
       disableRetryOnRateLimit: true,
+      fetch: publicRpcTransport({
+        readRetries: 1,
+        spacingMs: 200,
+        timeoutMs: 7000,
+      }),
     });
     const retry = RETRY_DBC_CONFIGS[config.cluster];
     context = {
@@ -54,6 +60,7 @@ export function meteoraContext(config: SolanaConfig): MeteoraContext {
       genesis: CLUSTERS[config.cluster].genesis,
     };
     contexts.set(key, context);
+    if (contexts.size > 8) contexts.delete(contexts.keys().next().value!);
   }
   return context;
 }

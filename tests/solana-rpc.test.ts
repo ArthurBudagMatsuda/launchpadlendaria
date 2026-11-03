@@ -43,6 +43,20 @@ function mockRpc(
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("verified Solana RPC reads", () => {
+  it("does not retry before a long RPC Retry-After hint", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response("limited", {
+          status: 429,
+          headers: { "retry-after": "120" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    await expect(readSolBalance(config(), owner)).rejects.toThrow(
+      /unavailable/,
+    );
+    expect(fetch).toHaveBeenCalledOnce();
+  });
   it("enforces its deadline even if the transport ignores cancellation", async () => {
     mockRpc();
     const outcome = await Promise.race([
