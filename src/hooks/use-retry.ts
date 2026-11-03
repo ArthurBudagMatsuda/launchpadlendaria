@@ -397,6 +397,13 @@ export function useExecute(feature: RetryFeature) {
             : result.status === "confirmed"
               ? "confirmed"
               : result.status;
+        // Keep execution busy until balances and pool data have reconciled.
+        // Showing completion earlier would enable a second action that run()
+        // still refuses, and let its input reset hide the pending operation.
+        await queryClient.invalidateQueries({ queryKey: ["retry"] });
+        await queryClient.invalidateQueries({
+          queryKey: ["solana", "balance"],
+        });
         setState(
           status === "confirmed" || status === "sent"
             ? { phase: "done", signature, status }
@@ -409,10 +416,6 @@ export function useExecute(feature: RetryFeature) {
                     : "The transaction failed on-chain. Only the network fee was spent.",
               },
         );
-        await queryClient.invalidateQueries({ queryKey: ["retry"] });
-        await queryClient.invalidateQueries({
-          queryKey: ["solana", "balance"],
-        });
         return { signature, status };
       } catch (cause) {
         console.error("RETRY operation failed", cause);
@@ -424,7 +427,9 @@ export function useExecute(feature: RetryFeature) {
     },
     [context, policy, queryClient, wallet.account, wallet.wallet],
   );
-  const reset = useCallback(() => setState({ phase: "idle" }), []);
+  const reset = useCallback(() => {
+    if (!busy.current) setState({ phase: "idle" });
+  }, []);
   return { state, run, reset, canSign };
 }
 

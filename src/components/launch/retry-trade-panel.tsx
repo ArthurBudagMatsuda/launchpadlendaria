@@ -79,8 +79,24 @@ export function TradeForm({
 }) {
   const { wallet, context, policy } = useMeteora(venue.feature);
   const balance = useSolBalance();
-  const [side, setSide] = useState<TradeSide>("buy");
-  const [amount, setAmount] = useState("");
+  const [input, setInput] = useState<{
+    side: TradeSide;
+    amount: string;
+    revision: number;
+  }>({ side: "buy", amount: "", revision: 0 });
+  const { side, amount } = input;
+  const setSide = (side: TradeSide) =>
+    setInput((previous) => ({
+      ...previous,
+      side,
+      revision: previous.revision + 1,
+    }));
+  const setAmount = (amount: string) =>
+    setInput((previous) => ({
+      ...previous,
+      amount,
+      revision: previous.revision + 1,
+    }));
   const [slippageBps, setSlippageBps] = useState(DEFAULT_SLIPPAGE_BPS);
   const { state, run, reset, canSign } = useExecute(venue.feature);
   const [prepareError, alertError] = useState<string | null>(null);
@@ -134,6 +150,7 @@ export function TradeForm({
     !venue.tradable;
   async function submit() {
     if (!context || !q || !owner) return;
+    const submittedRevision = input.revision;
     reset();
     try {
       const prepared = await venue.prepare(new PublicKey(owner), q);
@@ -148,7 +165,14 @@ export function TradeForm({
             ? `Buy ${symbol} with ${sol(q.amountInUsed)}`
             : `Sell ${tokens(q.amountIn)} ${symbol}`,
       });
-      if (result) setAmount("");
+      // A completed buy may finish reconciling after the user starts a sell.
+      // Never erase a newer input when that older operation finally returns.
+      if (result)
+        setInput((current) =>
+          current.revision === submittedRevision
+            ? { ...current, amount: "", revision: current.revision + 1 }
+            : current,
+        );
     } catch (cause) {
       quote.refetch();
       alertError(userMessage(cause));
