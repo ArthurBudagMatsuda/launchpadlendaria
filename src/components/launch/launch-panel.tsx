@@ -25,7 +25,11 @@ import { feeSchedule } from "@/lib/meteora/fees";
 import { parseSol, sol, supplyShare, tokens } from "@/lib/meteora/format";
 import {
   metadataEndpoint,
+  metadataSignInUrl,
   uploadMetadata,
+  verifyStoredMetadata,
+  type MetadataReceipt,
+  MetadataUploadError,
 } from "@/lib/meteora/metadata-upload";
 import {
   MAX_LAUNCHES_PER_NAME,
@@ -65,7 +69,10 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
   const [stored, setReview] = useState<Review | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const uploaded = useRef<{ key: string; uri: string } | null>(null);
+  const preparing = useRef(false);
+  const uploaded = useRef<{ key: string; receipt: MetadataReceipt } | null>(
+    null,
+  );
   const endpoint = metadataEndpoint();
   const owner = wallet.status === "connected" ? wallet.address : undefined;
   const buyLamports = parseSol(initialBuy || "0");
@@ -108,15 +115,22 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
               ? "naming"
               : null;
   async function prepare() {
-    if (!context || !owner || !buyValid) return;
+    if (!context || !owner || !buyValid || preparing.current) return;
+    preparing.current = true;
     setWorking(true);
     setError(null);
     reset();
     try {
       const key = JSON.stringify(draft);
-      if (uploaded.current?.key !== key)
-        uploaded.current = { key, uri: (await uploadMetadata(draft)).uri };
-      const uri = uploaded.current.uri;
+      const metadata =
+        uploaded.current?.key === key
+          ? await verifyStoredMetadata(draft, uploaded.current.receipt)
+          : await uploadMetadata(draft, endpoint, fetch, {
+              onStored: (receipt) => {
+                uploaded.current = { key, receipt };
+              },
+            });
+      const uri = metadata.uri;
       const requestId = await launchRequestId({
         owner,
         name: draft.name,
@@ -160,8 +174,13 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
       });
     } catch (cause) {
       console.error("RETRY launch preparation failed", cause);
-      setError(userMessage(cause));
+      setError(
+        cause instanceof MetadataUploadError
+          ? cause.message
+          : userMessage(cause),
+      );
     } finally {
+      preparing.current = false;
       setWorking(false);
     }
   }
@@ -262,7 +281,8 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
       ) : blocked === "metadata" ? (
         <p className="notice-strip">
           Launching needs RETRY&apos;s metadata host, so your name, image and
-          links stay online for good. It is not configured in this build yet.
+          links can be stored persistently. It is not configured in this build
+          yet.
         </p>
       ) : blocked === "pending" && pending ? (
         <p className="notice-strip">
@@ -288,6 +308,25 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
             : `${naming.sameTicker} RETRY launches`}{" "}
           already use ${draft.symbol}. Tickers are not unique on Solana: traders
           tell tokens apart by their mint address, which RETRY always shows.
+        </p>
+      ) : null}
+      {review ? (
+        <p className="form-help">
+          Your public image and metadata were verified before this cost review.
+        </p>
+      ) : null}
+      {endpoint && policy?.enabled ? (
+        <p className="form-help">
+          Testers:{" "}
+          <a
+            href={metadataSignInUrl()!}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Authorize uploads
+          </a>{" "}
+          with your approved account, then return here to review the launch.
+          Connecting a wallet does not authorize storage.
         </p>
       ) : null}
       {review ? (

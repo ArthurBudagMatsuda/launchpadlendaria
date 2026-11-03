@@ -1,0 +1,141 @@
+{
+  "captured_at_utc": "2026-11-03T02:53:02.240Z",
+  "head": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+  "runs": [
+    {
+      "id": 41568357450,
+      "name": "RETRY quality checks",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357450",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "jobs": [
+        {
+          "id": 125695196031,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357450/job/125695196031",
+          "failed_steps": []
+        },
+        {
+          "id": 125695196235,
+          "name": "Browser tests (static export, desktop and mobile)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357450/job/125695196235",
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 41568357517,
+      "name": "Validate Solana preview (no publication)",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357517",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "jobs": [
+        {
+          "id": 125695196156,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357517/job/125695196156",
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 41568352309,
+      "name": "RETRY Meteora on-chain tests",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "jobs": [
+        {
+          "id": 125695180734,
+          "name": "Pinned programs on Devnet and Mainnet (read-only)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309/job/125695180734",
+          "failed_steps": []
+        },
+        {
+          "id": 125695180760,
+          "name": "Local validator with mainnet programs (full flow + browser)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309/job/125695180760",
+          "failed_steps": []
+        },
+        {
+          "id": 125695180792,
+          "name": "Local validator with devnet programs (full flow + browser)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309/job/125695180792",
+          "failed_steps": []
+        },
+        {
+          "id": 125695182212,
+          "name": "Solana Devnet (test wallet)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309/job/125695182212",
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 41568352330,
+      "name": "RETRY quality checks",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352330",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "jobs": [
+        {
+          "id": 125695179702,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352330/job/125695179702",
+          "failed_steps": []
+        },
+        {
+          "id": 125695180145,
+          "name": "Browser tests (static export, desktop and mobile)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352330/job/125695180145",
+          "failed_steps": []
+        }
+      ]
+    },
+    {
+      "id": 41568352239,
+      "name": "Validate Solana preview (no publication)",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352239",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "jobs": [
+        {
+          "id": 125695179589,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352239/job/125695179589",
+          "failed_steps": []
+        }
+      ]
+    }
+  ]
+}

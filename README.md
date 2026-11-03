@@ -1,66 +1,58 @@
-# RETRY — Solana launchpad foundation
+# RETRY — Solana Devnet Beta (Etapa 7)
 
-Aplicação Next.js/React com identidade RETRY preservada e Wallet Standard. A branch do PR #8 implementa integração **Meteora DBC/DAMM v2 candidata a testes Devnet**, sobre a migração do PR #6. Mainnet permanece bloqueada. Config Devnet criada e smoke público aprovado (8 testes, 2 skips de graduação/migração); Worker e Phantom reais continuam pendentes.
+Launchpad Solana com **Meteora DBC → DAMM v2**, frontend Next.js/React e Wallet Standard. A implementação inclui criar tokens SPL, negociar na curva, graduar, verificar posições de liquidez e negociar após graduação.
 
-## Estado atual
+**Estado em 02/11/2026:** preparação local da Beta, com publicação e testes de carteira real bloqueados por acessos indisponíveis. Não há URL Cloudflare publicada nesta entrega. Mainnet financeira permanece desabilitada em código.
 
-- **Discover:** listagem on-chain filtrada pela config RETRY; sem config, estado vazio honesto.
-- **Token:** leituras e preparação de quotes/compra/venda DBC; execução depende de config revisada, simulação e carteira. Gráfico/PnL completos dependem de indexação. Mainnet não executa operações.
-- **Portfolio:** identidade, SOL, holdings e pools RETRY conforme dados on-chain disponíveis; sem atividade inventada.
-- **Create:** rascunho/preview preservados; preparação de lançamento SPL/DBC com compra inicial opcional. Config Devnet registrada; lançamento bloqueado enquanto host de metadados faltar.
-- **Carteiras:** Phantom, Solflare e Backpack por descoberta Wallet Standard. Testes usam carteiras simuladas; validação com extensões reais está pendente.
+O [site GitHub Pages](https://arthurbudagmatsuda.github.io/launchpadlendaria/) ainda serve a `main` histórica em Base. Ele não foi substituído. A evolução Solana está no stack Draft #6 → #8 → #9; a Etapa 7 parte do PR #9 e não mescla os PRs.
 
-A aplicação ativa não usa serviços EVM, ERC-20 ou o antigo token Base. O histórico Git e os documentos marcados como históricos preservam a implementação anterior.
+Entrega de revisão: [Draft PR #10](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/10), sem liberação pública ou aprovação Mainnet.
 
-## Desenvolvimento e verificação
+## Desenvolver e verificar
 
-Node 24+ e pnpm 11.25.0. As versões Solana estão fixadas no lockfile: Kit 8.5.0 e Wallet Standard 1.1.1.
+Node 24+ e pnpm 11.25.0, com lockfile e SDKs fixados.
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm format:check
 pnpm lint
 pnpm typecheck
-pnpm test
-pnpm build
-pnpm build:pages
-pnpm exec playwright install chromium
-pnpm test:e2e
-pnpm test:rpc:live
-pnpm test:devnet:readiness
+pnpm test --maxWorkers=1 --pool=threads
 pnpm test:metadata:bundle
+pnpm test:e2e --workers=2
+pnpm test:beta:e2e
+pnpm build
 ```
 
-Em ambientes com Chrome já instalado pode-se definir `PLAYWRIGHT_CHANNEL=chrome` para o teste local. CI usa o Chromium instalado pelo Playwright. Os testes de navegador servem o export sob `/launchpadlendaria/` e simulam Wallet Standard/RPC; não fazem transações.
+Dev local em `http://127.0.0.1:3000`. Os testes de navegador constroem exports diferentes e devem rodar em sequência. `threads` evita o timeout de inicialização do pool forks observado neste Windows.
 
-Copie `.env.example` para configuração local quando necessário. Todos os `NEXT_PUBLIC_*` são públicos. Não colocar chaves secretas, seed ou credenciais nos arquivos do frontend. Um RPC dedicado requer configuração de quota e origem; os RPCs públicos podem limitar tráfego. O genesis é verificado antes das leituras.
+## Builds e metadados
 
-## Revisão e publicação
+- `pnpm build`: aplicativo Next.js para hospedagem Node.
+- `pnpm build:pages`: export histórico sob `/launchpadlendaria`.
+- `pnpm build:beta`: export dedicado na raiz, Devnet-only, aviso de teste, gateway Pages e metadados na mesma origem HTTPS.
 
-A implementação está em `feat/retry-meteora-dbc-mvp`, PR #8 Draft, empilhada sobre `migration/retry-solana`. CI gera artefatos e testa validadores locais; esta branch não publica o site. O teste público financiado é manual e protegido, com secret/financiamento configurados; dispatch bloqueado pela ausência do workflow na default branch. O smoke público foi executado localmente com chave protegida. Sem merge ou alteração da demonstração pública.
+O Worker existente (`infra/metadata-worker/`) mantém imagens/JSON em KV por hash, com Access para testadores e rate limit. O cliente verifica ambos os objetos antes de preparar a transação, aguarda propagação limitada e permite retomar pelos GETs. Persistência não é garantia de imutabilidade administrativa ou disponibilidade eterna.
 
-A revisão do PR #6 incorporou também `main` em `0fcc9e5`, preservando o histórico paginado do gráfico. Estado atual: revisão técnica com validação manual de extensões pendente. `test:rpc:live` é uma sonda opt-in de contas públicas, não um teste de carteira.
+O build Beta define `NEXT_PUBLIC_RETRY_METADATA_URL=/`; a URL real será a origem estável do projeto Cloudflare isolado, após sua criação. Configuração pública real do Worker e Access é obrigatória. Sem ela, uploads falham fechados. Não inserir segredos em `NEXT_PUBLIC_*` ou arquivos versionados.
 
-`build:pages` gera `out/`, `.nojekyll` e URLs sob `/launchpadlendaria`. O export continua compatível com GitHub Pages. Os headers do build Node não são configuráveis pelo Pages; escolher hospedagem/domínio e política de segurança antes de uma publicação autorizada.
+## Funcionalidades e limites
+
+Discover lista pools da config RETRY; Token mostra estado, quotes, histórico e graduação; Create preserva rascunho e separa upload, simulação e assinatura; Portfolio mostra saldos/posições verificáveis. Não existe indexador completo, moderação automática ou promessa de histórico integral.
+
+Phantom, Solflare e Backpack são descobertas pelo Wallet Standard. Testes simulados não comprovam compatibilidade com uma extensão real. Nenhuma assinatura de Phantom real ou graduação pública foi executada nesta etapa. O saldo público do funder histórico foi consultado sem chave; os dados e bloqueios estão no relatório.
+
+Dois upgrades transitivos direcionados reduziram a auditoria de dez para quatro alertas; bigint-buffer e stream-json continuam documentados, sem supressão. Uma revisão de implementação não equivale a auditoria independente.
 
 ## Documentação atual
 
-- [Relatório de desbloqueio Devnet e infraestrutura](docs/reports/RETRY_DEVNET_UNBLOCK_AND_INFRASTRUCTURE_REPORT.md)
-- [Carteira exclusiva e inserção segura do secret](docs/devnet/RETRY_DEVNET_FUNDER_SETUP.md)
-- [Segurança do Actions e bloqueio de dispatch](docs/devnet/RETRY_GITHUB_ACTIONS_SECURITY.md)
-- [Procedimento de testes públicos](docs/devnet/RETRY_PUBLIC_DEVNET_TESTS.md)
-- [Worker, armazenamento e custos](docs/cloudflare/RETRY_METADATA_WORKER_SETUP.md)
-- [Phantom real e preview](docs/testing/RETRY_PHANTOM_REAL_WALLET_TESTS.md)
-- [Relatório completo da migração](docs/reports/RETRY_BASE_TO_SOLANA_MIGRATION_REPORT.md)
-- [Revisão do PR #6 e correções](docs/reports/RETRY_PR6_REVIEW_AND_WALLET_VALIDATION.md)
-- [Matriz de carteiras reais e simuladas](docs/testing/SOLANA_REAL_WALLET_TEST_MATRIX.md)
-- [Arquitetura](docs/SOLANA_ARCHITECTURE.md)
-- [Carteiras e matriz manual](docs/SOLANA_WALLET_INTEGRATION.md)
-- [Configuração de redes e RPC](docs/SOLANA_NETWORK_CONFIGURATION.md)
-- [Modelo SPL](docs/SOLANA_TOKEN_MODEL.md)
-- [Decisões econômicas pendentes](docs/SOLANA_ECONOMIC_DECISIONS.md)
-- [Pesquisa de DEX](docs/SOLANA_DEX_RESEARCH.md)
-- [Roadmap](docs/SOLANA_LAUNCHPAD_ROADMAP.md)
+- [Relatório completo da Etapa 7](docs/reports/RETRY_STAGE_7_SOLANA_DEVNET_BETA_REPORT.md)
+- [Índice Devnet Beta](docs/devnet-beta/README.md)
+- [Publicação Worker/KV/Access](docs/devnet-beta/CLOUDFLARE_WORKER_DEPLOYMENT.md)
+- [Preview separado](docs/devnet-beta/PREVIEW_DEPLOYMENT.md)
+- [Runbook](docs/devnet-beta/OPERATIONAL_RUNBOOK.md)
+- [Aceitação](docs/devnet-beta/RELEASE_CHECKLIST.md)
+- [Segurança e dependências](docs/devnet-beta/SECURITY_FINDINGS.md)
+- [Implementação Meteora e documentação técnica](docs/meteora-mvp/README.md)
 
-Próximo passo: preparar conta/autorizar o Worker real, depois validar Phantom em origem autorizada. Funder, environment secret e smoke público Devnet estão configurados/validados; graduação pública permanece pendente. Economia candidata não está aprovada para Mainnet. A documentação anterior da Base é histórica.
+Os relatórios das etapas anteriores e documentos Base permanecem como histórico. A configuração Mainnet não foi aprovada; nenhuma instrução deste README autoriza fundos reais, merge ou substituição do site público.

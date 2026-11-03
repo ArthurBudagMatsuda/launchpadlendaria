@@ -17,3 +17,6 @@ overrides:
   # @meteora-ag/cp-amm-sdk lists "chain" (an unrelated EVM UI kit that pulls
   # wagmi, ethers and React 18) as a dependency but never imports it.
   "@meteora-ag/cp-amm-sdk>chain": "-"
+  # Targeted compatible API upgrades; no blanket dependency update.
+  "@coral-xyz/anchor>toml": "5.0.1"
+  "jayson>uuid": "11.1.1"

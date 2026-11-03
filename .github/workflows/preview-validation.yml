@@ -1,5 +1,8 @@
 name: Validate Solana preview (no publication)
 on:
+  push:
+    branches: [feat/retry-devnet-beta-stage-7]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,12 +17,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build:pages
+      - run: pnpm test:metadata:bundle
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:beta:e2e
         env:
-          NEXT_PUBLIC_BASE_PATH: /launchpadlendaria
+          NEXT_PUBLIC_BASE_PATH: ""
           NEXT_PUBLIC_SOLANA_CLUSTER: devnet
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: retry-solana-preview
+          name: retry-devnet-beta-review-only
           path: out
           retention-days: 7

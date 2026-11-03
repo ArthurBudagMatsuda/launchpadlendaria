@@ -1,0 +1,145 @@
+{
+  "captured_at_utc": "2026-11-03T02:53:06.073Z",
+  "prs": [
+    {
+      "number": 6,
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/6",
+      "state": "open",
+      "draft": true,
+      "base": "main",
+      "head": "migration/retry-solana",
+      "sha": "a2d17485fbfceaacab1754adf0e3239dd83bdeda",
+      "merged": false
+    },
+    {
+      "number": 8,
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/8",
+      "state": "open",
+      "draft": true,
+      "base": "migration/retry-solana",
+      "head": "feat/retry-meteora-dbc-mvp",
+      "sha": "afa0f5e817fe9981f84c7b99467e9f4b4847333a",
+      "merged": false
+    },
+    {
+      "number": 9,
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/9",
+      "state": "open",
+      "draft": true,
+      "base": "feat/retry-meteora-dbc-mvp",
+      "head": "feat/retry-meteora-create-trade-graduate",
+      "sha": "b7a88638b4cdb13bed2fb4fd24b110786cc00f2e",
+      "merged": false
+    },
+    {
+      "number": 10,
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/10",
+      "state": "open",
+      "draft": true,
+      "base": "feat/retry-meteora-create-trade-graduate",
+      "head": "feat/retry-devnet-beta-stage-7",
+      "sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "merged": false
+    }
+  ],
+  "github_api_authenticated": true,
+  "secret_names": ["RETRY_DEVNET_FUNDER"],
+  "environment": {
+    "name": "retry-devnet",
+    "can_admins_bypass": false,
+    "protection_rules": [
+      {
+        "type": "required_reviewers",
+        "reviewer_count": 1
+      },
+      {
+        "type": "branch_policy",
+        "reviewer_count": null
+      }
+    ],
+    "deployment_branch_policy": {
+      "protected_branches": false,
+      "custom_branch_policies": true
+    }
+  },
+  "ci_snapshot": [
+    {
+      "name": "RETRY quality checks",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357450"
+    },
+    {
+      "name": "Validate Solana preview (no publication)",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568357517"
+    },
+    {
+      "name": "RETRY Meteora on-chain tests",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309"
+    },
+    {
+      "name": "RETRY quality checks",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352330"
+    },
+    {
+      "name": "Validate Solana preview (no publication)",
+      "head_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352239"
+    },
+    {
+      "name": "RETRY quality checks",
+      "head_sha": "4acfde74224d8136f74c2965de10ddb3698613fd",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41565403786"
+    },
+    {
+      "name": "Validate Solana preview (no publication)",
+      "head_sha": "4acfde74224d8136f74c2965de10ddb3698613fd",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41565403883"
+    },
+    {
+      "name": "Validate Solana preview (no publication)",
+      "head_sha": "4acfde74224d8136f74c2965de10ddb3698613fd",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41565377654"
+    },
+    {
+      "name": "RETRY quality checks",
+      "head_sha": "4acfde74224d8136f74c2965de10ddb3698613fd",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41565377561"
+    },
+    {
+      "name": "RETRY Meteora on-chain tests",
+      "head_sha": "4acfde74224d8136f74c2965de10ddb3698613fd",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41565377593"
+    }
+  ],
+  "published_version": "Application and Web3 test bench: 0fcc9e51048dfeb2c2a9cea360f2285b6fa874a0",
+  "cloudflare_authenticated": false,
+  "cloudflare_resources": "NOT_LISTED_NO_AUTH",
+  "public_preview": null,
+  "real_wallet": "NOT_AVAILABLE_OWNER_CONFIRMED",
+  "new_public_devnet_transactions_sent": 0,
+  "mainnet_transactions_sent": 0,
+  "local_validator_transactions": "See local-validator-devnet.json and local-validator-mainnet.json; ephemeral local networks only"
+}

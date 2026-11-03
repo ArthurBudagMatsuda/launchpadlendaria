@@ -23,6 +23,7 @@ export async function solanaFixture(
     absent?: boolean;
     restore?: boolean;
     market?: boolean;
+    signing?: boolean;
   } = {},
 ) {
   const calls: string[] = [];
@@ -217,6 +218,18 @@ export async function solanaFixture(
         chains: ["solana:devnet", "solana:mainnet"],
         accounts: [],
         features: {
+          ...(options.signing
+            ? {
+                "solana:signTransaction": {
+                  version: "1.0.0",
+                  signTransaction: async () => {
+                    throw new Error(
+                      "Signing is deliberately disabled in this mocked storage test.",
+                    );
+                  },
+                },
+              }
+            : {}),
           "standard:connect": {
             version: "1.0.0",
             connect: async ({ silent = false } = {}) => {

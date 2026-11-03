@@ -5,6 +5,7 @@ import {
   type TokenDraft,
 } from "../../../src/lib/validation";
 import { accessConfigured, accessVerifier, type AccessConfig } from "./access";
+import { validImageContainer } from "./image";
 
 /**
  * RETRY metadata host: a Cloudflare Worker with one KV namespace.
@@ -47,6 +48,8 @@ export interface Env extends AccessConfig {
 
 const MAX_BODY = 3_000_000;
 const IMMUTABLE = "public, max-age=31536000, immutable";
+class ContentConflict extends Error {}
+class BodyTimeout extends Error {}
 
 async function sha256(bytes: ArrayBuffer | Uint8Array) {
   const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
@@ -98,7 +101,8 @@ function decodeImage(dataUrl: string) {
       return null;
     if (imageSignature(bytes.subarray(0, 12)) !== match[1].toLowerCase())
       return null;
-    return { bytes, type: match[1].toLowerCase() };
+    const type = match[1].toLowerCase();
+    return validImageContainer(bytes, type) ? { bytes, type } : null;
   } catch {
     return null;
   }
@@ -109,25 +113,62 @@ async function boundedBody(request: Request) {
     return null;
   const reader = request.body?.getReader();
   if (!reader) return "";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new BodyTimeout());
+      void reader.cancel();
+    }, 5000);
+  });
   let length = 0;
   const chunks: Uint8Array[] = [];
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    length += value.byteLength;
-    if (length > MAX_BODY) {
-      await reader.cancel();
-      return null;
+  try {
+    for (;;) {
+      const { value, done } = await Promise.race([reader.read(), timeout]);
+      if (done) break;
+      length += value.byteLength;
+      if (length > MAX_BODY) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } finally {
+    clearTimeout(timer);
   }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+}
+
+/** Never replace mismatching content. Concurrent identical writes are not an atomic lock. */
+async function storeContent(
+  env: Env,
+  key: string,
+  bytes: ArrayBuffer,
+  type: string,
+) {
+  const expected = key.slice(2);
+  const check = async () => {
+    const stored = await env.METADATA.getWithMetadata<{ type: string }>(
+      key,
+      "arrayBuffer",
+    );
+    if (
+      stored.value &&
+      ((await sha256(stored.value)) !== expected ||
+        stored.metadata?.type !== type)
+    )
+      throw new ContentConflict();
+    return !!stored.value;
+  };
+  if (await check()) return true;
+  await env.METADATA.put(key, bytes, { metadata: { type } });
+  return check();
 }
 
 async function upload(
@@ -167,9 +208,26 @@ async function upload(
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return json(400, { error: "JSON object required" }, headers);
     body = parsed as Record<string, unknown>;
-  } catch {
+  } catch (cause) {
+    if (cause instanceof BodyTimeout)
+      return json(408, { error: "upload body timed out" }, headers);
     return json(400, { error: "invalid json" }, headers);
   }
+  if (
+    Object.keys(body).some(
+      (key) =>
+        ![
+          "name",
+          "symbol",
+          "description",
+          "image",
+          "website",
+          "twitter",
+          "telegram",
+        ].includes(key),
+    )
+  )
+    return json(422, { error: "unsupported token fields" }, headers);
   const text = (key: string) =>
     typeof body[key] === "string" ? (body[key] as string) : "";
   const draft: TokenDraft = {
@@ -182,6 +240,9 @@ async function upload(
     telegram: text("telegram"),
   };
   const errors = validateDraft(draft);
+  for (const key of ["name", "description"] as const)
+    if (/[<>\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(draft[key]))
+      errors[key] = "unsafe text";
   for (const key of ["website", "twitter", "telegram"] as const) {
     if (draft[key].length > 2048) errors[key] = "too long";
     if (draft[key]) {
@@ -214,14 +275,12 @@ async function upload(
   )
     return json(503, { error: "invalid public metadata origin" }, headers);
   const imageHash = await sha256(image.bytes);
-  if (!(await env.METADATA.get(`i:${imageHash}`, "arrayBuffer")))
-    await env.METADATA.put(
-      `i:${imageHash}`,
-      image.bytes.buffer as ArrayBuffer,
-      {
-        metadata: { type: image.type },
-      },
-    );
+  const imageReady = await storeContent(
+    env,
+    `i:${imageHash}`,
+    image.bytes.buffer as ArrayBuffer,
+    image.type,
+  );
   const extensions: Record<string, string> = {};
   for (const key of ["website", "twitter", "telegram"] as const)
     if (draft[key]) extensions[key] = draft[key];
@@ -239,18 +298,24 @@ async function upload(
     }),
   );
   const hash = await sha256(document);
-  if (!(await env.METADATA.get(`m:${hash}`, "arrayBuffer")))
-    await env.METADATA.put(`m:${hash}`, document.buffer as ArrayBuffer, {
-      metadata: { type: "application/json" },
-    });
+  const documentReady = await storeContent(
+    env,
+    `m:${hash}`,
+    document.buffer as ArrayBuffer,
+    "application/json",
+  );
   return json(
-    201,
+    imageReady && documentReady ? 201 : 202,
     {
       uri: `${base}/v1/m/${hash}.json`,
       image: `${base}/v1/i/${imageHash}`,
       id: hash,
       mediaType: image.type,
       storage: "persistent-kv",
+      availability:
+        imageReady && documentReady
+          ? "verified-at-upload-location"
+          : "propagating",
     },
     headers,
   );
@@ -261,6 +326,17 @@ async function serve(key: string, env: Env) {
     type: string;
   }>(key, "arrayBuffer");
   if (!value || !metadata) return json(404, { error: "not found" });
+  if (
+    (await sha256(value)) !== key.slice(2) ||
+    !(key.startsWith("m:")
+      ? metadata.type === "application/json"
+      : ["image/png", "image/jpeg", "image/webp"].includes(metadata.type))
+  )
+    return json(
+      503,
+      { error: "stored content failed verification" },
+      { "access-control-allow-origin": "*" },
+    );
   return new Response(value, {
     headers: {
       "content-type": metadata.type,
@@ -277,7 +353,23 @@ export function createMetadataWorker(accessFetch: typeof fetch = fetch) {
   return {
     async fetch(request: Request, env: Env): Promise<Response> {
       const url = new URL(request.url);
+      if (request.method === "GET" && url.pathname === "/v1/metadata") {
+        try {
+          const authorized =
+            accessConfigured(env) && (await authorize(request, env));
+          return json(authorized ? 200 : 401, {
+            authorized: !!authorized,
+            message: authorized
+              ? "Upload access ready. Return to RETRY and review your launch."
+              : "An approved tester session is required.",
+          });
+        } catch {
+          return json(503, { error: "authorization unavailable" });
+        }
+      }
       if (request.method === "OPTIONS") {
+        if (url.pathname !== "/v1/metadata")
+          return json(404, { error: "not found" });
         const headers = cors(request.headers.get("origin"), env);
         return new Response(null, {
           status: headers ? 204 : 403,
@@ -292,7 +384,16 @@ export function createMetadataWorker(accessFetch: typeof fetch = fetch) {
       if (request.method === "POST" && url.pathname === "/v1/metadata") {
         try {
           return await upload(request, env, authorize);
-        } catch {
+        } catch (cause) {
+          if (cause instanceof ContentConflict)
+            return json(
+              409,
+              {
+                error:
+                  "stored content does not match its address; refusing replacement",
+              },
+              cors(request.headers.get("origin"), env) ?? {},
+            );
           return json(
             503,
             { error: "metadata storage temporarily unavailable" },

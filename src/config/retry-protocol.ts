@@ -1,4 +1,5 @@
 import type { SolanaCluster } from "./solana";
+import { isDevnetBeta } from "./devnet-beta";
 
 /**
  * The one RETRY launch configuration (Meteora DBC config key) per cluster.
@@ -132,6 +133,7 @@ export function featureBlock(
     disabled = disabledFeatures(),
   }: PolicyInputs = {},
 ): "mainnet-locked" | "feature-off" | null {
+  if (isDevnetBeta() && cluster !== "devnet") return "mainnet-locked";
   if (cluster === "mainnet-beta" && !mainnetEnabled) return "mainnet-locked";
   if (feature && (!defaults[cluster][feature] || disabled.has(feature)))
     return "feature-off";

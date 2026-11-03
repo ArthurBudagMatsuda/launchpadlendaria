@@ -34,6 +34,7 @@ import {
   type SolanaAddress,
 } from "@/lib/solana/address";
 import { readSolBalance } from "@/lib/solana/rpc";
+import { isDevnetBeta } from "@/config/devnet-beta";
 const LAST_WALLET = "retry:solana:last-wallet:v1";
 const EMPTY_WALLETS: readonly Wallet[] = [];
 const serverWallets = () => EMPTY_WALLETS;
@@ -151,6 +152,8 @@ export function RetrySolanaProvider({
   const [settings, setSettings] = useState<Settings>(() => {
     try {
       const config = initialConfig ?? appSolanaConfig();
+      if (isDevnetBeta() && config.cluster !== "devnet")
+        throw new Error("The beta requires Devnet.");
       return { config, error: null, configured: { [config.cluster]: config } };
     } catch {
       return {
@@ -343,6 +346,10 @@ export function RetrySolanaProvider({
   }, [wallet]);
   const selectCluster = useCallback((cluster: SolanaCluster) => {
     if (!isCluster(cluster)) return;
+    if (isDevnetBeta() && cluster !== "devnet") {
+      setError("This beta only supports Solana Devnet.");
+      return;
+    }
     setSettings((previous) => ({
       ...previous,
       config: previous.configured[cluster] ?? {

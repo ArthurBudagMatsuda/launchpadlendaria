@@ -381,10 +381,12 @@ describe("single Solana context with Wallet Standard", () => {
     fixture();
     mount();
     fireEvent.click(screen.getByText("Phantom"));
-    await waitFor(() =>
-      expect(screen.getByTestId("balance").textContent).toBe(
-        "Balance unavailable",
-      ),
+    await waitFor(
+      () =>
+        expect(screen.getByTestId("balance").textContent).toBe(
+          "Balance unavailable",
+        ),
+      { timeout: 3000 }, // the read transport now backs off for 1s before its final attempt
     );
   });
   it("changes the application cluster without requesting a wallet network switch", async () => {

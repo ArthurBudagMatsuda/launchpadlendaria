@@ -206,14 +206,30 @@ export async function sendExpectingFailure(
   const signature = await connection.sendRawTransaction(tx.serialize(), {
     skipPreflight: true,
   });
-  await connection.confirmTransaction({ signature, ...latest }, "confirmed");
-  const landed = await connection.getTransaction(signature, {
-    commitment: "confirmed",
-    maxSupportedTransactionVersion: 0,
-  });
+  // A fast validator may reject confirmation for the expected program error.
+  // Only the landed transaction's meta.err below can prove the refusal.
+  try {
+    await connection.confirmTransaction({ signature, ...latest }, "confirmed");
+  } catch {
+    /* Do not infer success from this exception; reconcile the ledger. */
+  }
+  let landed;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    landed = await connection.getTransaction(signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    if (landed?.meta) break;
+    if (attempt < 2)
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+  if (!landed?.meta?.err)
+    throw new Error(
+      "The expected refusal was not proved by a confirmed failed transaction.",
+    );
   return {
     signature,
-    error: landed?.meta?.err ? JSON.stringify(landed.meta.err) : null,
+    error: JSON.stringify(landed.meta.err),
     logs: landed?.meta?.logMessages ?? [],
   };
 }

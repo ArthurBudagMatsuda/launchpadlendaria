@@ -60,8 +60,24 @@ export async function readSolana<T>(
       };
       return await Promise.race([operation(), aborted]);
     } catch (error) {
+      const context =
+        error && typeof error === "object" && "context" in error
+          ? (error.context as { statusCode?: number; headers?: Headers })
+          : undefined;
+      const hint =
+        context?.statusCode === 429
+          ? context.headers?.get("retry-after")
+          : null;
+      const seconds = Number(hint);
+      const hintedDelay = hint
+        ? Number.isFinite(seconds)
+          ? seconds * 1000
+          : Date.parse(hint) - Date.now()
+        : 0;
       if (
         signal?.aborted ||
+        controller.signal.aborted ||
+        hintedDelay > 30000 ||
         (error instanceof Error && error.message === "RPC_CLUSTER_MISMATCH") ||
         attempt === 1
       )
@@ -70,7 +86,13 @@ export async function readSolana<T>(
             ? "RPC cluster does not match the selected environment."
             : "Solana RPC unavailable or timed out.",
         );
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      clearTimeout(timer);
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          Math.max(1000, Number.isFinite(hintedDelay) ? hintedDelay : 0),
+        ),
+      );
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);

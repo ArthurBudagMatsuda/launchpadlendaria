@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+.beta-notice {
+  padding: 10px 20px;
+  border-bottom: 1px solid #334155;
+  background: #142134;
+  color: #dbeafe;
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  text-align: center;
+}
+
 @theme inline {
   --color-background: #0a0b10;
   --color-foreground: #f0f1f6;

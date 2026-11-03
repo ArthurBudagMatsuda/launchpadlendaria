@@ -1,5 +1,7 @@
 # Worker de metadados RETRY
 
+**Etapa 7:** implementação reutilizada, com verificação de JSON/imagem antes do lançamento, tratamento de propagação 202, validação de contêiner/dimensões e recusa de objetos adulterados. O deploy continua não executado por falta de conta autenticada. Use o [procedimento atual de publicação](../../docs/devnet-beta/CLOUDFLARE_WORKER_DEPLOYMENT.md) e a [matriz de validação](../../docs/devnet-beta/METADATA_UPLOAD_VALIDATION.md). O novo preview usa gateway Pages na mesma origem, mantendo este Worker e seu KV.
+
 Worker existente reutilizado com **KV persistente**, sem serviço duplicado. Imagem e JSON usam SHA-256; alterações podem ser detectadas, mas administradores podem apagar/substituir objetos. Persistência não garante imutabilidade ou disponibilidade eterna.
 
 ## Endpoints

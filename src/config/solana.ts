@@ -1,3 +1,4 @@
+import { isDevnetBeta } from "./devnet-beta";
 export type SolanaCluster = "devnet" | "mainnet-beta";
 export const CLUSTERS = {
   devnet: {
@@ -26,6 +27,8 @@ export function parseSolanaConfig(
 ): SolanaConfig {
   const cluster = env.cluster || "devnet";
   if (!isCluster(cluster)) throw new Error("Unsupported Solana cluster.");
+  if (isDevnetBeta() && cluster !== "devnet")
+    throw new Error("This beta only supports Solana Devnet.");
   if ([env.trading, env.launch].some((value) => value && value !== "false"))
     // Execution is governed in code (src/config/retry-protocol.ts), never by
     // a build flag, so these legacy flags may only be absent or "false".
