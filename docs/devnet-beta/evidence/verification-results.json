@@ -1,0 +1,101 @@
+{
+  "date_local": "2026-11-02",
+  "timezone": "America/Sao_Paulo",
+  "base_commit": "b7a88638b4cdb13bed2fb4fd24b110786cc00f2e",
+  "implementation_commit": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+  "commands": [
+    {
+      "command": "pnpm install --frozen-lockfile --offline",
+      "status": "APPROVED",
+      "scope": "Initial cached installation; lockfile subsequently updated only for the two pinned overrides"
+    },
+    {
+      "command": "pnpm test --maxWorkers=1 --pool=threads",
+      "status": "APPROVED",
+      "files": 22,
+      "tests": 210,
+      "duration_seconds": 152.98,
+      "evidence_level": "UNIT TEST / React integration with mocks"
+    },
+    {
+      "command": "pnpm test:e2e --workers=1",
+      "status": "APPROVED",
+      "tests": 26,
+      "evidence_level": "MOCKED BROWSER TEST",
+      "note": "Full clean run after one mobile timeout in the earlier two-worker run"
+    },
+    {
+      "command": "pnpm test:beta:e2e",
+      "status": "APPROVED",
+      "tests": 4,
+      "evidence_level": "MOCKED BROWSER TEST",
+      "note": "Real Worker handler in process; in-memory KV, simulated Access, RPC and Wallet Standard. No signatures sent."
+    },
+    {
+      "command": "pnpm format:check",
+      "status": "APPROVED"
+    },
+    {
+      "command": "pnpm lint",
+      "status": "APPROVED",
+      "warnings": 0
+    },
+    {
+      "command": "pnpm typecheck",
+      "status": "APPROVED"
+    },
+    {
+      "command": "pnpm build",
+      "status": "APPROVED",
+      "note": "Production compilation and static page generation succeeded. bigint-buffer used pure JS fallback."
+    },
+    {
+      "command": "pnpm test:metadata:bundle",
+      "status": "APPROVED",
+      "bundle_kib": 53.21,
+      "gzip_kib": 14.58,
+      "note": "Local dry-run, fixture IDs, no deployment"
+    },
+    {
+      "command": "pnpm test:devnet:readiness",
+      "status": "APPROVED",
+      "tests": 1,
+      "evidence_level": "PUBLIC DEVNET READ ONLY",
+      "transactions_sent": 0
+    },
+    {
+      "command": "pnpm audit --prod --json",
+      "status": "PARTIAL",
+      "before": {
+        "high": 6,
+        "moderate": 4
+      },
+      "after": {
+        "high": 1,
+        "moderate": 3
+      },
+      "note": "Exit 1 reports residual advisories; nothing suppressed"
+    }
+  ],
+  "cloudflare_deployment": "BLOCKED_NO_ACCOUNT_AUTHENTICATED",
+  "public_preview": "BLOCKED",
+  "public_kv_persistence": "NOT TESTED",
+  "real_wallet": "NOT TESTED",
+  "new_public_devnet_create_trade_graduation": "NOT TESTED",
+  "local_validator": "APPROVED_IN_GITHUB_ACTIONS; NOT INSTALLED ON WINDOWS HOST",
+  "mainnet_execution_enabled": false,
+  "production_site_modified": false,
+  "pull_request": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/10",
+  "local_validator_run": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41568352309",
+  "ci_regression_evidence": "ci-regressions.json",
+  "local_validator_results": {
+    "variants": ["devnet binaries", "mainnet binaries"],
+    "chain_tests_per_variant": 21,
+    "browser_scenarios_per_variant": 1,
+    "wallet_signatures_per_browser_scenario": 7,
+    "public_devnet_funded_job": "skipped",
+    "metadata_service": "fixture",
+    "wallet": "simulated Wallet Standard",
+    "rpc": "real local validator"
+  }
+}

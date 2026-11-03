@@ -1,0 +1,28 @@
+{
+  "evidence_level": "LOCAL VALIDATOR IN GITHUB ACTIONS",
+  "initial_code_sha": "4acfde74224d8136f74c2965de10ddb3698613fd",
+  "initial_run": "https://github.com/ArthurBudagMatsuda/launchpadlendaria/actions/runs/41565377593",
+  "initial_conclusion": "failure",
+  "fix_code_sha": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+  "findings": [
+    {
+      "job": "Local validator with mainnet programs",
+      "chain_result": "20 passed, 1 failed",
+      "failure": "Expected second-migration refusal (custom 6022) threw during confirmation before the helper read the landed transaction",
+      "fix": "Read the actual confirmed transaction after confirmation errors; require meta.err; tolerate delayed indexing with bounded reads; never resend",
+      "regression_tests": "tests/chain-refusal.test.ts (4 cases)"
+    },
+    {
+      "job": "Local validator with devnet programs",
+      "chain_result": "21 passed",
+      "browser_result": "Failed waiting for enabled Sell BCAT; trace showed a blank sell amount after confirmed buy",
+      "fix": "Preserve later input revisions; keep execution running through data reconciliation; do not hide a busy operation on reset",
+      "regression_tests": [
+        "tests/integration/trade-input.test.tsx",
+        "tests/integration/operation-state.test.tsx"
+      ]
+    }
+  ],
+  "public_devnet_transactions_sent": 0,
+  "mainnet_transactions_sent": 0
+}

@@ -1,0 +1,224 @@
+{
+  "base_commit": "b7a88638b4cdb13bed2fb4fd24b110786cc00f2e",
+  "implementation_commit": "e01344fed6062dc686b671c5322627a4f96a7a2d",
+  "implementation": [
+    {
+      "status": "M",
+      "files": [".env.example"]
+    },
+    {
+      "status": "M",
+      "files": [".github/workflows/preview-validation.yml"]
+    },
+    {
+      "status": "A",
+      "files": ["e2e/beta/devnet-beta.spec.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["e2e/solana-fixtures.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["infra/devnet-beta/config.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["infra/devnet-beta/pages-worker.d.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["infra/devnet-beta/pages-worker.js"]
+    },
+    {
+      "status": "A",
+      "files": ["infra/devnet-beta/wrangler.pages.toml"]
+    },
+    {
+      "status": "M",
+      "files": ["infra/metadata-worker/README.md"]
+    },
+    {
+      "status": "A",
+      "files": ["infra/metadata-worker/src/image.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["infra/metadata-worker/src/index.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["package.json"]
+    },
+    {
+      "status": "A",
+      "files": ["playwright.beta.config.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["playwright.config.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["pnpm-lock.yaml"]
+    },
+    {
+      "status": "M",
+      "files": ["pnpm-workspace.yaml"]
+    },
+    {
+      "status": "A",
+      "files": ["scripts/build-devnet-beta.mjs"]
+    },
+    {
+      "status": "A",
+      "files": ["scripts/prepare-devnet-beta.mjs"]
+    },
+    {
+      "status": "M",
+      "files": ["scripts/serve-pages.mjs"]
+    },
+    {
+      "status": "M",
+      "files": ["src/app/globals.css"]
+    },
+    {
+      "status": "M",
+      "files": ["src/components/launch/launch-panel.tsx"]
+    },
+    {
+      "status": "M",
+      "files": ["src/components/launch/retry-trade-panel.tsx"]
+    },
+    {
+      "status": "M",
+      "files": ["src/components/layout/shell.tsx"]
+    },
+    {
+      "status": "M",
+      "files": ["src/components/wallet/solana-provider.tsx"]
+    },
+    {
+      "status": "M",
+      "files": ["src/components/wallet/solana-wallet.tsx"]
+    },
+    {
+      "status": "A",
+      "files": ["src/config/devnet-beta.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/config/retry-protocol.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/config/solana.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/hooks/use-retry.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/lib/meteora/client.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["src/lib/meteora/metadata-endpoint.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/lib/meteora/metadata-upload.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/lib/meteora/metadata.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["src/lib/solana/public-rpc-transport.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["src/lib/solana/rpc.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["tests/chain-refusal.test.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/chain/harness.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/chain/public-rpc.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["tests/devnet-beta.test.ts"]
+    },
+    {
+      "status": "A",
+      "files": ["tests/integration/operation-state.test.tsx"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/integration/solana-wallet.test.tsx"]
+    },
+    {
+      "status": "A",
+      "files": ["tests/integration/trade-input.test.tsx"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/live/devnet-readiness.probe.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/metadata-worker.test.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/public-devnet-rpc.test.ts"]
+    },
+    {
+      "status": "M",
+      "files": ["tests/solana-rpc.test.ts"]
+    }
+  ],
+  "documentation_and_evidence": [
+    "README.md",
+    "docs/devnet-beta/CLOUDFLARE_WORKER_DEPLOYMENT.md",
+    "docs/devnet-beta/CREATE_TRADE_E2E.md",
+    "docs/devnet-beta/LIQUIDITY_LOCK_EVIDENCE.md",
+    "docs/devnet-beta/METADATA_UPLOAD_VALIDATION.md",
+    "docs/devnet-beta/OPERATIONAL_RUNBOOK.md",
+    "docs/devnet-beta/PREVIEW_DEPLOYMENT.md",
+    "docs/devnet-beta/PR_STACK_AND_BRANCH_STRATEGY.md",
+    "docs/devnet-beta/PUBLIC_GRADUATION_E2E.md",
+    "docs/devnet-beta/PULL_REQUEST.md",
+    "docs/devnet-beta/README.md",
+    "docs/devnet-beta/REAL_WALLET_TEST_MATRIX.md",
+    "docs/devnet-beta/RELEASE_CHECKLIST.md",
+    "docs/devnet-beta/RPC_AND_RELIABILITY.md",
+    "docs/devnet-beta/SECURITY_FINDINGS.md",
+    "docs/devnet-beta/evidence/beta-desktop-mocked.png",
+    "docs/devnet-beta/evidence/beta-mobile-mocked.png",
+    "docs/devnet-beta/evidence/changed-files.json",
+    "docs/devnet-beta/evidence/ci-code-verification.json",
+    "docs/devnet-beta/evidence/ci-regressions.json",
+    "docs/devnet-beta/evidence/dependency-audit-after.json",
+    "docs/devnet-beta/evidence/dependency-audit-before.json",
+    "docs/devnet-beta/evidence/local-validator-devnet.json",
+    "docs/devnet-beta/evidence/local-validator-mainnet.json",
+    "docs/devnet-beta/evidence/public-devnet-readonly.json",
+    "docs/devnet-beta/evidence/remote-status.json",
+    "docs/devnet-beta/evidence/validator-devnet-graduated.png",
+    "docs/devnet-beta/evidence/verification-results.json",
+    "docs/reports/RETRY_STAGE_7_SOLANA_DEVNET_BETA_REPORT.md"
+  ],
+  "no_production_deploy": true,
+  "no_public_devnet_transactions": true,
+  "no_mainnet_transactions": true
+}
