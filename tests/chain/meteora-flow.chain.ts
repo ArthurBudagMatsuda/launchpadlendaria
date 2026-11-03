@@ -1020,7 +1020,7 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     expect(again.verified).toBe(true);
   });
 
-  it("simulates withdrawing the exact rounding remainder without unlocking permanent principal", async (test) => {
+  it("proves the one-unit remainder cannot be redeemed at the observed price: AmountIsZero, permanent principal unchanged", async (test) => {
     if (!dammOpen) return test.skip("not graduated in this run");
     const lock = await verifyLockedLiquidity(context, dammOpen);
     const mine = lock.positions.find(
@@ -1080,13 +1080,11 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
       logs: simulated.value.logs?.slice(-8),
       submitted: false,
     });
-    expect(simulated.value.err).toBeNull();
-    const bytes = Buffer.from(simulated.value.accounts![0]!.data[0], "base64");
-    const u128 = (offset: number) =>
-      bytes.readBigUInt64LE(offset) +
-      (bytes.readBigUInt64LE(offset + 8) << 64n);
-    expect(u128(152)).toBe(0n);
-    expect(u128(184)).toBe(mine.permanentLockedLiquidity);
+    expect(mine.unlockedLiquidity).toBe(1n);
+    expect(simulated.value.err).toEqual({
+      InstructionError: [2, { Custom: 6006 }],
+    });
+    expect(simulated.value.logs?.join("\n")).toContain("AmountIsZero");
     // Simulation rolls back: no public or local principal transfer is submitted.
     const after = await verifyLockedLiquidity(context, dammOpen);
     expect(after.unlocked).toBe(lock.unlocked);

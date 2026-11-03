@@ -189,7 +189,7 @@ export function GraduationPanel({
               </dd>
             </div>
             <div>
-              <dt>Withdrawable</dt>
+              <dt>Unlocked / vesting</dt>
               <dd>
                 {lock.data.unlocked.toString()} unit
                 {lock.data.unlocked === 1n ? "" : "s"} (rounding) · vesting{" "}
