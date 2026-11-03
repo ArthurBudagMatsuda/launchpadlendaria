@@ -14,9 +14,10 @@ const config = validateBetaSettings(
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dir = path.join(root, ".qa/devnet-beta-config");
 if (!process.argv.includes("--check")) {
-  await mkdir(dir, { recursive: true });
+  await mkdir(path.join(dir, "metadata"), { recursive: true });
+  await mkdir(path.join(dir, "pages"), { recursive: true });
   await writeFile(
-    path.join(dir, "wrangler.worker.json"),
+    path.join(dir, "metadata", "wrangler.json"),
     JSON.stringify(
       {
         name: config.workerName,
@@ -48,11 +49,10 @@ if (!process.argv.includes("--check")) {
     { binding: "METADATA_SERVICE", service: config.workerName },
   ];
   await writeFile(
-    path.join(dir, "wrangler.pages.json"),
+    path.join(dir, "pages", "wrangler.json"),
     JSON.stringify(
       {
         name: config.pagesProject,
-        account_id: config.accountId,
         pages_build_output_dir: path.join(root, "out"),
         compatibility_date: "2026-10-23",
         services,
