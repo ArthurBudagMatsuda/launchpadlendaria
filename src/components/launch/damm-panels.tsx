@@ -122,7 +122,11 @@ export function LpFeesPanel({ pool, damm }: { pool: RetryPool; damm: Damm }) {
         </div>
         <div>
           <dt>Your position</dt>
-          <dd>Permanently locked · fees only</dd>
+          <dd>
+            {mine.permanentLockedLiquidity.toString()} permanently locked ·{" "}
+            {mine.unlockedLiquidity.toString()} unlocked ·{" "}
+            {mine.vestedLiquidity.toString()} vesting (raw liquidity units)
+          </dd>
         </div>
       </dl>
       <Button

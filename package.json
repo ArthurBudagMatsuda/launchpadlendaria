@@ -24,6 +24,7 @@
     "test:rpc:live": "vitest run --config vitest.live.config.ts",
     "test:devnet:readiness": "vitest run --config vitest.live.config.ts tests/live/devnet-readiness.probe.ts",
     "test:metadata:bundle": "node scripts/check-metadata-worker.mjs",
+    "test:metadata:runtime": "node scripts/check-metadata-worker.mjs && node scripts/test-metadata-runtime.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

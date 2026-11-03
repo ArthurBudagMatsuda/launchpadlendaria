@@ -1,7 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { copyFile, writeFile } from "node:fs/promises";
+import { checkBetaSecurity } from "./check-beta-security.mjs";
+checkBetaSecurity();
 const require = createRequire(import.meta.url);
+// Existing emergency-stop setting also supports a static review fallback.
+const readOnly = process.env.NEXT_PUBLIC_RETRY_DISABLED_FEATURES === "all";
 if (
   process.env.NEXT_PUBLIC_SOLANA_CLUSTER &&
   process.env.NEXT_PUBLIC_SOLANA_CLUSTER !== "devnet"
@@ -26,7 +30,7 @@ const build = spawnSync(
       NEXT_PUBLIC_SOLANA_CLUSTER: "devnet",
       NEXT_PUBLIC_ENABLE_LIVE_TRADING: "false",
       NEXT_PUBLIC_ENABLE_TOKEN_LAUNCH: "false",
-      NEXT_PUBLIC_RETRY_METADATA_URL: "/",
+      NEXT_PUBLIC_RETRY_METADATA_URL: readOnly ? "" : "/",
     },
   },
 );
@@ -57,7 +61,8 @@ await writeFile(
         }).stdout?.trim().length > 0,
       cluster: "devnet",
       mainnetExecution: false,
-      metadata: "same-origin /v1/metadata",
+      metadata: readOnly ? null : "same-origin /v1/metadata",
+      capabilities: readOnly ? "read-only" : "devnet-test-transactions",
       builtAt: new Date().toISOString(),
     },
     null,

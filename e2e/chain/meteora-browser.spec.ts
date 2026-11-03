@@ -293,7 +293,9 @@ test("launch, trade, graduate and trade on DAMM v2 against Meteora's programs", 
   ).toBeVisible({ timeout: 60_000 });
 
   // The same page now proves the lock and trades the graduated pool.
-  await expect(page.getByText("Lock verified on-chain")).toBeVisible({
+  await expect(
+    page.getByText("Lock verified with a rounding remainder"),
+  ).toBeVisible({
     timeout: 30_000,
   });
   await expect(
@@ -317,7 +319,9 @@ test("launch, trade, graduate and trade on DAMM v2 against Meteora's programs", 
   await expect(
     page.getByText("LP fees claimed. The locked liquidity did not move."),
   ).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Lock verified on-chain")).toBeVisible();
+  await expect(
+    page.getByText("Lock verified with a rounding remainder"),
+  ).toBeVisible();
   // A full-page capture taken while scrolled draws the fixed header mid-page.
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({

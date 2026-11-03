@@ -534,7 +534,20 @@ describe("lock verification from position state", () => {
     expect(lock.positions).toEqual([creator, partner]);
     expect(lock.others).toEqual([]);
     expect([lock.unlocked, lock.vested]).toEqual([1n, 0n]);
-    expect(Number(lock.lockedPct)).toBeGreaterThan(99.999999);
+    expect(lock.fullyLocked).toBe(false);
+    expect(lock.lockedPct).toBe("99.999999");
+    expect(Number(lock.lockedPct)).toBeLessThan(100);
+  });
+
+  it("only reports a literal full lock when no position has withdrawable or vesting principal", () => {
+    const exact = checkLock(
+      { liquidity: locked, permanentLockLiquidity: locked },
+      [position(creator.permanentLockedLiquidity), partner],
+    );
+    expect(exact.verified).toBe(true);
+    expect(exact.fullyLocked).toBe(true);
+    expect(exact.lockedPct).toBe("100");
+    expect(checkLock(pool, [creator, partner]).fullyLocked).toBe(false);
   });
 
   it("fails when any graduated liquidity could be withdrawn or vests", () => {

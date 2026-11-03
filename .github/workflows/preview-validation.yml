@@ -1,7 +1,8 @@
 name: Validate Solana preview (no publication)
 on:
   push:
-    branches: [feat/retry-devnet-beta-stage-7]
+    branches:
+      [feat/retry-devnet-beta-stage-7, feat/retry-stage-8-public-devnet-beta]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -18,6 +19,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:metadata:bundle
+      - run: node scripts/test-metadata-runtime.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:beta:e2e
         env:
