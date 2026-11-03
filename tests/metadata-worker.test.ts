@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createMetadataWorker,
   type Env,
   type KV,
 } from "../infra/metadata-worker/src/index";
 import { accessFixture, rateLimitFixture } from "./fixtures/cloudflare-access";
-import { uploadMetadata } from "@/lib/meteora/metadata-upload";
+import {
+  uploadMetadata,
+  verifyStoredMetadata,
+} from "@/lib/meteora/metadata-upload";
 import { emptyDraft } from "@/lib/validation";
+import { readFileSync } from "node:fs";
+import { validImageContainer } from "../infra/metadata-worker/src/image";
 const access = await accessFixture();
 const worker = createMetadataWorker(access.fetcher);
 
@@ -52,6 +57,7 @@ const draft = {
   twitter: "https://x.com/orbitcat",
 };
 const ORIGIN = "https://arthurbudagmatsuda.github.io";
+afterEach(() => vi.useRealTimers());
 
 function setup(limit = "10") {
   const env: Env = {
@@ -95,6 +101,179 @@ const post = (
   );
 
 describe("metadata worker", () => {
+  it("accepts the repository's real PNG, JPEG and WebP artwork containers", () => {
+    expect(validImageContainer(PNG, "image/png")).toBe(true);
+    expect(
+      validImageContainer(
+        readFileSync(
+          new URL("../docs/images/retry-discover.jpg", import.meta.url),
+        ),
+        "image/jpeg",
+      ),
+    ).toBe(true);
+    expect(
+      validImageContainer(
+        readFileSync(
+          new URL("../public/brand/retry-logo-3d.webp", import.meta.url),
+        ),
+        "image/webp",
+      ),
+    ).toBe(true);
+  });
+  it("reports authenticated upload access without exposing the operator identity", async () => {
+    const { fetcher, env } = setup();
+    const session = await fetcher("https://meta.retry.test/v1/metadata");
+    expect(session.status).toBe(200);
+    expect(await session.json()).toMatchObject({ authorized: true });
+    expect(
+      (
+        await worker.fetch(
+          new Request("https://meta.retry.test/v1/metadata"),
+          env,
+        )
+      ).status,
+    ).toBe(401);
+  });
+  it("waits for KV propagation, reading both objects without repeating the POST", async () => {
+    const { fetcher } = setup();
+    let reads = 0,
+      writes = 0;
+    const delayed = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") writes++;
+      if (String(input).includes("/v1/m/") && ++reads === 1)
+        return new Response("missing", { status: 404 });
+      return fetcher(input, init);
+    }) as typeof fetch;
+    const result = await uploadMetadata(
+      draft,
+      "https://meta.retry.test",
+      delayed,
+    );
+    expect(result.image).toContain("/v1/i/");
+    expect(writes).toBe(1);
+    expect(reads).toBe(2);
+  });
+  it("retains a receipt after the bounded propagation window and can resume with GETs only", async () => {
+    const { fetcher } = setup();
+    const receipt = await uploadMetadata(
+      draft,
+      "https://meta.retry.test",
+      fetcher,
+    );
+    vi.useFakeTimers();
+    const unavailable = vi.fn(
+      async () => new Response("missing", { status: 404 }),
+    );
+    const rejected = expect(
+      verifyStoredMetadata(
+        draft,
+        receipt,
+        "https://meta.retry.test",
+        unavailable,
+      ),
+    ).rejects.toThrow(/still propagating/);
+    await vi.runAllTimersAsync();
+    await rejected;
+    expect(unavailable).toHaveBeenCalledTimes(7);
+    vi.useRealTimers();
+    expect(
+      await verifyStoredMetadata(
+        draft,
+        receipt,
+        "https://meta.retry.test",
+        fetcher,
+      ),
+    ).toEqual(receipt);
+  });
+  it("does not prepare metadata when a public image is tampered with", async () => {
+    const { fetcher } = setup();
+    const changed = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("/v1/i/")
+        ? new Response("changed", { headers: { "content-type": "image/png" } })
+        : fetcher(input, init)) as typeof fetch;
+    await expect(
+      uploadMetadata(draft, "https://meta.retry.test", changed),
+    ).rejects.toThrow(/stored image does not match/);
+  });
+  it("refuses to replace a tampered object and never serves it as immutable content", async () => {
+    const { fetcher, env } = setup();
+    const receipt = await uploadMetadata(
+      draft,
+      "https://meta.retry.test",
+      fetcher,
+    );
+    const hash = receipt.image.split("/").at(-1)!;
+    await env.METADATA.put(`i:${hash}`, "tampered", {
+      metadata: { type: "image/png" },
+    });
+    expect((await fetcher(receipt.image)).status).toBe(503);
+    expect((await post(env, draft)).status).toBe(409);
+    expect(
+      new TextDecoder().decode(
+        (await env.METADATA.get(`i:${hash}`, "arrayBuffer"))!,
+      ),
+    ).toBe("tampered");
+  });
+  it("reports propagation pending rather than falsely claiming a locally readable KV write", async () => {
+    const { env } = setup();
+    env.METADATA.getWithMetadata = async () => ({
+      value: null,
+      metadata: null,
+    });
+    const response = await post(env, draft);
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({
+      availability: "propagating",
+    });
+  });
+  it("rejects disguised image containers, excessive dimensions, markup and unknown fields", async () => {
+    const { env } = setup();
+    const oversized = Buffer.from(PNG);
+    oversized.writeUInt32BE(5000, 16);
+    for (const body of [
+      {
+        ...draft,
+        image: `data:image/png;base64,${Buffer.concat([PNG.subarray(0, 8), Buffer.from("<script>alert(1)</script>")]).toString("base64")}`,
+      },
+      {
+        ...draft,
+        image: `data:image/png;base64,${oversized.toString("base64")}`,
+      },
+      { ...draft, name: "<script>bad</script>" },
+      { ...draft, description: "Invisible \u202e characters" },
+      { ...draft, unexpected: "field" },
+    ])
+      expect((await post(env, body)).status).toBe(422);
+  });
+  it("bounds a hanging upload transport even when it ignores abort", async () => {
+    vi.useFakeTimers();
+    const rejected = expect(
+      uploadMetadata(
+        draft,
+        "https://meta.retry.test",
+        () => new Promise(() => {}),
+      ),
+    ).rejects.toThrow(/canceled|timed out/);
+    await vi.runAllTimersAsync();
+    await rejected;
+  });
+  it("bounds an upload body that never finishes", async () => {
+    const { env } = setup();
+    // Warm the signed Access session; the request body has a real bounded deadline.
+    await post(env, draft);
+    const request = new Request("https://meta.retry.test/v1/metadata", {
+      method: "POST",
+      headers: {
+        origin: ORIGIN,
+        "content-type": "application/json",
+        "cf-access-jwt-assertion": access.token,
+      },
+      body: new ReadableStream(),
+      duplex: "half",
+    } as RequestInit);
+    const response = worker.fetch(request, env);
+    expect((await response).status).toBe(408);
+  });
   it("stores content-addressed JSON and image that the app verifies on read-back", async () => {
     const { fetcher } = setup();
     const result = await uploadMetadata(
@@ -260,7 +439,16 @@ describe("metadata worker", () => {
       uploadMetadata(draft, "https://meta.retry.test", async () => {
         throw new Error("network unavailable");
       }),
-    ).rejects.toThrow(/network unavailable/);
+    ).rejects.toThrow(/unavailable/);
+  });
+  it("explains an Access login redirect reported by the browser as a fetch failure without repeating the upload", async () => {
+    const fetcher = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await expect(
+      uploadMetadata(draft, "https://meta.retry.test", fetcher),
+    ).rejects.toThrow(/Authorize uploads/);
+    expect(fetcher).toHaveBeenCalledOnce();
   });
 
   it("serves 404 for unknown or malformed paths", async () => {
@@ -279,6 +467,7 @@ describe("metadata worker", () => {
       if (String(input).includes("/v1/m/"))
         return new Response(
           JSON.stringify({ name: "Orbit Cat", symbol: "ORBIT" }),
+          { headers: { "content-type": "application/json" } },
         );
       return response;
     }) as typeof fetch;

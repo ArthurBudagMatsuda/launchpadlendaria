@@ -2,6 +2,7 @@ import { Buffer } from "buffer";
 import { PublicKey, type AccountInfo } from "@solana/web3.js";
 import type { MeteoraContext } from "./client";
 import { METAPLEX_PROGRAM } from "./programs";
+import { metadataOrigin } from "./metadata-endpoint";
 
 /** Metaplex Token Metadata limits, enforced by the program. */
 export const MAX_NAME = 32,
@@ -115,7 +116,9 @@ export function trustedMetadataHosts(
   const hosts = ["raw.githubusercontent.com"];
   if (env.metadata) {
     try {
-      const url = new URL(env.metadata);
+      const origin = metadataOrigin(env.metadata);
+      if (!origin) return hosts;
+      const url = new URL(origin);
       if (url.protocol === "https:" && !url.username && !url.password)
         hosts.push(url.host);
     } catch {
