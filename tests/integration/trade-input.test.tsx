@@ -17,7 +17,10 @@ import {
 import type { TradeQuote } from "@/lib/meteora/quotes";
 import type { RetryPool } from "@/lib/meteora/pools";
 import type { TxExpectation } from "@/lib/meteora/transactions";
-const { run } = vi.hoisted(() => ({ run: vi.fn() }));
+const { run, holdings } = vi.hoisted(() => ({
+  run: vi.fn(),
+  holdings: { amount: 100000000000n },
+}));
 vi.mock("@/hooks/use-retry", () => ({
   useMeteora: () => ({
     wallet: {
@@ -46,7 +49,7 @@ vi.mock("@/components/launch/launch-ui", () => ({
   PolicyNotice: () => null,
 }));
 vi.mock("@/lib/meteora/trade", () => ({
-  tokenBalance: async () => 100000000000n,
+  tokenBalance: async () => holdings.amount,
   wrappedSolBalance: async () => 0n,
 }));
 const client = new QueryClient({
@@ -56,16 +59,10 @@ afterEach(() => {
   cleanup();
   client.clear();
   run.mockReset();
+  holdings.amount = 100000000000n;
 });
 
-it("does not erase a new sell amount when a preceding buy finishes reconciling", async () => {
-  let finish!: (value: unknown) => void;
-  run.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
-  );
+function tradeFixture() {
   const pool = {
     cluster: "devnet",
     baseMint: "11111111111111111111111111111111",
@@ -104,6 +101,18 @@ it("does not erase a new sell amount when a preceding buy finishes reconciling",
       expect: {} as TxExpectation,
     }),
   };
+  return { pool, venue };
+}
+
+it("does not erase a new sell amount when a preceding buy finishes reconciling", async () => {
+  let finish!: (value: unknown) => void;
+  run.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const { pool, venue } = tradeFixture();
   render(
     <QueryClientProvider client={client}>
       <TradeForm pool={pool} symbol="TEST" venue={venue} />
@@ -138,4 +147,42 @@ it("does not erase a new sell amount when a preceding buy finishes reconciling",
         .disabled,
     ).toBe(false),
   );
+});
+
+it("preserves a typed sell amount across balance, quote, price and focus updates", async () => {
+  const { pool, venue } = tradeFixture();
+  const ui = (slot: number) => (
+    <QueryClientProvider client={client}>
+      <TradeForm pool={pool} symbol="TEST" venue={{ ...venue, slot }} />
+    </QueryClientProvider>
+  );
+  const view = render(ui(1));
+  fireEvent.click(screen.getByRole("button", { name: /^Sell$/ }));
+  const amount = screen.getByRole("textbox") as HTMLInputElement;
+  fireEvent.change(amount, { target: { value: "12.25" } });
+  await waitFor(() =>
+    expect(
+      (screen.getByRole("button", { name: "Sell TEST" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false),
+  );
+  holdings.amount = 80000000000n;
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ["retry", "holding"] });
+  });
+  view.rerender(ui(2));
+  fireEvent.change(
+    screen.getByRole("combobox", { name: "Slippage tolerance" }),
+    { target: { value: "200" } },
+  );
+  fireEvent.blur(amount);
+  fireEvent.focus(amount);
+  await waitFor(() =>
+    expect(
+      (screen.getByRole("button", { name: "Sell TEST" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false),
+  );
+  expect(amount.value).toBe("12.25");
+  expect(run).not.toHaveBeenCalled();
 });

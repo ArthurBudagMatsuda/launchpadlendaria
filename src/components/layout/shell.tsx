@@ -12,6 +12,7 @@ import { useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Header } from "./header";
 import { isDevnetBeta } from "@/config/devnet-beta";
+import { disabledFeatures, RETRY_FEATURES } from "@/config/retry-protocol";
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/\/$/, "") || "/";
   const [help, setHelp] = useState(false);
@@ -25,8 +26,9 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="beta-notice" role="note">
           <strong>Solana Devnet Beta — Test Tokens Only</strong>
           <span>
-            Experimental launches. Test SOL has no monetary value. Mainnet is
-            disabled.
+            {disabledFeatures().size === RETRY_FEATURES.length
+              ? "Read-only preview. Test SOL only — No real funds. Uploads and transactions are unavailable."
+              : "Test SOL only — No real funds. Experimental launches. Mainnet is disabled."}
           </span>
         </div>
       ) : null}

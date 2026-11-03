@@ -1,12 +1,12 @@
-# RETRY — Solana Devnet Beta (Etapa 7)
+# RETRY — Solana Devnet: preview público de leitura (Etapa 8)
 
 Launchpad Solana com **Meteora DBC → DAMM v2**, frontend Next.js/React e Wallet Standard. A implementação inclui criar tokens SPL, negociar na curva, graduar, verificar posições de liquidez e negociar após graduação.
 
-**Estado em 02/11/2026:** preparação local da Beta, com publicação e testes de carteira real bloqueados por acessos indisponíveis. Não há URL Cloudflare publicada nesta entrega. Mainnet financeira permanece desabilitada em código.
+**Estado em 03/11/2026:** [preview público de leitura online](https://retry-solana-devnet-beta.pages.dev/), commit publicado `1c5127a`. Worker e KV publicados, leituras públicas por hash verificadas. O proprietário escolheu não ativar o cadastro Cloudflare Access que exige cartão; uploads e todas as transações do preview estão desativados. Mainnet financeira permanece desabilitada em código.
 
-O [site GitHub Pages](https://arthurbudagmatsuda.github.io/launchpadlendaria/) ainda serve a `main` histórica em Base. Ele não foi substituído. A evolução Solana está no stack Draft #6 → #8 → #9; a Etapa 7 parte do PR #9 e não mescla os PRs.
+O [site GitHub Pages](https://arthurbudagmatsuda.github.io/launchpadlendaria/) ainda serve a `main` histórica em Base. Ele não foi substituído. A evolução Solana está no stack Draft **#6 → #8 → #9 → #10 → #11**, sem merges automáticos.
 
-Entrega de revisão: [Draft PR #10](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/10), sem liberação pública ou aprovação Mainnet.
+Entrega atual: [Draft PR #11](https://github.com/ArthurBudagMatsuda/launchpadlendaria/pull/11), [documentação Etapa 8](docs/stage-8/README.md) e [relatório completo](docs/reports/RETRY_STAGE_8_PUBLIC_DEVNET_BETA_REPORT.md). A conexão/refresh/Portfolio/reconexão da Phantom foram confirmados pelo proprietário, com 0 SOL verificado por RPC; não houve assinatura ou transação nova nessa sessão. Beta transacional pública e graduação permanecem pendentes. A [Etapa 7](docs/reports/RETRY_STAGE_7_SOLANA_DEVNET_BETA_REPORT.md) preserva o histórico da preparação.
 
 ## Desenvolver e verificar
 

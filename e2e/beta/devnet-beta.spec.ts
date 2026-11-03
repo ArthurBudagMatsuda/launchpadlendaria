@@ -115,7 +115,7 @@ test("beta uses root assets, Devnet only and responsive navigation", async ({
   expect(failures).toEqual([]);
   await page.goto("/");
   await page.screenshot({
-    path: `docs/devnet-beta/evidence/beta-${info.project.name}-mocked.png`,
+    path: `test-results/beta-${info.project.name}-mocked.png`,
     fullPage: true,
   });
 });

@@ -424,6 +424,8 @@ export interface LockVerification {
   vested: bigint;
   /** Share of the pool's liquidity that is permanently locked, percent. */
   lockedPct: string;
+  /** Literal equality of permanent principal and total pool liquidity. */
+  fullyLocked: boolean;
   /**
    * True when the graduated liquidity can never be withdrawn beyond DBC's
    * rounding remainder: two locked positions, nothing vesting, at most 1
@@ -502,12 +504,17 @@ export function checkLock(
     vested: sum(positions, (p) => p.vestedLiquidity),
     lockedPct:
       dammPool.liquidity > 0n
-        ? new Decimal(permanentLocked.toString())
+        ? new (Decimal.clone({ precision: 80 }))(permanentLocked.toString())
             .div(dammPool.liquidity.toString())
             .mul(100)
             .toDecimalPlaces(6, Decimal.ROUND_DOWN)
             .toString()
         : "0",
+    fullyLocked:
+      dammPool.liquidity > 0n &&
+      permanentLocked === dammPool.liquidity &&
+      permanentLocked === dammPool.permanentLockLiquidity &&
+      all.every((p) => p.unlockedLiquidity === 0n && p.vestedLiquidity === 0n),
     verified:
       positions.length === 2 &&
       positions.every(

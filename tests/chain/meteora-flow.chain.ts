@@ -652,7 +652,8 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     expect(lock.permanentLocked).toBe(dammOpen.permanentLockLiquidity);
     expect(lock.permanentLocked + lock.unlocked).toBe(dammOpen.liquidity);
     expect(lock.others).toEqual([]);
-    expect(Number(lock.lockedPct)).toBeGreaterThan(99.999999);
+    expect(Number(lock.lockedPct)).toBeGreaterThanOrEqual(99.999999);
+    expect(lock.fullyLocked).toBe(lock.unlocked === 0n);
     expect(lock.positions.map((p) => p.holder).sort()).toEqual(
       [feeClaimer.toBase58(), creator.publicKey.toBase58()].sort(),
     );
@@ -1017,6 +1018,77 @@ describe(`RETRY on Meteora DBC (${env.mode})`, () => {
     const again = await verifyLockedLiquidity(context, dammOpen);
     expect(again.permanentLocked).toBe(lock.permanentLocked);
     expect(again.verified).toBe(true);
+  });
+
+  it("proves the one-unit remainder cannot be redeemed at the observed price: AmountIsZero, permanent principal unchanged", async (test) => {
+    if (!dammOpen) return test.skip("not graduated in this run");
+    const lock = await verifyLockedLiquidity(context, dammOpen);
+    const mine = lock.positions.find(
+      (p) => p.holder === creator.publicKey.toBase58(),
+    )!;
+    if (mine.unlockedLiquidity === 0n)
+      return test.skip("no rounding remainder in this pool");
+    const position = new PublicKey(mine.position);
+    const atas = [mint, WSOL_MINT].map((m) =>
+      getAssociatedTokenAddressSync(m, creator.publicKey, true),
+    );
+    const client = new CpAmm(connection);
+    const tx = await client._program.methods
+      .removeLiquidity({
+        liquidityDelta: new BN(mine.unlockedLiquidity.toString()),
+        tokenAAmountThreshold: new BN(0),
+        tokenBAmountThreshold: new BN(0),
+      })
+      .accountsPartial({
+        poolAuthority: DAMM_V2_POOL_AUTHORITY,
+        pool: new PublicKey(dammOpen.address),
+        position,
+        tokenAAccount: atas[0],
+        tokenBAccount: atas[1],
+        tokenAVault: new PublicKey(dammOpen.tokenAVault),
+        tokenBVault: new PublicKey(dammOpen.tokenBVault),
+        tokenAMint: mint,
+        tokenBMint: WSOL_MINT,
+        positionNftAccount: derivePositionNftAccount(
+          new PublicKey(mine.nftMint),
+        ),
+        signer: creator.publicKey,
+        tokenAProgram: SPL_TOKEN_PROGRAM,
+        tokenBProgram: SPL_TOKEN_PROGRAM,
+      })
+      .preInstructions(
+        [mint, WSOL_MINT].map((m, i) =>
+          createAssociatedTokenAccountIdempotentInstruction(
+            creator.publicKey,
+            atas[i],
+            creator.publicKey,
+            m,
+          ),
+        ),
+      )
+      .transaction();
+    tx.feePayer = creator.publicKey;
+    const simulated = await connection.simulateTransaction(
+      tx,
+      [creator],
+      [position],
+    );
+    log("rounding remainder withdrawal simulation", {
+      position,
+      rawLiquidityRequested: mine.unlockedLiquidity,
+      error: simulated.value.err,
+      logs: simulated.value.logs?.slice(-8),
+      submitted: false,
+    });
+    expect(mine.unlockedLiquidity).toBe(1n);
+    expect(simulated.value.err).toEqual({
+      InstructionError: [2, { Custom: 6006 }],
+    });
+    expect(simulated.value.logs?.join("\n")).toContain("AmountIsZero");
+    // Simulation rolls back: no public or local principal transfer is submitted.
+    const after = await verifyLockedLiquidity(context, dammOpen);
+    expect(after.unlocked).toBe(lock.unlocked);
+    expect(after.permanentLocked).toBe(lock.permanentLocked);
   });
 
   it("lets only the position holder claim its LP fees, without touching the locked liquidity", async (test) => {

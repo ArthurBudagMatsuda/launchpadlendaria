@@ -1,0 +1,15 @@
+{
+  "evidence": "LOCAL_WORKER_RUNTIME",
+  "at": "2026-11-03T17:34:11.120Z",
+  "runtime": "Miniflare/workerd",
+  "cloudflareDeployed": false,
+  "access": "simulated issuer; genuine RSA verification",
+  "kv": "local disk; survived runtime restart",
+  "anonymous": 401,
+  "invalidJwt": 401,
+  "authenticated": 201,
+  "publicReads": 200,
+  "nativeRateLimiter": 429,
+  "metadataSha256": "4a11a44e39c1b34886ae566993254264e52e7aacebd569378347bd9b985f5f7d",
+  "imageSha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0"
+}

@@ -269,7 +269,6 @@ export function useLockVerification(
     enabled: Boolean(context && damm),
     staleTime: 30_000,
     retry: 1,
-    placeholderData: (previous) => previous,
     queryFn: async () => {
       const { verifyLockedLiquidity } = await import("@/lib/meteora/damm-v2");
       return verifyLockedLiquidity(context!, damm!.pool, damm!.state);

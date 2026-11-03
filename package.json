@@ -19,11 +19,13 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:beta:e2e": "playwright test --config playwright.beta.config.ts",
+    "test:beta:public-readonly": "node scripts/verify-public-beta.mjs",
     "test:chain": "vitest run --config vitest.chain.config.ts",
     "test:chain:browser": "playwright test --config playwright.chain.config.ts",
     "test:rpc:live": "vitest run --config vitest.live.config.ts",
     "test:devnet:readiness": "vitest run --config vitest.live.config.ts tests/live/devnet-readiness.probe.ts",
     "test:metadata:bundle": "node scripts/check-metadata-worker.mjs",
+    "test:metadata:runtime": "node scripts/check-metadata-worker.mjs && node scripts/test-metadata-runtime.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

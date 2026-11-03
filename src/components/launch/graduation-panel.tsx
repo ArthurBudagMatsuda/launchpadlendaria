@@ -125,8 +125,9 @@ export function GraduationPanel({
         <div>
           <dt>Graduated liquidity</dt>
           <dd>
-            Locked forever ({view.lockedLiquidity.creator}% creator ·{" "}
-            {view.lockedLiquidity.partner}% RETRY)
+            Permanent-lock policy ({view.lockedLiquidity.creator}% creator ·{" "}
+            {view.lockedLiquidity.partner}% RETRY); verify positions after
+            migration
           </dd>
         </div>
         <div>
@@ -161,7 +162,7 @@ export function GraduationPanel({
           The curve is complete and its migration is in progress on-chain.
         </p>
       ) : null}
-      {lock.data ? (
+      {lock.data && !lock.isError ? (
         <div className="lock-proof">
           <p className={lock.data.verified ? "positive" : "negative"}>
             {lock.data.verified ? (
@@ -170,7 +171,9 @@ export function GraduationPanel({
               <CircleAlert size={14} />
             )}{" "}
             {lock.data.verified
-              ? "Lock verified on-chain"
+              ? lock.data.fullyLocked
+                ? "Liquidity permanently locked · verified on-chain"
+                : "Lock verified with a rounding remainder"
               : "Lock check did not pass"}
           </p>
           <dl className="detail-list">
@@ -179,7 +182,14 @@ export function GraduationPanel({
               <dd>{lock.data.lockedPct}% of the pool&apos;s liquidity</dd>
             </div>
             <div>
-              <dt>Withdrawable</dt>
+              <dt>Exact locked / total</dt>
+              <dd className="break-words">
+                {lock.data.permanentLocked.toString()} /{" "}
+                {lock.data.totalLiquidity.toString()} raw liquidity units
+              </dd>
+            </div>
+            <div>
+              <dt>Unlocked / vesting</dt>
               <dd>
                 {lock.data.unlocked.toString()} unit
                 {lock.data.unlocked === 1n ? "" : "s"} (rounding) · vesting{" "}
@@ -211,6 +221,13 @@ export function GraduationPanel({
               </div>
             ) : null}
           </dl>
+          {lock.data.verified && !lock.data.fullyLocked ? (
+            <p className="tiny">
+              This is not a literal 100% lock. The position NFT holder controls
+              its unlocked remainder. Raw liquidity units are not token or SOL
+              amounts; fees can be claimed separately from locked principal.
+            </p>
+          ) : null}
           {!lock.data.verified ? (
             <p className="notice-strip">
               The positions on-chain do not match a permanent lock of the

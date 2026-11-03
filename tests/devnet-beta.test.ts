@@ -29,6 +29,20 @@ describe("isolated Devnet beta", () => {
       accessAudience: "3".repeat(64),
     };
     expect(validateBetaSettings(fixture)).toEqual(fixture);
+    const readOnly = { ...fixture, accessTeamDomain: "", accessAudience: "" };
+    expect(() => validateBetaSettings(readOnly)).toThrow();
+    expect(validateBetaSettings(readOnly, { readOnly: true })).toEqual(
+      readOnly,
+    );
+    expect(() => validateBetaSettings(fixture, { readOnly: true })).toThrow(
+      /fail closed/,
+    );
+    expect(() =>
+      validateBetaSettings(
+        { ...readOnly, apiToken: "forbidden" },
+        { readOnly: true },
+      ),
+    ).toThrow();
     for (const change of [
       { kvNamespaceId: "REPLACE_ME" },
       { publicOrigin: "https://arthurbudagmatsuda.github.io" },

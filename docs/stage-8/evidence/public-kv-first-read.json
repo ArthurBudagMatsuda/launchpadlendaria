@@ -1,0 +1,48 @@
+{
+  "evidence": "PUBLIC_CLOUDFLARE_KV_READ",
+  "at": "2026-11-03T18:13:06.513Z",
+  "provisioning": "administrator seeded two test objects with Wrangler; not a browser POST",
+  "uploadAuthentication": "BLOCKED; Access not activated",
+  "verified": true,
+  "availability": "one observed edge location only; not global consistency",
+  "imageKey": "i:6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0",
+  "metadataKey": "m:67129784c523c2084254fd55550cf5426d390951b2d3c0a4158a0e271bbda431",
+  "imageUrl": "https://retry-solana-devnet-beta.pages.dev/v1/i/6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0",
+  "uri": "https://retry-solana-devnet-beta.pages.dev/v1/m/67129784c523c2084254fd55550cf5426d390951b2d3c0a4158a0e271bbda431.json",
+  "imageSha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0",
+  "metadataSha256": "67129784c523c2084254fd55550cf5426d390951b2d3c0a4158a0e271bbda431",
+  "tokenMinted": false,
+  "attempts": [
+    {
+      "at": "2026-11-03T18:13:06.513Z",
+      "observed": [
+        {
+          "url": "https://retry-solana-devnet-beta.pages.dev/v1/i/6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0",
+          "status": 200,
+          "sha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0",
+          "headers": {
+            "content-type": "image/png",
+            "cache-control": "public, max-age=31536000, immutable",
+            "x-content-type-options": "nosniff",
+            "access-control-allow-origin": "*",
+            "cf-ray": "a54d59e0fe899da8-NVT"
+          },
+          "pass": true
+        },
+        {
+          "url": "https://retry-solana-devnet-beta.pages.dev/v1/m/67129784c523c2084254fd55550cf5426d390951b2d3c0a4158a0e271bbda431.json",
+          "status": 200,
+          "sha256": "67129784c523c2084254fd55550cf5426d390951b2d3c0a4158a0e271bbda431",
+          "headers": {
+            "content-type": "application/json",
+            "cache-control": "public, max-age=31536000, immutable",
+            "x-content-type-options": "nosniff",
+            "access-control-allow-origin": "*",
+            "cf-ray": "a54d59e34e671719-NVT"
+          },
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

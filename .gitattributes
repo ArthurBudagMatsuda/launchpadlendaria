@@ -2,3 +2,5 @@
 *.jpg binary
 *.png binary
 *.webp binary
+# Unified patches contain mandatory single-space context lines.
+patches/*.patch -whitespace

@@ -6,7 +6,11 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "list",
-  use: { baseURL: "https://retry-beta.test", trace: "retain-on-failure" },
+  use: {
+    baseURL: "https://retry-beta.test",
+    trace: "retain-on-failure",
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
+  },
   webServer: {
     command: "pnpm build:beta && node scripts/serve-pages.mjs",
     url: "http://127.0.0.1:4175/",
