@@ -15,9 +15,9 @@ describe("production migration boundaries", () => {
       /from ["'](?:viem|wagmi|@coinbase|@metamask|@walletconnect)/,
       /0xb200000000000000000000585fd80c20af698f01/i,
       /eth_requestAccounts|wallet_switchEthereumChain|eth_call/,
-      // RETRY asks wallets to sign transactions only: never messages, and it
-      // never hands sending to the wallet (it stores the signature first).
-      /signAndSendTransaction|signMessage|signAllTransactions|\bsendTransaction\b/,
+      // RETRY stores transaction signatures before sending. Message signing
+      // is restricted below to the reviewed, fixed-purpose upload module.
+      /signAndSendTransaction|signAllTransactions|\bsendTransaction\b/,
       /fixtures\/|generateHistory|demo-market/,
       /localStorage\.clear\(/,
       // No private keys, seeds or mnemonics; fresh keypairs only.
@@ -32,6 +32,7 @@ describe("production migration boundaries", () => {
   });
   it("keeps wallet signing, sending and skipPreflight in the reviewed modules only", () => {
     const allowed: [RegExp, string[]][] = [
+      [/signMessage/, ["src/lib/meteora/metadata-authorization.ts"]],
       [
         /signTransaction/,
         ["src/lib/meteora/wallet-signer.ts", "src/lib/meteora/transactions.ts"],

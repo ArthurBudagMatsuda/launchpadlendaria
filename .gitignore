@@ -19,3 +19,4 @@ devnet-readiness.json
 *funder*.json
 *keypair*.json
 .wrangler/
+.vercel/

@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-04T20:53:21.0883257+00:00",
+  "evidence": "PUBLIC_DEVNET_READS",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "phantom": {
+    "address": "Z8WdA8JSjtbvNfGLF9aMTbb6DS94eHnMMEE4k55ZDZ7",
+    "lamports": 0,
+    "slot": 518702677
+  },
+  "funder": {
+    "address": "3r8gEonYHrXEao85oFAu2UzVgT1KsxFmWUZLWBd8G5B3",
+    "lamports": 2013648909,
+    "slot": 518702679
+  },
+  "thresholdLamports": 10000000000,
+  "thresholdOnlyDeficitLamports": 7986351091,
+  "transactionsSent": 0
+}

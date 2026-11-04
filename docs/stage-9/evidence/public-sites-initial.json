@@ -1,0 +1,13 @@
+{
+  "cloudflareVersion": {
+    "sourceCommit": "1c5127a35eaf67515d06afe13378a8ae0e15e646",
+    "dirty": false,
+    "cluster": "devnet",
+    "mainnetExecution": false,
+    "metadata": null,
+    "capabilities": "read-only",
+    "builtAt": "2026-11-03T18:11:00.793Z"
+  },
+  "oldSiteStatus": 200,
+  "oldSiteSha256": "970d0dd6a5f8d3cef6eb6e4f4f2b0a83ad8a3a029600c3feff83ec3daa7b0438"
+}

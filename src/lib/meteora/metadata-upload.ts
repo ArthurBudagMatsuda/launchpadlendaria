@@ -13,6 +13,10 @@ interface VerifyOptions {
   signal?: AbortSignal;
   /** Preserve the receipt across propagation delays; never retry the POST automatically. */
   onStored?: (receipt: MetadataReceipt) => void;
+  authorize?: (
+    body: string,
+    signal?: AbortSignal,
+  ) => Promise<Record<string, string>>;
 }
 const PROPAGATION_DELAYS = [0, 1000, 2000, 4000, 8000, 15000, 30000];
 const pause = (ms: number, signal?: AbortSignal) =>
@@ -37,7 +41,7 @@ async function sha256Hex(bytes: ArrayBuffer) {
 }
 
 /** One bounded fetch, including its streamed body. Never retries a POST. */
-async function readBytes(
+export async function readMetadataBytes(
   fetcher: typeof fetch,
   url: string,
   init: RequestInit,
@@ -168,7 +172,7 @@ export async function verifyStoredMetadata(
     );
   for (const delay of PROPAGATION_DELAYS) {
     await pause(delay, options.signal);
-    const document = await readBytes(
+    const document = await readMetadataBytes(
       fetcher,
       receipt.uri,
       { credentials: "omit", cache: "no-store" },
@@ -212,7 +216,7 @@ export async function verifyStoredMetadata(
       throw new MetadataUploadError(
         "The stored metadata does not match your draft.",
       );
-    const image = await readBytes(
+    const image = await readMetadataBytes(
       fetcher,
       receipt.image,
       { credentials: "omit", cache: "no-store" },
@@ -257,22 +261,26 @@ export async function uploadMetadata(
     throw new MetadataUploadError(
       "RETRY's metadata host is not configured for HTTPS.",
     );
-  const response = await readBytes(
+  const body = JSON.stringify({
+    name: draft.name.trim(),
+    symbol: draft.symbol,
+    description: draft.description.trim(),
+    image: draft.image,
+    website: draft.website || undefined,
+    twitter: draft.twitter || undefined,
+    telegram: draft.telegram || undefined,
+  });
+  const authorization = options.authorize
+    ? await options.authorize(body, options.signal)
+    : {};
+  const response = await readMetadataBytes(
     fetcher,
     `${origin}/v1/metadata`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        name: draft.name.trim(),
-        symbol: draft.symbol,
-        description: draft.description.trim(),
-        image: draft.image,
-        website: draft.website || undefined,
-        twitter: draft.twitter || undefined,
-        telegram: draft.telegram || undefined,
-      }),
+      headers: { "content-type": "application/json", ...authorization },
+      credentials: options.authorize ? "omit" : "include",
+      body,
     },
     16384,
     options.signal,
@@ -288,7 +296,7 @@ export async function uploadMetadata(
     );
   if ([401, 403].includes(response.status))
     throw new MetadataUploadError(
-      "Authorize uploads with your approved tester account, then return to RETRY.",
+      "Upload authorization was refused. Use an approved test wallet and review again.",
     );
   if (![201, 202].includes(response.status))
     throw new MetadataUploadError(
