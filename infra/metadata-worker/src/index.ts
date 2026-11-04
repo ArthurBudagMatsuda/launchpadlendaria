@@ -6,6 +6,14 @@ import {
 } from "../../../src/lib/validation";
 import { accessConfigured, accessVerifier, type AccessConfig } from "./access";
 import { validImageContainer } from "./image";
+import {
+  approvedWallets,
+  nonceRequest,
+  walletAuthConfigured,
+  type WalletAuthConfig,
+} from "./wallet-auth";
+import { uploadBodyHash } from "../../../src/lib/meteora/upload-challenge";
+export { UploadNonceCoordinator } from "./wallet-auth";
 
 /**
  * RETRY metadata host: a Cloudflare Worker with one KV namespace.
@@ -34,7 +42,7 @@ export interface KV {
   ): Promise<void>;
 }
 
-export interface Env extends AccessConfig {
+export interface Env extends AccessConfig, WalletAuthConfig {
   METADATA: KV;
   /** Public origin of this Worker, e.g. https://retry-metadata.example.workers.dev */
   PUBLIC_URL: string;
@@ -108,9 +116,8 @@ function decodeImage(dataUrl: string) {
   }
 }
 
-async function boundedBody(request: Request) {
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY)
-    return null;
+async function boundedBody(request: Request, max = MAX_BODY) {
+  if (Number(request.headers.get("content-length") ?? 0) > max) return null;
   const reader = request.body?.getReader();
   if (!reader) return "";
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -127,7 +134,7 @@ async function boundedBody(request: Request) {
       const { value, done } = await Promise.race([reader.read(), timeout]);
       if (done) break;
       length += value.byteLength;
-      if (length > MAX_BODY) {
+      if (length > max) {
         await reader.cancel();
         return null;
       }
@@ -178,13 +185,25 @@ async function upload(
 ) {
   const headers = cors(request.headers.get("origin"), env);
   if (!headers) return json(403, { error: "origin not allowed" });
-  if (!accessConfigured(env) || !env.UPLOAD_RATE_LIMITER)
+  const walletMode = env.UPLOAD_AUTH_MODE === "wallet-devnet";
+  if (
+    !(walletMode
+      ? walletAuthConfigured(env)
+      : (!env.UPLOAD_AUTH_MODE || env.UPLOAD_AUTH_MODE === "access") &&
+        accessConfigured(env)) ||
+    !env.UPLOAD_RATE_LIMITER
+  )
     return json(
       503,
       { error: "upload authorization is not configured" },
       headers,
     );
-  const subject = await authorize(request, env);
+  const wallet = request.headers.get("x-retry-wallet") ?? "";
+  const subject = walletMode
+    ? approvedWallets(env).includes(wallet)
+      ? wallet
+      : null
+    : await authorize(request, env);
   if (!subject)
     return json(
       401,
@@ -201,9 +220,11 @@ async function upload(
   )
     return json(415, { error: "application/json required" }, headers);
   let body: Record<string, unknown>;
+  let rawBody = "";
   try {
     const raw = await boundedBody(request);
     if (raw === null) return json(413, { error: "too large" }, headers);
+    rawBody = raw;
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return json(400, { error: "JSON object required" }, headers);
@@ -274,6 +295,18 @@ async function upload(
     publicUrl.password
   )
     return json(503, { error: "invalid public metadata origin" }, headers);
+  if (walletMode) {
+    const authorized = await nonceRequest(env, wallet, "consume", {
+      wallet,
+      origin: request.headers.get("origin"),
+      uploadUri: `${base}/v1/metadata`,
+      nonce: request.headers.get("x-retry-nonce"),
+      signature: request.headers.get("x-retry-signature"),
+      bodySha256: await uploadBodyHash(rawBody),
+    });
+    if (authorized.status !== 200)
+      return json(authorized.status, await authorized.json(), headers);
+  }
   const imageHash = await sha256(image.bytes);
   const imageReady = await storeContent(
     env,
@@ -353,6 +386,76 @@ export function createMetadataWorker(accessFetch: typeof fetch = fetch) {
   return {
     async fetch(request: Request, env: Env): Promise<Response> {
       const url = new URL(request.url);
+      if (request.method === "POST" && url.pathname === "/v1/auth/challenge") {
+        const headers = cors(request.headers.get("origin"), env);
+        if (!headers) return json(403, { error: "origin not allowed" });
+        if (!walletAuthConfigured(env) || !env.UPLOAD_RATE_LIMITER)
+          return json(
+            503,
+            { error: "wallet upload authorization is not configured" },
+            headers,
+          );
+        try {
+          const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+          const rate = await env.UPLOAD_RATE_LIMITER.limit({
+            key: `challenge:${await sha256(new TextEncoder().encode(ip))}`,
+          });
+          if (!rate.success)
+            return json(429, { error: "rate limited" }, headers);
+          if (
+            request.headers
+              .get("content-type")
+              ?.split(";")[0]
+              .trim()
+              .toLowerCase() !== "application/json"
+          )
+            return json(415, { error: "application/json required" }, headers);
+          const raw = await boundedBody(request, 1024);
+          if (raw === null)
+            return json(413, { error: "challenge too large" }, headers);
+          const body = JSON.parse(raw);
+          if (
+            !body ||
+            typeof body !== "object" ||
+            Array.isArray(body) ||
+            Object.keys(body).some(
+              (key) => !["wallet", "bodySha256"].includes(key),
+            ) ||
+            typeof body.wallet !== "string" ||
+            !approvedWallets(env).includes(body.wallet)
+          )
+            return json(
+              401,
+              { error: "approved Devnet test wallet required" },
+              headers,
+            );
+          if (
+            typeof body.bodySha256 !== "string" ||
+            !/^[a-f0-9]{64}$/.test(body.bodySha256)
+          )
+            return json(400, { error: "invalid content hash" }, headers);
+          const publicUrl = new URL(env.PUBLIC_URL);
+          if (
+            publicUrl.protocol !== "https:" ||
+            publicUrl.origin !== env.PUBLIC_URL
+          )
+            return json(503, { error: "invalid upload URI" }, headers);
+          const response = await nonceRequest(env, body.wallet, "issue", {
+            ...body,
+            origin: request.headers.get("origin"),
+            uploadUri: `${publicUrl.origin}/v1/metadata`,
+          });
+          return json(response.status, await response.json(), headers);
+        } catch (cause) {
+          if (cause instanceof SyntaxError)
+            return json(400, { error: "invalid JSON" }, headers);
+          return json(
+            503,
+            { error: "wallet authorization temporarily unavailable" },
+            headers,
+          );
+        }
+      }
       if (request.method === "GET" && url.pathname === "/v1/metadata") {
         try {
           const authorized =
@@ -368,7 +471,7 @@ export function createMetadataWorker(accessFetch: typeof fetch = fetch) {
         }
       }
       if (request.method === "OPTIONS") {
-        if (url.pathname !== "/v1/metadata")
+        if (!["/v1/metadata", "/v1/auth/challenge"].includes(url.pathname))
           return json(404, { error: "not found" });
         const headers = cors(request.headers.get("origin"), env);
         return new Response(null, {
@@ -376,7 +479,8 @@ export function createMetadataWorker(accessFetch: typeof fetch = fetch) {
           headers: {
             ...headers,
             "access-control-allow-methods": "POST",
-            "access-control-allow-headers": "content-type",
+            "access-control-allow-headers":
+              "content-type, x-retry-wallet, x-retry-nonce, x-retry-signature",
             "access-control-max-age": "86400",
           },
         });

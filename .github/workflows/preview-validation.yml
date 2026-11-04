@@ -2,7 +2,11 @@ name: Validate Solana preview (no publication)
 on:
   push:
     branches:
-      [feat/retry-devnet-beta-stage-7, feat/retry-stage-8-public-devnet-beta]
+      [
+        feat/retry-devnet-beta-stage-7,
+        feat/retry-stage-8-public-devnet-beta,
+        feat/retry-stage-9-transactional-beta-vercel,
+      ]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -12,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
@@ -20,11 +26,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:metadata:bundle
       - run: node scripts/test-metadata-runtime.mjs
+      - run: node scripts/test-wallet-upload-runtime.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:beta:e2e
         env:
           NEXT_PUBLIC_BASE_PATH: ""
           NEXT_PUBLIC_SOLANA_CLUSTER: devnet
+      - run: pnpm build:vercel
+        env:
+          VERCEL: "1"
+          VERCEL_ENV: preview
+          VERCEL_GIT_COMMIT_REF: feat/retry-stage-9-transactional-beta-vercel
+          VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: retry-devnet-beta-review-only

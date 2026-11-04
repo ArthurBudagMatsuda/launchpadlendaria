@@ -14,6 +14,17 @@ writeFileSync(
       name: "retry-metadata-local-validation",
       main: path.join(root, "infra/metadata-worker/src/index.ts"),
       compatibility_date: "2026-10-23",
+      durable_objects: {
+        bindings: [
+          { name: "UPLOAD_NONCES", class_name: "UploadNonceCoordinator" },
+        ],
+      },
+      migrations: [
+        {
+          tag: "stage9-wallet-nonces-v1",
+          new_sqlite_classes: ["UploadNonceCoordinator"],
+        },
+      ],
       vars: {
         PUBLIC_URL: "https://metadata.retry.test",
         ALLOWED_ORIGINS: "http://127.0.0.1:3000",

@@ -1,0 +1,18 @@
+{
+  "evidence": "LOCAL_WORKER_RUNTIME",
+  "at": "2026-11-04T20:52:04.313Z",
+  "runtime": "Miniflare/workerd",
+  "authentication": "real Ed25519 with disposable in-memory local key",
+  "nonceStorage": "SQLite-backed Durable Object; replay refused after runtime restart",
+  "kv": "disk; survived restart",
+  "anonymous": 401,
+  "authenticated": 201,
+  "publicRead": 200,
+  "replay": 409,
+  "concurrentStatuses": [201, 409, 409, 409, 409, 409],
+  "invalidSignature": 401,
+  "unapprovedOrigin": 403,
+  "metadataSha256": "0ade7102da5c704cf9005ee8a1da3cf750b380b260f7bebeae894c3c03d50205",
+  "publicDevnetTransactions": 0,
+  "realPhantom": false
+}

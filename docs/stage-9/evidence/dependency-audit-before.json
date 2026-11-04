@@ -1,0 +1,271 @@
+{
+  "advisories": {
+    "1103747": {
+      "findings": [
+        {
+          "version": "1.1.5",
+          "paths": [
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/buffer-layout-utils>bigint-buffer",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/buffer-layout-utils>bigint-buffer",
+            ".>@solana/spl-token>@solana/buffer-layout-utils>bigint-buffer"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1103747,
+      "title": "bigint-buffer Vulnerable to Buffer Overflow via toBigIntLE() Function",
+      "module_name": "bigint-buffer",
+      "vulnerable_versions": "<=1.1.5",
+      "patched_versions": null,
+      "severity": "high",
+      "cwe": "CWE-120",
+      "github_advisory_id": "GHSA-3gc7-fjrx-p6mg",
+      "url": "https://github.com/advisories/GHSA-3gc7-fjrx-p6mg",
+      "patched_versions_unpublished": true
+    },
+    "1164823": {
+      "findings": [
+        {
+          "version": "1.9.1",
+          "paths": [
+            ".>@meteora-ag/cp-amm-sdk>@coral-xyz/anchor>@coral-xyz/borsh>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@coral-xyz/anchor>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@coral-xyz/anchor>@coral-xyz/borsh>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@coral-xyz/anchor>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@solana/web3.js>jayson>stream-json"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1164823,
+      "title": "stream-json: pick/ignore/filter/replace filters are O(depth²) on nested input — small crafted JSON blocks the event loop for seconds→minutes (DoS)",
+      "module_name": "stream-json",
+      "vulnerable_versions": "<=3.4.0",
+      "patched_versions": ">=3.5.0",
+      "severity": "moderate",
+      "cwe": "CWE-407",
+      "github_advisory_id": "GHSA-528h-pc64-c93x",
+      "url": "https://github.com/advisories/GHSA-528h-pc64-c93x"
+    },
+    "1241262": {
+      "findings": [
+        {
+          "version": "1.9.1",
+          "paths": [
+            ".>@meteora-ag/cp-amm-sdk>@coral-xyz/anchor>@coral-xyz/borsh>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@coral-xyz/anchor>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@coral-xyz/anchor>@coral-xyz/borsh>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@coral-xyz/anchor>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@solana/web3.js>jayson>stream-json"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1241262,
+      "title": "stream-json: JSONC parser and verifier re-scan the whole accumulated comment on every input chunk",
+      "module_name": "stream-json",
+      "vulnerable_versions": "<=3.5.0",
+      "patched_versions": ">=3.6.0",
+      "severity": "moderate",
+      "cwe": "CWE-407",
+      "github_advisory_id": "GHSA-hqr4-qq8f-hg3x",
+      "url": "https://github.com/advisories/GHSA-hqr4-qq8f-hg3x"
+    },
+    "1241263": {
+      "findings": [
+        {
+          "version": "1.9.1",
+          "paths": [
+            ".>@meteora-ag/cp-amm-sdk>@coral-xyz/anchor>@coral-xyz/borsh>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@coral-xyz/anchor>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/cp-amm-sdk>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@coral-xyz/anchor>@coral-xyz/borsh>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@coral-xyz/anchor>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@meteora-ag/dynamic-bonding-curve-sdk>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/buffer-layout-utils>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/spl-token-group>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/spl-token-metadata>@solana/web3.js>jayson>stream-json",
+            ".>@solana/spl-token>@solana/web3.js>jayson>stream-json",
+            ".>@solana/web3.js>jayson>stream-json"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1241263,
+      "title": "stream-json has a prototype pollution issue: Assembler writes this.current[this.key] on plain objects",
+      "module_name": "stream-json",
+      "vulnerable_versions": "<3.6.0",
+      "patched_versions": ">=3.6.0",
+      "severity": "moderate",
+      "cwe": "CWE-1321",
+      "github_advisory_id": "GHSA-mjw6-4jj6-33hc",
+      "url": "https://github.com/advisories/GHSA-mjw6-4jj6-33hc"
+    },
+    "1243066": {
+      "findings": [
+        {
+          "version": "3.25.76",
+          "paths": [
+            ".>eslint-config-next>eslint-plugin-react-hooks>zod",
+            ".>eslint-config-next>eslint-plugin-react-hooks>zod-validation-error>zod"
+          ],
+          "dev": true,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1243066,
+      "title": "Zod can exhaust memory while validating oversized constrained collections",
+      "module_name": "zod",
+      "vulnerable_versions": "<4.6.6",
+      "patched_versions": ">=4.6.6",
+      "severity": "high",
+      "cwe": "CWE-770",
+      "github_advisory_id": "GHSA-mrhx-c7xc-m3w5",
+      "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
+    },
+    "1244623": {
+      "findings": [
+        {
+          "version": "10.2.6",
+          "paths": [
+            ".>eslint>@eslint/config-array>minimatch",
+            ".>eslint>minimatch",
+            ".>eslint-config-next>@next/eslint-plugin-next>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>@next/eslint-plugin-next>@eslint-community/eslint-utils>eslint>minimatch",
+            ".>eslint-config-next>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>eslint>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-import>@typescript-eslint/parser>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-jsx-a11y>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-jsx-a11y>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-react>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-react>eslint>minimatch",
+            ".>eslint-config-next>eslint-plugin-react-hooks>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>eslint-plugin-react-hooks>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/parser>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>@typescript-eslint/utils>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>@typescript-eslint/utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>@typescript-eslint/utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/type-utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/utils>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>@typescript-eslint/utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/eslint-plugin>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/parser>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/utils>@typescript-eslint/typescript-estree>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/utils>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>@typescript-eslint/utils>eslint>minimatch",
+            ".>eslint-config-next>typescript-eslint>eslint>@eslint/config-array>minimatch",
+            ".>eslint-config-next>typescript-eslint>eslint>minimatch"
+          ],
+          "dev": true,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1244623,
+      "title": "minimatch has potential denial of service via globparts amplification",
+      "module_name": "minimatch",
+      "vulnerable_versions": ">=7.0.0 <11.0.1",
+      "patched_versions": ">=11.0.1",
+      "severity": "moderate",
+      "cwe": "CWE-405",
+      "github_advisory_id": "GHSA-g3hv-75wg-m249",
+      "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 4,
+      "high": 2,
+      "critical": 0
+    },
+    "dependencies": 226,
+    "devDependencies": 480,
+    "optionalDependencies": 146,
+    "totalDependencies": 744
+  }
+}

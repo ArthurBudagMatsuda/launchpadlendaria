@@ -12,6 +12,7 @@
     "build": "next build",
     "build:pages": "node scripts/build-pages.mjs",
     "build:beta": "node scripts/build-devnet-beta.mjs",
+    "build:vercel": "node scripts/build-vercel-beta.mjs",
     "preview:pages": "node scripts/serve-pages.mjs",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint . --max-warnings 0",
@@ -26,6 +27,7 @@
     "test:devnet:readiness": "vitest run --config vitest.live.config.ts tests/live/devnet-readiness.probe.ts",
     "test:metadata:bundle": "node scripts/check-metadata-worker.mjs",
     "test:metadata:runtime": "node scripts/check-metadata-worker.mjs && node scripts/test-metadata-runtime.mjs",
+    "test:metadata:wallet-runtime": "node scripts/check-metadata-worker.mjs && node scripts/test-wallet-upload-runtime.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -31,6 +31,7 @@ import {
   type MetadataReceipt,
   MetadataUploadError,
 } from "@/lib/meteora/metadata-upload";
+import { authorizeMetadataUpload } from "@/lib/meteora/metadata-authorization";
 import {
   MAX_LAUNCHES_PER_NAME,
   MAX_LAUNCHES_PER_TICKER,
@@ -74,6 +75,8 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
     null,
   );
   const endpoint = metadataEndpoint();
+  const walletUpload =
+    process.env.NEXT_PUBLIC_RETRY_METADATA_AUTH === "wallet-devnet";
   const owner = wallet.status === "connected" ? wallet.address : undefined;
   const buyLamports = parseSol(initialBuy || "0");
   const buyValid =
@@ -126,6 +129,26 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
         uploaded.current?.key === key
           ? await verifyStoredMetadata(draft, uploaded.current.receipt)
           : await uploadMetadata(draft, endpoint, fetch, {
+              authorize: !walletUpload
+                ? undefined
+                : (body, signal) => {
+                    if (
+                      !wallet.wallet ||
+                      !wallet.account ||
+                      context.cluster !== "devnet"
+                    )
+                      throw new MetadataUploadError(
+                        "Connect an approved Devnet test wallet before uploading.",
+                      );
+                    return authorizeMetadataUpload(
+                      wallet.wallet,
+                      wallet.account,
+                      body,
+                      endpoint,
+                      fetch,
+                      signal,
+                    );
+                  },
               onStored: (receipt) => {
                 uploaded.current = { key, receipt };
               },
@@ -317,16 +340,26 @@ export function LaunchPanel({ draft }: { draft: TokenDraft }) {
       ) : null}
       {endpoint && policy?.enabled ? (
         <p className="form-help">
-          Testers:{" "}
-          <a
-            href={metadataSignInUrl()!}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Authorize uploads
-          </a>{" "}
-          with your approved account, then return here to review the launch.
-          Connecting a wallet does not authorize storage.
+          {walletUpload ? (
+            <>
+              Your approved test wallet will sign a message to authorize this
+              upload. This message does not send SOL. Review the launch cost
+              before signing the separate launch transaction.
+            </>
+          ) : (
+            <>
+              Testers:{" "}
+              <a
+                href={metadataSignInUrl()!}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Authorize uploads
+              </a>{" "}
+              with your approved account, then return here to review the launch.
+              Connecting a wallet does not authorize storage.
+            </>
+          )}
         </p>
       ) : null}
       {review ? (

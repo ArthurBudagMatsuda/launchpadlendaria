@@ -20,5 +20,9 @@ overrides:
   # Targeted compatible API upgrades; no blanket dependency update.
   "@coral-xyz/anchor>toml": "5.0.1"
   "jayson>uuid": "11.1.1"
+  # Security updates for lint tooling. React Hooks supports Zod 4; Node 24
+  # satisfies minimatch 11. Runtime Meteora dependencies are unchanged.
+  "eslint-plugin-react-hooks>zod": "4.6.6"
+  "minimatch@10.2.6": "11.0.1"
 patchedDependencies:
   bigint-buffer@1.1.5: patches/bigint-buffer@1.1.5.patch
